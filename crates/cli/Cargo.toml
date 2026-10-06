@@ -1,0 +1,16 @@
+[package]
+name = "linear"
+description = "A command-line client for Linear."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish.workspace = true
+
+[[bin]]
+name = "linear"
+path = "src/main.rs"
+
+[dependencies]
+linear-core.workspace = true

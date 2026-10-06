@@ -1,0 +1,20 @@
+[package]
+name = "linear-core"
+description = "Pure (I/O-free) logic for the linear CLI: GraphQL types, request building, response parsing."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish.workspace = true
+
+[dependencies]
+cynic.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+chrono.workspace = true
+thiserror = "2"
+toml_edit = { version = "0.22", default-features = false, features = ["parse", "serde"] }
+
+[build-dependencies]
+cynic-codegen.workspace = true

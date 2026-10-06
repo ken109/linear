@@ -1,0 +1,15 @@
+[package]
+name = "linear-wasm"
+description = "Thin JSON-in/JSON-out wrapper around linear-core for use from a Worker (skeleton)."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish.workspace = true
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+linear-core.workspace = true
