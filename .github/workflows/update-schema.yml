@@ -1,0 +1,91 @@
+name: Update Linear schema
+
+# Weekly: fetch Linear's published SDL, and when it changed open (or refresh) a PR.
+# The PR body says whether crates/core/tests/coverage.rs still passes, and lists the
+# fields that need classifying in crates/core/coverage.toml when it does not.
+#
+# Needs "Allow GitHub Actions to create and approve pull requests" under
+# Settings > Actions > General. A PR opened with the default GITHUB_TOKEN does not
+# start other workflows; push an empty commit (or use a PAT) if CI should run on it.
+
+on:
+  schedule:
+    - cron: "17 3 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: update-linear-schema
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    env:
+      BRANCH: chore/update-linear-schema
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Fetch the schema
+        run: scripts/update-schema.sh
+
+      - name: Did it change?
+        id: diff
+        run: |
+          if git diff --quiet -- schema/linear.graphql; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "The schema is unchanged."
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            git diff --stat -- schema/linear.graphql
+          fi
+
+      - name: Check coverage against the new schema
+        id: coverage
+        if: steps.diff.outputs.changed == 'true'
+        continue-on-error: true
+        shell: bash
+        run: cargo test -p linear-core --test coverage 2>&1 | tee coverage.log
+
+      - name: Open or update the pull request
+        if: steps.diff.outputs.changed == 'true'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          COVERAGE: ${{ steps.coverage.outcome }}
+        run: |
+          {
+            echo "Automated update of \`schema/linear.graphql\` from Linear's published SDL."
+            echo
+            echo '```'
+            git diff --shortstat -- schema/linear.graphql
+            echo '```'
+            echo
+            if [ "$COVERAGE" = "success" ]; then
+              echo "Coverage check: **passed** (every field is classified in \`crates/core/coverage.toml\`)."
+            else
+              echo "Coverage check: **failed**. Classify the new fields in \`crates/core/coverage.toml\` (or fix the build) before merging:"
+              echo
+              echo '```'
+              grep -v '^ *Compiling\|^ *Running\|^$' coverage.log | tail -n 80
+              echo '```'
+            fi
+          } > pr-body.md
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -B "$BRANCH"
+          git add schema/linear.graphql
+          git commit -m "chore(schema): update the vendored Linear schema"
+          git push --force origin "$BRANCH"
+
+          if gh pr view "$BRANCH" --json state --jq '.state' 2>/dev/null | grep -q '^OPEN$'; then
+            gh pr edit "$BRANCH" --body-file pr-body.md
+          else
+            gh pr create --base "${GITHUB_REF_NAME}" --head "$BRANCH" \
+              --title "chore(schema): update the vendored Linear schema" \
+              --body-file pr-body.md
+          fi
