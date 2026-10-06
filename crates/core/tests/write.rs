@@ -168,6 +168,7 @@ fn a_create_input_omits_what_was_not_given() {
         project_id: Some("p".into()),
         project_milestone_id: Some("m".into()),
         label_ids: Some(vec!["l1".into(), "l2".into()]),
+        cycle_id: Some("c".into()),
     })
     .unwrap();
     assert_eq!(
@@ -175,6 +176,7 @@ fn a_create_input_omits_what_was_not_given() {
         json!({
             "teamId": "t", "title": "Title", "description": "Body", "assigneeId": "u",
             "projectId": "p", "projectMilestoneId": "m", "labelIds": ["l1", "l2"],
+            "cycleId": "c",
         })
     );
 }

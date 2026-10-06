@@ -92,6 +92,7 @@
       }
     },
     "write": {
+      "cycle": null,
       "team": {
         "states": {
           "nodes": [

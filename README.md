@@ -379,7 +379,7 @@ and the issues named with `--issues` even if they are old and closed.
 linear issue create --title "Fix the thing" --project "My Project" \
   --template "Bug report" --body-file body.md --source https://example.com/a \
   [--source-title "Where it came from"] [--meta kind=slack --meta ticket=42] \
-  [--milestone M1] [--assignee me] [--label bug] [--team ENG]
+  [--milestone M1] [--assignee me] [--label bug] [--team ENG] [--held-on 2026-10-05]
 linear issue update KK-12 --state "In Progress" --due 2026-11-01 [--milestone M2] [--assignee me]
 linear issue update KK-12 --project "Other Project" [--milestone M1]   # the old milestone is cleared
 linear issue update KK-12 --body-file body.md [--template "Bug report"]   # replace the description
@@ -415,6 +415,28 @@ the `source-attachment` rule; without it the lookup is not made.)
 
 `issue reorder` takes at least two issues, as separate arguments, one comma-separated list, or
 a mix; naming one is a usage error (exit 2).
+
+#### Cycles: `linear cycle` and `issue create --held-on`
+
+A recurring meeting declares what gets done in the week after it, so its issues belong in the
+cycle that is running the next day. `linear cycle 2026-10-05` prints **the cycle that contains the
+day after the meeting** (read-only; `--team` or the workspace's `default_team` picks the team).
+The rule does not look at weekdays: with cycles that start on Tuesday, a Monday meeting lands in
+the cycle that starts the next morning, a Tuesday one in the cycle that started that day. The day
+is judged at noon Japan Standard Time, so a midnight boundary never decides it. When no cycle
+contains that day the command fails (exit 2) and lists the cycles that exist, because a missing
+cycle means the team's cycles are not set up that far ahead; it is never taken for "no cycle".
+`--json` prints `id`, `number`, `name`, `startsAt`, `endsAt`, plus `workspace`, `team` and `heldOn`;
+`--quiet` prints the cycle id.
+
+`issue create --held-on 2026-10-05` puts the new issue in that cycle, and fails before creating
+anything when there is none. If an issue with the same `--source` already exists (this needs the
+`source-attachment` rule, as above), its cycle is set only when it has none; its description, labels
+and everything else are not touched, and a cycle somebody chose is not taken back (a note says
+so). That alignment is a write to an existing issue, so the ownership rule for changing an issue
+applies to it (exit 4). With `--json` the output has `cycle` (the cycle the issue is in) and
+`changed` (`["cycle"]` when this run set it, otherwise empty). Creating or changing cycles
+themselves is not supported.
 
 #### `issue update`
 

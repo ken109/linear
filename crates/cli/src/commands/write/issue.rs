@@ -6,6 +6,7 @@
 //! last step, cannot be made.
 
 use super::{read_text, resolve, retry, Rollback, WriteSession, ATTACH_WAITS};
+use crate::commands::cycle;
 use crate::commands::format::person;
 use crate::commands::issue::{out as issue_out, IssueOut};
 use crate::commands::Ctx;
@@ -25,7 +26,7 @@ use linear_core::read::{self, IssueWriteView};
 use linear_core::reorder::{self, OrderRow};
 use linear_core::rules::source_attachment::{self, metadata_needs_update};
 use linear_core::rules::{Draft, Operation, Outcome};
-use linear_core::types::{Issue, Label, StateType};
+use linear_core::types::{Cycle, Issue, Label, StateType};
 use serde::Serialize;
 use std::collections::BTreeSet;
 use std::path::PathBuf;
@@ -71,6 +72,13 @@ pub struct CreateCmd {
     /// Label name (repeatable)
     #[arg(long, value_name = "NAME")]
     pub label: Vec<String>,
+    /// The day of the meeting the issue came out of (YYYY-MM-DD): the issue goes into the
+    /// cycle that contains the day after it (see `linear cycle`), and the command fails
+    /// before creating anything when there is none. If an issue with the same --source
+    /// already exists (the `source-attachment` rule looks for it), its cycle is set only
+    /// when it has none; its other fields are not touched
+    #[arg(long, value_name = "DATE")]
+    pub held_on: Option<NaiveDate>,
     /// Team key (default: the workspace's `default_team`)
     #[arg(long, value_name = "KEY")]
     pub team: Option<String>,
@@ -92,6 +100,12 @@ struct Created<'a> {
     source_url: Option<&'a str>,
     /// `true` when the issue already existed and `--meta` replaced the metadata of its source attachment.
     metadata_updated: bool,
+    /// The cycle the issue is in, when `--held-on` asked for one (an existing issue that
+    /// already had another cycle keeps it, and this is that one).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    cycle: Option<&'a Cycle>,
+    /// The fields this run wrote onto an issue that already existed (`cycle`); empty for a new one.
+    changed: Vec<&'static str>,
 }
 
 pub fn create(ctx: &Ctx, cmd: &CreateCmd) -> Result<()> {
@@ -137,6 +151,11 @@ pub fn create(ctx: &Ctx, cmd: &CreateCmd) -> Result<()> {
         None => ws.viewer.id.clone(),
     };
     let labels = resolve::labels(&ws, &cmd.label)?;
+    // A day no cycle contains stops here, before anything is written.
+    let cycle = cmd
+        .held_on
+        .map(|day| cycle::find(&ws.client, &team.key, day))
+        .transpose()?;
 
     // Guard, then validators.
     ws.guard(
@@ -181,13 +200,23 @@ pub fn create(ctx: &Ctx, cmd: &CreateCmd) -> Result<()> {
             )?,
             _ => false,
         };
+        // The cycle is the one thing aligned afterwards, and only when it is empty.
+        let (cycle, changed) = match &cycle {
+            Some(wanted) => put_in_cycle(&ws, existing.id.inner(), wanted)?,
+            None => (None, Vec::new()),
+        };
         emit_created(
             ctx,
             &ws,
-            existing.id.inner(),
-            &existing.identifier,
-            &existing.url,
-            Some(Reuse { metadata_updated }),
+            Made {
+                id: existing.id.inner(),
+                identifier: &existing.identifier,
+                url: &existing.url,
+                existing: true,
+                metadata_updated,
+                cycle: cycle.as_ref(),
+                changed,
+            },
             source,
         );
         return Ok(());
@@ -203,6 +232,7 @@ pub fn create(ctx: &Ctx, cmd: &CreateCmd) -> Result<()> {
         project_milestone_id: milestone.map(|m| m.id.inner().to_owned()),
         label_ids: (!labels.is_empty())
             .then(|| labels.iter().map(|l| l.id.inner().to_owned()).collect()),
+        cycle_id: cycle.as_ref().map(|c| c.id.inner().to_owned()),
     };
     let data: IssueCreate = ws.client.execute(&inputs::issue_create(input))?;
     let issue = match data.issue_create {
@@ -248,18 +278,73 @@ pub fn create(ctx: &Ctx, cmd: &CreateCmd) -> Result<()> {
     emit_created(
         ctx,
         &ws,
-        issue.id.inner(),
-        &issue.identifier,
-        &issue.url,
-        None,
+        Made {
+            id: issue.id.inner(),
+            identifier: &issue.identifier,
+            url: &issue.url,
+            existing: false,
+            metadata_updated: false,
+            cycle: cycle.as_ref(),
+            changed: Vec::new(),
+        },
         source,
     );
     Ok(())
 }
 
-/// What happened to an issue that already carried the source.
-struct Reuse {
+/// Put an issue that already exists in `wanted`, but only if it is in no cycle: a cycle
+/// somebody chose is not taken back. Returns the cycle the issue is in afterwards and what
+/// was written (`cycle`, or nothing).
+///
+/// This is a write to an existing issue, so it takes the whole path: the ownership guard
+/// for an update, the update validators, then the one mutation.
+fn put_in_cycle(
+    ws: &WriteSession,
+    issue_id: &str,
+    wanted: &Cycle,
+) -> Result<(Option<Cycle>, Vec<&'static str>)> {
+    let view = fetch_issue(ws, issue_id)?;
+    if let Some(current) = view.write.cycle.clone() {
+        if current.id != wanted.id {
+            ws.note(&format!(
+                "{} is already in cycle {}; it was not moved to {}",
+                view.issue.identifier,
+                linear_core::cycle::label(&current),
+                linear_core::cycle::label(wanted)
+            ));
+        }
+        return Ok((Some(current), Vec::new()));
+    }
+    ws.guard(
+        &Write::IssueUpdate {
+            assignee: view.issue.assignee.as_ref().map(|u| u.id.inner()),
+            placement: placement_of(&view),
+            moves_to: None,
+        },
+        false,
+    )?;
+    ws.validate(&Draft::new(Operation::IssueUpdate))?;
+    let input = IssueUpdateInput {
+        cycle_id: Some(wanted.id.inner().to_owned()),
+        ..Default::default()
+    };
+    let data: IssueUpdate = ws
+        .client
+        .execute(&inputs::issue_update(view.issue.id.inner(), input))?;
+    changed_issue(data.issue_update, &view.issue.identifier)?;
+    Ok((Some(wanted.clone()), vec!["cycle"]))
+}
+
+/// What `create` found or made, for `emit_created`.
+struct Made<'a> {
+    id: &'a str,
+    identifier: &'a str,
+    url: &'a str,
+    /// An issue with the same source already existed and nothing was created.
+    existing: bool,
     metadata_updated: bool,
+    cycle: Option<&'a Cycle>,
+    changed: Vec<&'static str>,
 }
 
 /// Write `wanted` onto the attachment that holds `url`, if it differs from
@@ -298,17 +383,16 @@ fn refresh_source_metadata(
     }
 }
 
-fn emit_created(
-    ctx: &Ctx,
-    ws: &WriteSession,
-    id: &str,
-    identifier: &str,
-    url: &str,
-    reuse: Option<Reuse>,
-    source: Option<&str>,
-) {
-    let existing = reuse.is_some();
-    let metadata_updated = reuse.is_some_and(|r| r.metadata_updated);
+fn emit_created(ctx: &Ctx, ws: &WriteSession, made: Made<'_>, source: Option<&str>) {
+    let Made {
+        id,
+        identifier,
+        url,
+        existing,
+        metadata_updated,
+        cycle,
+        changed,
+    } = made;
     let value = Created {
         workspace: &ws.workspace,
         id,
@@ -317,15 +401,27 @@ fn emit_created(
         existing,
         source_url: source,
         metadata_updated,
+        cycle,
+        changed: changed.clone(),
     };
     ctx.out.emit(
         &value,
         || {
-            let how = match (existing, metadata_updated) {
-                (false, _) => "created",
-                (true, false) => "already exists, nothing created",
-                (true, true) => "already exists, nothing created; source metadata updated",
+            let mut how = match (existing, metadata_updated) {
+                (false, _) => "created".to_owned(),
+                (true, false) => "already exists, nothing created".to_owned(),
+                (true, true) => {
+                    "already exists, nothing created; source metadata updated".to_owned()
+                }
             };
+            if let Some(c) = cycle {
+                let verb = if changed.contains(&"cycle") {
+                    "cycle set to"
+                } else {
+                    "in cycle"
+                };
+                how.push_str(&format!("; {verb} {}", linear_core::cycle::label(c)));
+            }
             format!("{identifier}  {url}  ({how})")
         },
         || identifier.to_owned(),

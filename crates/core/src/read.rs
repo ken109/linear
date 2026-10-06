@@ -142,6 +142,9 @@ impl ProjectOwnership {
 pub struct IssueWriteDetail {
     pub team: TeamStates,
     pub project: Option<ProjectOwnership>,
+    /// The cycle the issue is in, if any (`issue create --held-on` only
+    /// fills an empty one).
+    pub cycle: Option<Cycle>,
 }
 
 #[derive(cynic::QueryFragment, Debug, Clone, PartialEq)]

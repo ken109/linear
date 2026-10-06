@@ -82,6 +82,9 @@ pub struct IssueUpdateInput {
     pub sort_order: Option<f64>,
     #[cynic(skip_serializing_if = "Option::is_none")]
     pub priority_sort_order: Option<f64>,
+    /// Put the issue in this cycle (never sent as a clear: nothing here takes one out).
+    #[cynic(skip_serializing_if = "Option::is_none")]
+    pub cycle_id: Option<String>,
 }
 
 impl IssueUpdateInput {
@@ -97,6 +100,7 @@ impl IssueUpdateInput {
             && self.label_ids.is_none()
             && self.sort_order.is_none()
             && self.priority_sort_order.is_none()
+            && self.cycle_id.is_none()
     }
 }
 
@@ -148,6 +152,8 @@ pub struct IssueCreateInput {
     pub project_milestone_id: Option<String>,
     #[cynic(skip_serializing_if = "Option::is_none")]
     pub label_ids: Option<Vec<String>>,
+    #[cynic(skip_serializing_if = "Option::is_none")]
+    pub cycle_id: Option<String>,
 }
 
 #[derive(cynic::QueryVariables, Debug, Clone)]
