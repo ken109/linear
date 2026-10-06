@@ -12,9 +12,9 @@
 
 use super::listing::paginate;
 use super::Ctx;
-use crate::error::Result;
+use crate::error::{CliError, Result};
 use crate::store::Dirs;
-use chrono::{FixedOffset, Local, Offset, Utc};
+use chrono::{DateTime, FixedOffset, Local, Offset, Utc};
 use clap::Args;
 use linear_core::audit::AuditConfig;
 use linear_core::brief::{self, Brief, BriefOptions};
@@ -23,6 +23,11 @@ use linear_core::queries::PROJECTS_PAGE_SIZE;
 use linear_core::read::{self, ProjectList, ProjectListVars};
 use std::sync::mpsc;
 use std::time::Duration;
+
+/// Test-only: an RFC 3339 time (`2026-10-20T21:00:00+09:00`) that replaces the clock and the
+/// time zone, so that the ages and dates in the output do not depend on when and where the
+/// tests run. Read by `brief` only, and not documented for users.
+pub const NOW_ENV: &str = "LINEAR_NOW";
 
 /// How long `--session` may take in all, from reading the configuration to
 /// the last response.
@@ -45,17 +50,19 @@ pub fn run(ctx: &Ctx, args: &BriefArgs) -> Result<()> {
         session(ctx, args);
         return Ok(());
     }
-    let brief = fetch(ctx, args.stale_days)?;
+    let (brief, offset) = fetch(ctx, args.stale_days)?;
     print(
         ctx,
         &brief,
+        offset,
         "No project to show: none is in progress and none has a status update.",
     );
     Ok(())
 }
 
 /// The brief of the resolved workspace, asked of Linear.
-fn fetch(ctx: &Ctx, stale_days: Option<u32>) -> Result<Brief> {
+fn fetch(ctx: &Ctx, stale_days: Option<u32>) -> Result<(Brief, FixedOffset)> {
+    let (now, offset) = clock()?;
     let session = ctx.session()?;
     let filter = ProjectQuery {
         open: true,
@@ -69,27 +76,33 @@ fn fetch(ctx: &Ctx, stale_days: Option<u32>) -> Result<Brief> {
     })?;
     let stale_days = stale_days
         .unwrap_or_else(|| AuditConfig::from_workspace(&session.config).status_update_days);
-    Ok(brief::build(
+    let brief = brief::build(
         &session.workspace,
         &listing.items,
-        Utc::now(),
-        &BriefOptions {
-            stale_days,
-            offset: local_offset(),
-        },
-    ))
+        now,
+        &BriefOptions { stale_days, offset },
+    );
+    Ok((brief, offset))
 }
 
-/// The offset of the machine's local time zone, in which dates are shown.
-fn local_offset() -> FixedOffset {
-    Local::now().offset().fix()
+/// The current time and the offset dates are shown in: the machine's, unless
+/// [`NOW_ENV`] sets both.
+fn clock() -> Result<(DateTime<Utc>, FixedOffset)> {
+    match std::env::var(NOW_ENV) {
+        Ok(v) if !v.is_empty() => {
+            let t = DateTime::parse_from_rfc3339(&v)
+                .map_err(|e| CliError::usage(format!("{NOW_ENV} is not an RFC 3339 time ({e})")))?;
+            Ok((t.with_timezone(&Utc), *t.offset()))
+        }
+        _ => Ok((Utc::now(), Local::now().offset().fix())),
+    }
 }
 
-fn print(ctx: &Ctx, brief: &Brief, when_empty: &str) {
+fn print(ctx: &Ctx, brief: &Brief, offset: FixedOffset, when_empty: &str) {
     ctx.out.emit(
         brief,
         || {
-            let text = brief::render_markdown(brief, local_offset());
+            let text = brief::render_markdown(brief, offset);
             if text.is_empty() {
                 when_empty.to_owned()
             } else {
@@ -130,7 +143,7 @@ fn session(ctx: &Ctx, args: &BriefArgs) {
         });
         let _ = tx.send(result);
     });
-    if let Ok(Ok(brief)) = rx.recv_timeout(SESSION_BUDGET) {
-        print(ctx, &brief, "");
+    if let Ok(Ok((brief, offset))) = rx.recv_timeout(SESSION_BUDGET) {
+        print(ctx, &brief, offset, "");
     }
 }

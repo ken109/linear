@@ -7,12 +7,24 @@ use common::*;
 use read_support::*;
 use std::time::{Duration, Instant};
 
+/// The clock of the golden tests in core: 2026-10-20 12:00 UTC, shown in JST. Independent of the
+/// machine's clock and `TZ`.
+const NOW: &str = "2026-10-20T21:00:00+09:00";
+
+fn brief(sb: &Sandbox, mock: &Mock, args: &[&str]) -> std::process::Output {
+    sb.run(
+        args,
+        Some(mock),
+        &[("LINEAR_API_KEY_EXAMPLE", KEY), ("LINEAR_NOW", NOW)],
+    )
+}
+
 #[test]
 fn the_brief_lists_the_projects_in_progress_or_with_an_update() {
     let sb = workspace();
     let mock = Mock::start(vec![ok(&fixture("brief_projects"))]);
-    // 100000 days: nothing is stale, whatever today is.
-    let o = linear(&sb, &mock, &["brief", "--stale-days", "100000"]);
+    // 100000 days: nothing is stale.
+    let o = brief(&sb, &mock, &["brief", "--stale-days", "100000"]);
     assert_eq!(code(&o), 0, "{}", stderr(&o));
     let out = stdout(&o);
     for want in [
@@ -45,7 +57,7 @@ fn the_brief_lists_the_projects_in_progress_or_with_an_update() {
 fn a_threshold_of_zero_marks_every_update_stale() {
     let sb = workspace();
     let mock = Mock::start(vec![ok(&fixture("brief_projects"))]);
-    let o = linear(&sb, &mock, &["brief", "--stale-days", "0"]);
+    let o = brief(&sb, &mock, &["brief", "--stale-days", "0"]);
     let out = stdout(&o);
     assert_eq!(out.matches("**stale**").count(), 3, "{out}");
     assert!(out.contains("0 days old or more is stale"), "{out}");
@@ -55,7 +67,7 @@ fn a_threshold_of_zero_marks_every_update_stale() {
 fn json_has_the_workspace_the_threshold_and_the_projects() {
     let sb = workspace();
     let mock = Mock::start(vec![ok(&fixture("brief_projects"))]);
-    let o = linear(&sb, &mock, &["brief", "--json", "--stale-days", "14"]);
+    let o = brief(&sb, &mock, &["brief", "--json", "--stale-days", "14"]);
     let v = stdout_json(&o);
     assert_eq!(v["workspace"], "example");
     assert_eq!(v["staleDays"], 14);
@@ -80,7 +92,7 @@ fn json_has_the_workspace_the_threshold_and_the_projects() {
 fn quiet_prints_the_slug_ids() {
     let sb = workspace();
     let mock = Mock::start(vec![ok(&fixture("brief_projects"))]);
-    let o = linear(&sb, &mock, &["brief", "--quiet"]);
+    let o = brief(&sb, &mock, &["brief", "--quiet"]);
     assert_eq!(
         stdout(&o),
         "eeeeeeeeeeee\naaaaaaaaaaaa\ncccccccccccc\nbbbbbbbbbbbb\n"
@@ -93,12 +105,12 @@ fn no_projects_says_so_and_a_failure_is_an_error() {
     let empty =
         r#"{"data":{"projects":{"nodes":[],"pageInfo":{"hasNextPage":false,"endCursor":null}}}}"#;
     let mock = Mock::start(vec![ok(empty)]);
-    let o = linear(&sb, &mock, &["brief"]);
+    let o = brief(&sb, &mock, &["brief"]);
     assert_eq!(code(&o), 0);
     assert!(stdout(&o).contains("No project to show"), "{}", stdout(&o));
 
     let mock = Mock::start(vec![ok(&fixture("error_unauthenticated"))]);
-    let o = linear(&sb, &mock, &["brief"]);
+    let o = brief(&sb, &mock, &["brief"]);
     assert_ne!(code(&o), 0);
     assert!(stdout(&o).is_empty());
     assert!(stderr(&o).contains("error:"), "{}", stderr(&o));
@@ -109,11 +121,7 @@ fn no_projects_says_so_and_a_failure_is_an_error() {
 fn session_prints_the_same_markdown() {
     let sb = workspace();
     let mock = Mock::start(vec![ok(&fixture("brief_projects"))]);
-    let o = linear(
-        &sb,
-        &mock,
-        &["brief", "--session", "--stale-days", "100000"],
-    );
+    let o = brief(&sb, &mock, &["brief", "--session"]);
     assert_eq!(code(&o), 0, "{}", stderr(&o));
     assert!(
         stdout(&o).contains("**Ship the importer**"),
@@ -121,6 +129,34 @@ fn session_prints_the_same_markdown() {
         stdout(&o)
     );
     assert_eq!(stderr(&o), "");
+}
+
+#[test]
+fn the_default_threshold_is_14_days_in_the_clocks_calendar() {
+    let sb = workspace();
+    let mock = Mock::start(vec![ok(&fixture("brief_projects"))]);
+    let out = stdout(&brief(&sb, &mock, &["brief"]));
+    // Written the 6th (14 days) and 1 Aug (80 days) are stale; the 7th (13 days) is not.
+    for want in [
+        "2026-10-06 (14 days ago, **stale**) on track",
+        "2026-10-07 (13 days ago) off track",
+        "2026-08-01 (80 days ago, **stale**) at risk",
+    ] {
+        assert!(out.contains(want), "missing {want:?} in:\n{out}");
+    }
+}
+
+#[test]
+fn a_clock_that_is_not_rfc_3339_is_a_usage_error() {
+    let sb = workspace();
+    let mock = Mock::start(vec![ok(&fixture("brief_projects"))]);
+    let o = sb.run(
+        &["brief"],
+        Some(&mock),
+        &[("LINEAR_API_KEY_EXAMPLE", KEY), ("LINEAR_NOW", "yesterday")],
+    );
+    assert_eq!(code(&o), 2, "{}", stderr(&o));
+    assert!(stderr(&o).contains("LINEAR_NOW"), "{}", stderr(&o));
 }
 
 #[test]
@@ -151,7 +187,7 @@ fn session_is_silent_and_succeeds_when_anything_fails() {
         None,
     ] {
         let mock = Mock::start(reply.into_iter().collect());
-        let o = linear(&sb, &mock, &["brief", "--session"]);
+        let o = brief(&sb, &mock, &["brief", "--session"]);
         assert_eq!(code(&o), 0);
         assert_eq!((stdout(&o).as_str(), stderr(&o).as_str()), ("", ""));
     }
