@@ -479,7 +479,7 @@ fn show_text(rows: &[ShowRow], now: DateTime<Utc>) -> String {
     text
 }
 
-fn age_text(secs: u64) -> String {
+pub(super) fn age_text(secs: u64) -> String {
     match secs {
         0..=59 => format!("{secs}s"),
         60..=3599 => format!("{}m", secs / 60),

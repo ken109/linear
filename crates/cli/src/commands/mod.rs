@@ -3,6 +3,7 @@
 mod api;
 pub mod audit;
 pub mod cache;
+pub mod cached;
 mod format;
 pub mod initiative;
 pub mod issue;

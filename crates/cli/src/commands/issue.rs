@@ -1,9 +1,10 @@
 //! `linear issue list|view|create|update|comment|reorder` (the writes live in `write::issue`).
 
+use super::cached::{self, CachedArgs};
 use super::format::{date_time, fields, indent, opt_date, opt_text, person};
 use super::listing::{paginate, resolve_project, warn_truncated, ListArgs};
 use super::{write, Ctx};
-use crate::error::Result;
+use crate::error::{CliError, Result};
 use crate::output::table;
 use clap::{Args, Subcommand};
 use linear_core::filters::IssueQuery;
@@ -70,12 +71,16 @@ pub struct ListCmd {
     pub source_url: Option<String>,
     #[command(flatten)]
     pub page: ListArgs,
+    #[command(flatten)]
+    pub cache: CachedArgs,
 }
 
 #[derive(Debug, Args)]
 pub struct ViewCmd {
     /// Issue identifier (such as KK-12) or id
     pub issue: String,
+    #[command(flatten)]
+    pub cache: CachedArgs,
 }
 
 pub fn run(ctx: &Ctx, cmd: &IssueCommand) -> Result<()> {
@@ -108,7 +113,57 @@ pub(super) fn out<'a>(workspace: &'a str, issue: &'a Issue) -> IssueOut<'a> {
     }
 }
 
-fn list(ctx: &Ctx, args: &ListCmd) -> Result<()> {
+/// What `issue list --cached` can be combined with: the cache holds the issues
+/// assigned to you whose state type is `started`, so only a filter that says
+/// exactly that is accepted. Anything else would select issues it does not hold.
+fn check_cached_filters(args: &ListCmd) -> Result<()> {
+    let mut flags = Vec::new();
+    if args.assignee.as_deref().is_some_and(|a| a != "me") {
+        flags.push("--assignee other than `me`".to_owned());
+    }
+    if args.state_type.iter().any(|t| t != "started") {
+        flags.push("--state-type other than `started`".to_owned());
+    }
+    if !args.state.is_empty() {
+        flags.push("--state".to_owned());
+    }
+    if args.open {
+        flags.push("--open".to_owned());
+    }
+    if args.team.is_some() {
+        flags.push("--team".to_owned());
+    }
+    if args.project.is_some() {
+        flags.push("--project".to_owned());
+    }
+    if args.milestone.is_some() {
+        flags.push("--milestone".to_owned());
+    }
+    if !args.label.is_empty() {
+        flags.push("--label".to_owned());
+    }
+    if args.source_url.is_some() {
+        flags.push("--source-url".to_owned());
+    }
+    cached::refuse_outside_cache("the issues assigned to you that are In Progress", &flags)
+}
+
+/// The issues to list and the workspace they are from.
+fn fetch_list(ctx: &Ctx, args: &ListCmd) -> Result<(String, Vec<Issue>)> {
+    if args.cache.cached {
+        check_cached_filters(args)?;
+        let hit = cached::read(ctx, &args.cache)?;
+        cached::announce(ctx, &hit);
+        let mut items = hit.mine.issues;
+        if let Some(limit) = args.page.limit() {
+            if items.len() > limit {
+                items.truncate(limit);
+                warn_truncated(items.len());
+            }
+        }
+        return Ok((hit.workspace, items));
+    }
+
     let session = ctx.session()?;
     let project_id = match &args.project {
         Some(reference) => Some(resolve_project(&session.client, reference)?.id.into_inner()),
@@ -135,20 +190,19 @@ fn list(ctx: &Ctx, args: &ListCmd) -> Result<()> {
     if listing.truncated {
         warn_truncated(listing.items.len());
     }
+    Ok((session.workspace, listing.items))
+}
 
-    let rows: Vec<IssueOut> = listing
-        .items
-        .iter()
-        .map(|i| out(&session.workspace, i))
-        .collect();
+fn list(ctx: &Ctx, args: &ListCmd) -> Result<()> {
+    let (workspace, items) = fetch_list(ctx, args)?;
+    let rows: Vec<IssueOut> = items.iter().map(|i| out(&workspace, i)).collect();
     ctx.out.emit(
         &rows,
         || {
-            if listing.items.is_empty() {
+            if items.is_empty() {
                 return "No issues found.".to_owned();
             }
-            let body: Vec<Vec<String>> = listing
-                .items
+            let body: Vec<Vec<String>> = items
                 .iter()
                 .map(|i| {
                     vec![
@@ -163,8 +217,7 @@ fn list(ctx: &Ctx, args: &ListCmd) -> Result<()> {
             table(&["ID", "STATE", "ASSIGNEE", "PROJECT", "TITLE"], &body)
         },
         || {
-            listing
-                .items
+            items
                 .iter()
                 .map(|i| i.identifier.as_str())
                 .collect::<Vec<_>>()
@@ -179,17 +232,40 @@ fn list(ctx: &Ctx, args: &ListCmd) -> Result<()> {
 struct IssueViewOut<'a> {
     #[serde(flatten)]
     base: IssueOut<'a>,
+    /// Absent from the cache, which keeps the list fields only.
     #[serde(flatten)]
-    detail: &'a IssueDetail,
+    detail: Option<&'a IssueDetail>,
+}
+
+/// An issue from the cache: the first one whose identifier or id is `reference`.
+fn find_cached(issues: Vec<Issue>, reference: &str) -> Result<Issue> {
+    let reference = reference.trim();
+    issues
+        .into_iter()
+        .find(|i| i.identifier.eq_ignore_ascii_case(reference) || i.id.inner() == reference)
+        .ok_or_else(|| {
+            CliError::general(format!(
+                "{reference} is not in the cache, which holds only the issues assigned to you \
+                 that are In Progress; drop --cached to ask Linear"
+            ))
+        })
 }
 
 fn view(ctx: &Ctx, args: &ViewCmd) -> Result<()> {
+    if args.cache.cached {
+        let hit = cached::read(ctx, &args.cache)?;
+        let issue = find_cached(hit.mine.issues.clone(), &args.issue)?;
+        cached::announce(ctx, &hit);
+        return show(ctx, &hit.workspace, &issue, None);
+    }
     let session = ctx.session()?;
     let data: IssueView = session.client.execute(&read::issue_view(&args.issue))?;
-    let (i, d) = (&data.issue, &data.detail);
+    show(ctx, &session.workspace, &data.issue, Some(&data.detail))
+}
 
+fn show(ctx: &Ctx, workspace: &str, i: &Issue, d: Option<&IssueDetail>) -> Result<()> {
     let value = IssueViewOut {
-        base: out(&session.workspace, i),
+        base: out(workspace, i),
         detail: d,
     };
     ctx.out.emit(
@@ -228,7 +304,12 @@ fn view(ctx: &Ctx, args: &ViewCmd) -> Result<()> {
                     ),
                     ("Milestone", milestone),
                     ("Labels", labels),
-                    ("Priority", d.priority_label.clone()),
+                    (
+                        "Priority",
+                        d.map_or("(not in the cache)".to_owned(), |d| d
+                            .priority_label
+                            .clone())
+                    ),
                     ("Due", opt_date(&i.due_date)),
                     (
                         "Estimate",
@@ -248,9 +329,10 @@ fn view(ctx: &Ctx, args: &ViewCmd) -> Result<()> {
             if let Some(desc) = i.description.as_deref().filter(|s| !s.trim().is_empty()) {
                 text.push_str(&format!("\n\n{}", desc.trim_end()));
             }
-            if !d.comments.is_empty() {
-                text.push_str(&format!("\n\nComments ({})", d.comments.len()));
-                for c in d.comments.iter() {
+            let comments = d.map(|d| &d.comments);
+            if let Some(comments) = comments.filter(|c| !c.is_empty()) {
+                text.push_str(&format!("\n\nComments ({})", comments.len()));
+                for c in comments.iter() {
                     text.push_str(&format!(
                         "\n\n  {}, {}:\n{}",
                         person(&c.user),

@@ -5,16 +5,17 @@
 //! findings and turns `--fail-on` into an exit code.
 
 use super::cache::{in_parallel, selected, Target};
+use super::cached::{judge, unknown_error, Verdict};
 use super::listing::{paginate, Session};
 use super::{verify, Ctx};
-use crate::cache::{CacheDir, Loaded};
+use crate::cache::CacheDir;
 use crate::error::{CliError, Result};
 use crate::http::Client;
 use crate::store;
 use chrono::{DateTime, Duration, Utc};
 use clap::{Args, ValueEnum};
 use linear_core::audit::{audit_scoped, AuditConfig, AuditOptions, Finding, Severity, Snapshot};
-use linear_core::cache::{Freshness, DEFAULT_TTL_SECS};
+use linear_core::cache::DEFAULT_TTL_SECS;
 use linear_core::config::Rule;
 use linear_core::filters;
 use linear_core::queries::{self, IssueById, Projects, Templates, PROJECTS_PAGE_SIZE};
@@ -216,47 +217,20 @@ fn from_cache(targets: &[Target], ttl: u64, now: DateTime<Utc>) -> Result<AuditO
     };
     let mut unknown = Vec::new();
     for t in targets {
-        let entry = match dir.load(&t.name)? {
-            Loaded::Found(entry) => entry,
-            Loaded::Missing => {
-                unknown.push(format!("{}: nothing cached", t.name));
-                continue;
-            }
-            Loaded::Unusable(why) => {
-                unknown.push(format!("{}: unusable cache file ({why})", t.name));
-                continue;
-            }
-        };
-        match (entry.known(now, ttl), entry.freshness(now, ttl)) {
-            (Some(mine), Freshness::Fresh { age_secs }) => {
-                out.findings.extend(mine.findings.iter().cloned());
+        match judge(&dir, &t.name, ttl, now)? {
+            Verdict::Fresh(hit) => {
+                out.findings.extend(hit.mine.findings);
                 out.cached.push(CachedFrom {
                     workspace: t.name.clone(),
-                    fetched_at: entry.fetched_at.unwrap_or(now),
-                    age_secs,
+                    fetched_at: hit.fetched_at,
+                    age_secs: hit.age_secs,
                 });
             }
-            (_, freshness) => {
-                let why = match (freshness, &entry.failure) {
-                    (Freshness::Expired { age_secs }, Some(f)) => format!(
-                        "snapshot is {age_secs}s old and the last refresh failed: {}",
-                        f.message
-                    ),
-                    (Freshness::Expired { age_secs }, None) => {
-                        format!("snapshot is {age_secs}s old, past the {ttl}s TTL")
-                    }
-                    (_, Some(f)) => format!("never fetched; the refresh failed: {}", f.message),
-                    (_, None) => "never fetched".to_owned(),
-                };
-                unknown.push(format!("{}: {why}", t.name));
-            }
+            Verdict::Unknown(u) => unknown.push(format!("{}: {}", t.name, u.why)),
         }
     }
     if !unknown.is_empty() {
-        return Err(CliError::general(format!(
-            "no fresh cache, so the result is unknown ({}); run `linear cache refresh`",
-            unknown.join("; ")
-        )));
+        return Err(unknown_error(&unknown));
     }
     Ok(out)
 }

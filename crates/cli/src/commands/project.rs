@@ -1,20 +1,22 @@
 //! `linear project list|view|create|update|reorder|status-update` (the writes live in `write::project`).
 
+use super::cached::{self, CachedArgs};
 use super::format::{
     date_time, fields, first_line, health, indent, milestone_status, opt_date, percent, person,
     project_status_type,
 };
 use super::listing::{paginate, resolve_project, warn_truncated, ListArgs};
 use super::{write, Ctx};
-use crate::error::Result;
+use crate::error::{CliError, Result};
 use crate::output::table;
 use clap::{Args, Subcommand};
 use linear_core::filters::ProjectQuery;
+use linear_core::matching::match_project;
 use linear_core::queries::PROJECTS_PAGE_SIZE;
 use linear_core::read::{
     self, ProjectDetail, ProjectList, ProjectListVars, ProjectView, PROJECT_VIEW_UPDATES,
 };
-use linear_core::types::{IssueCounts, Project};
+use linear_core::types::{IssueCounts, Project, ProjectRef};
 use serde::Serialize;
 
 #[derive(Debug, Subcommand)]
@@ -58,15 +60,19 @@ pub struct ListCmd {
     pub initiative: Option<String>,
     #[command(flatten)]
     pub page: ListArgs,
+    #[command(flatten)]
+    pub cache: CachedArgs,
 }
 
 #[derive(Debug, Args)]
 pub struct ViewCmd {
     /// Project id, slug id, URL or name
     pub project: String,
-    /// Also print the project's content document
-    #[arg(long)]
+    /// Also print the project's content document (not with --cached)
+    #[arg(long, conflicts_with = "cached")]
     pub content: bool,
+    #[command(flatten)]
+    pub cache: CachedArgs,
 }
 
 pub fn run(ctx: &Ctx, cmd: &ProjectCommand) -> Result<()> {
@@ -116,7 +122,44 @@ fn latest_update(p: &Project) -> String {
     }
 }
 
-fn list(ctx: &Ctx, args: &ListCmd) -> Result<()> {
+/// The cache holds the projects of your issues In Progress, not the projects
+/// you lead or any other selection, so no filter can be applied to it.
+fn check_cached_filters(args: &ListCmd) -> Result<()> {
+    let mut flags = Vec::new();
+    if args.lead.is_some() {
+        flags.push("--lead".to_owned());
+    }
+    if !args.status_type.is_empty() {
+        flags.push("--status-type".to_owned());
+    }
+    if args.open {
+        flags.push("--open".to_owned());
+    }
+    if args.initiative.is_some() {
+        flags.push("--initiative".to_owned());
+    }
+    cached::refuse_outside_cache(
+        "the projects of the issues assigned to you that are In Progress",
+        &flags,
+    )
+}
+
+/// The projects to list and the workspace they are from.
+fn fetch_list(ctx: &Ctx, args: &ListCmd) -> Result<(String, Vec<Project>)> {
+    if args.cache.cached {
+        check_cached_filters(args)?;
+        let hit = cached::read(ctx, &args.cache)?;
+        cached::announce(ctx, &hit);
+        let mut items = hit.mine.projects;
+        if let Some(limit) = args.page.limit() {
+            if items.len() > limit {
+                items.truncate(limit);
+                warn_truncated(items.len());
+            }
+        }
+        return Ok((hit.workspace, items));
+    }
+
     let session = ctx.session()?;
     let filter = ProjectQuery {
         lead: args.lead.clone(),
@@ -134,20 +177,19 @@ fn list(ctx: &Ctx, args: &ListCmd) -> Result<()> {
     if listing.truncated {
         warn_truncated(listing.items.len());
     }
+    Ok((session.workspace, listing.items))
+}
 
-    let rows: Vec<ProjectOut> = listing
-        .items
-        .iter()
-        .map(|p| out(&session.workspace, p))
-        .collect();
+fn list(ctx: &Ctx, args: &ListCmd) -> Result<()> {
+    let (workspace, items) = fetch_list(ctx, args)?;
+    let rows: Vec<ProjectOut> = items.iter().map(|p| out(&workspace, p)).collect();
     ctx.out.emit(
         &rows,
         || {
-            if listing.items.is_empty() {
+            if items.is_empty() {
                 return "No projects found.".to_owned();
             }
-            let body: Vec<Vec<String>> = listing
-                .items
+            let body: Vec<Vec<String>> = items
                 .iter()
                 .map(|p| {
                     vec![
@@ -175,8 +217,7 @@ fn list(ctx: &Ctx, args: &ListCmd) -> Result<()> {
             )
         },
         || {
-            listing
-                .items
+            items
                 .iter()
                 .map(|p| p.slug_id.as_str())
                 .collect::<Vec<_>>()
@@ -190,28 +231,76 @@ fn list(ctx: &Ctx, args: &ListCmd) -> Result<()> {
 struct ProjectViewOut<'a> {
     #[serde(flatten)]
     base: ProjectOut<'a>,
+    /// Absent from the cache, which keeps the list fields only.
     #[serde(flatten)]
-    detail: &'a ProjectDetail,
+    detail: Option<&'a ProjectDetail>,
+}
+
+/// A project from the cache, matched the way a live reference is: id, slug id,
+/// URL or name.
+fn find_cached(projects: Vec<Project>, reference: &str) -> Result<Project> {
+    let refs: Vec<ProjectRef> = projects
+        .iter()
+        .map(|p| ProjectRef {
+            id: p.id.clone(),
+            slug_id: p.slug_id.clone(),
+            name: p.name.clone(),
+            url: p.url.clone(),
+        })
+        .collect();
+    let id = match_project(&refs, reference)
+        .map_err(|e| {
+            CliError::general(format!(
+                "{e}; the cache holds only the projects of the issues assigned to you that are \
+                 In Progress, so drop --cached to ask Linear"
+            ))
+        })?
+        .id
+        .clone();
+    Ok(projects
+        .into_iter()
+        .find(|p| p.id == id)
+        .expect("the match came from this list"))
 }
 
 fn view(ctx: &Ctx, args: &ViewCmd) -> Result<()> {
+    if args.cache.cached {
+        let hit = cached::read(ctx, &args.cache)?;
+        let project = find_cached(hit.mine.projects.clone(), &args.project)?;
+        cached::announce(ctx, &hit);
+        return show(ctx, &hit.workspace, &project, None, false);
+    }
     let session = ctx.session()?;
     let found = resolve_project(&session.client, &args.project)?;
     let data: ProjectView = session
         .client
         .execute(&read::project_view(found.id.inner()))?;
-    let (p, d) = (&data.project, &data.detail);
+    show(
+        ctx,
+        &session.workspace,
+        &data.project,
+        Some(&data.detail),
+        args.content,
+    )
+}
 
+fn show(
+    ctx: &Ctx,
+    workspace: &str,
+    p: &Project,
+    d: Option<&ProjectDetail>,
+    with_content: bool,
+) -> Result<()> {
     let value = ProjectViewOut {
-        base: out(&session.workspace, p),
+        base: out(workspace, p),
         detail: d,
     };
     ctx.out
-        .emit(&value, || render(p, d, args.content), || p.slug_id.clone());
+        .emit(&value, || render(p, d, with_content), || p.slug_id.clone());
     Ok(())
 }
 
-fn render(p: &Project, d: &ProjectDetail, with_content: bool) -> String {
+fn render(p: &Project, d: Option<&ProjectDetail>, with_content: bool) -> String {
     let c = p.issue_counts();
     let initiatives = if p.initiatives.is_empty() {
         "-".to_owned()
@@ -260,7 +349,7 @@ fn render(p: &Project, d: &ProjectDetail, with_content: bool) -> String {
             ("Updated", date_time(&p.updated_at)),
         ])
     );
-    if !d.description.trim().is_empty() {
+    if let Some(d) = d.filter(|d| !d.description.trim().is_empty()) {
         text.push_str(&format!("\n\n{}", d.description.trim_end()));
     }
 
@@ -301,8 +390,9 @@ fn render(p: &Project, d: &ProjectDetail, with_content: bool) -> String {
     }
     let latest_id = p.last_update.as_ref().map(|u| u.id.inner());
     let mut earlier: Vec<_> = d
-        .project_updates
-        .iter()
+        .map(|d| d.project_updates.iter())
+        .into_iter()
+        .flatten()
         .filter(|u| Some(u.id.inner()) != latest_id)
         .collect();
     earlier.sort_by_key(|u| std::cmp::Reverse(u.created_at));
@@ -322,7 +412,10 @@ fn render(p: &Project, d: &ProjectDetail, with_content: bool) -> String {
     }
 
     if with_content {
-        if let Some(content) = d.content.as_deref().filter(|s| !s.trim().is_empty()) {
+        if let Some(content) = d
+            .and_then(|d| d.content.as_deref())
+            .filter(|s| !s.trim().is_empty())
+        {
             text.push_str(&format!("\n\nContent\n{}", indent(content, 2)));
         }
     }
