@@ -1,6 +1,6 @@
 [package]
 name = "linear-wasm"
-description = "Thin JSON-in/JSON-out wrapper around linear-core for use from a Worker (skeleton)."
+description = "Thin JSON-in/JSON-out wrapper around linear-core for use from a Worker."
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -13,3 +13,7 @@ crate-type = ["cdylib", "rlib"]
 
 [dependencies]
 linear-core.workspace = true
+wasm-bindgen = "0.2"
+serde.workspace = true
+serde_json.workspace = true
+chrono.workspace = true

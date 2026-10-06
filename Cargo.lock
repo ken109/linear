@@ -547,7 +547,11 @@ dependencies = [
 name = "linear-wasm"
 version = "0.1.0"
 dependencies = [
+ "chrono",
  "linear-core",
+ "serde",
+ "serde_json",
+ "wasm-bindgen",
 ]
 
 [[package]]
