@@ -18,3 +18,8 @@ toml_edit = { version = "0.22", default-features = false, features = ["parse", "
 
 [build-dependencies]
 cynic-codegen.workspace = true
+
+[lints.clippy]
+# This lint resolves source positions per item, which is quadratic on the huge
+# generated `schema` module (clippy took >6 minutes on this crate without it).
+four_forward_slashes = "allow"

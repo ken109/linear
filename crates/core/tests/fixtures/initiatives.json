@@ -1,0 +1,34 @@
+{
+  "data": {
+    "initiatives": {
+      "nodes": [
+        {
+          "id": "00000000-0000-4000-8000-000000000101",
+          "slugId": "dddddddddddd",
+          "name": "Example Initiative",
+          "url": "https://linear.app/example/initiative/example-initiative-dddddddddddd",
+          "status": "Active",
+          "targetDate": "2026-12-31",
+          "owner": {
+            "id": "00000000-0000-4000-8000-000000000001",
+            "name": "Alice Example",
+            "displayName": "alice",
+            "email": "alice@example.com",
+            "active": true,
+            "isMe": true
+          }
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000102",
+          "slugId": "eeeeeeeeeeee",
+          "name": "Initiative with a status Linear adds later",
+          "url": "https://linear.app/example/initiative/later-eeeeeeeeeeee",
+          "status": "Paused",
+          "targetDate": null,
+          "owner": null
+        }
+      ],
+      "pageInfo": { "hasNextPage": false, "endCursor": null }
+    }
+  }
+}

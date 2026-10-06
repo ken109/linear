@@ -1,0 +1,17 @@
+{
+  "errors": [
+    {
+      "message": "Query too complex",
+      "extensions": {
+        "type": "invalid input",
+        "code": "INPUT_ERROR",
+        "statusCode": 400,
+        "userError": true,
+        "userPresentableMessage": "The query is too complex. Complexity: 12720.000000000002. Maximum allowed complexity: 10000.",
+        "http": {
+          "status": 400
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,30 @@
+{
+  "data": {
+    "issue": {
+      "comments": {
+        "nodes": [
+          {
+            "id": "00000000-0000-4000-8000-000000000017",
+            "url": "https://linear.app/example/issue/EX-23/write-the-fixture-issue#comment-cccccccc",
+            "body": "A fixture comment.",
+            "createdAt": "2026-10-06T13:34:37.043Z",
+            "updatedAt": "2026-10-06T13:34:37.023Z",
+            "user": {
+              "id": "00000000-0000-4000-8000-000000000001",
+              "name": "Alice Example",
+              "displayName": "alice",
+              "email": "alice@example.com",
+              "active": true,
+              "isMe": true
+            },
+            "issue": {
+              "id": "00000000-0000-4000-8000-000000000003",
+              "identifier": "EX-23",
+              "url": "https://linear.app/example/issue/EX-23/write-the-fixture-issue"
+            }
+          }
+        ]
+      }
+    }
+  }
+}
