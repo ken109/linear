@@ -14,6 +14,8 @@ use linear_core::wire::{Page, Pager};
 /// A resolved workspace and a client that talks to it.
 pub struct Session {
     pub workspace: String,
+    /// The workspace's entry in `workspaces.toml` (rules, default team, ...).
+    pub config: linear_core::config::WorkspaceConfig,
     pub client: Client,
 }
 
@@ -37,6 +39,7 @@ impl Ctx {
         }
         Ok(Session {
             workspace: name.to_owned(),
+            config: workspace.clone(),
             client: Client::new(credential),
         })
     }

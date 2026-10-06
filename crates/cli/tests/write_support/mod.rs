@@ -1,0 +1,343 @@
+//! Helpers for the write-command tests: a mock Linear that answers by
+//! operation name (writes make several requests, and their order is part of
+//! what is under test), and builders for the responses a write reads.
+#![allow(dead_code)]
+
+use crate::common::*;
+use crate::read_support::*;
+use serde_json::{json, Value};
+use std::collections::HashMap;
+use std::sync::{Arc, Mutex};
+use std::thread;
+
+/// What the mock saw: the operation name and the variables.
+#[derive(Debug, Clone)]
+pub struct Call {
+    pub op: String,
+    pub variables: Value,
+}
+
+/// A mock Linear that answers each request from a queue keyed by its
+/// `operationName`. When a queue runs down to its last reply, that reply
+/// repeats. An operation with no route is answered with a GraphQL error
+/// naming it, so a test that makes an unexpected request fails loudly.
+pub struct Routed {
+    pub url: String,
+    calls: Arc<Mutex<Vec<Call>>>,
+}
+
+impl Routed {
+    pub fn start(routes: Vec<(&str, Vec<Reply>)>) -> Routed {
+        let server = tiny_http::Server::http("127.0.0.1:0").expect("bind");
+        let url = format!(
+            "http://{}/graphql",
+            server.server_addr().to_ip().expect("ip")
+        );
+        let calls = Arc::new(Mutex::new(Vec::<Call>::new()));
+        let log = Arc::clone(&calls);
+        let mut routes: HashMap<String, Vec<Reply>> = routes
+            .into_iter()
+            .map(|(op, replies)| (op.to_owned(), replies))
+            .collect();
+        thread::spawn(move || {
+            for mut req in server.incoming_requests() {
+                let mut body = String::new();
+                let _ = std::io::Read::read_to_string(req.as_reader(), &mut body);
+                let parsed: Value = serde_json::from_str(&body).unwrap_or(Value::Null);
+                let op = parsed["operationName"].as_str().unwrap_or("").to_owned();
+                log.lock().unwrap().push(Call {
+                    op: op.clone(),
+                    variables: parsed["variables"].clone(),
+                });
+                let reply = match routes.get_mut(&op) {
+                    Some(queue) if queue.len() > 1 => queue.remove(0),
+                    Some(queue) if queue.len() == 1 => Reply {
+                        status: queue[0].status,
+                        body: queue[0].body.clone(),
+                    },
+                    _ => Reply {
+                        status: 200,
+                        body: json!({"errors": [{"message": format!("mock: no route for {op}")}]})
+                            .to_string(),
+                    },
+                };
+                let response = tiny_http::Response::from_string(reply.body)
+                    .with_status_code(reply.status)
+                    .with_header(
+                        tiny_http::Header::from_bytes("content-type", "application/json").unwrap(),
+                    );
+                let _ = req.respond(response);
+            }
+        });
+        Routed { url, calls }
+    }
+
+    pub fn calls(&self) -> Vec<Call> {
+        self.calls.lock().unwrap().clone()
+    }
+
+    /// The operation names seen, in order.
+    pub fn ops(&self) -> Vec<String> {
+        self.calls().into_iter().map(|c| c.op).collect()
+    }
+
+    /// The variables of every call to `op`.
+    pub fn of(&self, op: &str) -> Vec<Value> {
+        self.calls()
+            .into_iter()
+            .filter(|c| c.op == op)
+            .map(|c| c.variables)
+            .collect()
+    }
+
+    /// Nothing was sent that changes anything.
+    pub fn assert_read_only(&self) {
+        const MUTATIONS: [&str; 5] = [
+            "IssueCreate",
+            "IssueUpdate",
+            "IssueDelete",
+            "AttachmentCreate",
+            "CommentCreate",
+        ];
+        let ops = self.ops();
+        assert!(
+            ops.iter().all(|o| !MUTATIONS.contains(&o.as_str())),
+            "a mutation was sent: {ops:?}"
+        );
+    }
+}
+
+/// Run `linear <args>` against a routed mock with the test key.
+pub fn run(sb: &Sandbox, mock: &Routed, args: &[&str]) -> std::process::Output {
+    sb.run_url(args, &mock.url, &[("LINEAR_API_KEY_EXAMPLE", KEY)])
+}
+
+impl Sandbox {
+    /// Like `run`, with the API pointed at `url`.
+    pub fn run_url(
+        &self,
+        args: &[&str],
+        url: &str,
+        extra_env: &[(&str, &str)],
+    ) -> std::process::Output {
+        let mut env: Vec<(&str, &str)> = vec![("LINEAR_API_URL", url)];
+        env.extend_from_slice(extra_env);
+        self.run(args, None, &env)
+    }
+}
+
+/// A sandbox with workspace `example` and the given validator rules enabled.
+pub fn workspace_with_rules(rules: &[&str]) -> Sandbox {
+    let sb = workspace();
+    if !rules.is_empty() {
+        let path = sb.config_dir().join("workspaces.toml");
+        let mut text = std::fs::read_to_string(&path).unwrap();
+        let list: Vec<String> = rules.iter().map(|r| format!("\"{r}\"")).collect();
+        text.push_str(&format!("\nrules = [{}]\n", list.join(", ")));
+        std::fs::write(&path, text).unwrap();
+    }
+    sb
+}
+
+// ---------------------------------------------------------------- responses
+
+pub const ALICE: &str = "00000000-0000-4000-8000-000000000001";
+pub const BOT: &str = "00000000-0000-4000-8000-000000000040";
+pub const PROJECT: &str = "00000000-0000-4000-8000-000000000006";
+pub const OTHER_PROJECT: &str = "00000000-0000-4000-8000-000000000060";
+
+pub fn data(v: Value) -> Reply {
+    ok(&json!({ "data": v }).to_string())
+}
+
+pub fn graphql_error(message: &str) -> Reply {
+    ok(&json!({ "errors": [{ "message": message }] }).to_string())
+}
+
+fn fixture_data(name: &str) -> Value {
+    serde_json::from_str::<Value>(&fixture(name)).unwrap()["data"].clone()
+}
+
+pub fn whoami() -> Reply {
+    ok(WHOAMI_OK)
+}
+
+pub fn teams() -> Reply {
+    data(fixture_data("teams"))
+}
+
+pub fn project_refs() -> Reply {
+    ok(PROJECT_REFS)
+}
+
+/// Two projects, so an issue can be moved from one to the other.
+pub fn two_project_refs() -> Reply {
+    let mut v: Value = serde_json::from_str(PROJECT_REFS).unwrap();
+    let nodes = v["data"]["projects"]["nodes"].as_array_mut().unwrap();
+    nodes.push(json!({
+        "id": OTHER_PROJECT, "slugId": "bbbbbbbbbbbb", "name": "Other Project",
+        "url": "https://linear.app/example/project/other-project-bbbbbbbbbbbb"
+    }));
+    ok(&v.to_string())
+}
+
+pub fn templates() -> Reply {
+    data(fixture_data("templates_sections"))
+}
+
+pub fn labels() -> Reply {
+    data(fixture_data("labels"))
+}
+
+/// The `area` group with two children (a group Linear lets you pick one of).
+pub fn conflicting_labels() -> Reply {
+    let mut v = fixture_data("labels");
+    let nodes = v["issueLabels"]["nodes"].as_array_mut().unwrap();
+    let mut second = nodes[0].clone();
+    second["id"] = json!("00000000-0000-4000-8000-000000000070");
+    second["name"] = json!("ui");
+    nodes.push(second);
+    data(v)
+}
+
+pub fn users() -> Reply {
+    data(fixture_data("users"))
+}
+
+pub fn no_issue_with_source() -> Reply {
+    data(fixture_data("attachments_for_url_none"))
+}
+
+pub fn issue_with_source() -> Reply {
+    data(fixture_data("attachments_for_url"))
+}
+
+/// A project with the given lead and one milestone.
+pub fn ownership(project_id: &str, lead: Option<&str>) -> Reply {
+    let view = fixture_data("issue_write_view");
+    let mut project = view["write"]["project"].clone();
+    project["id"] = json!(project_id);
+    project["lead"] = match lead {
+        Some(id) => {
+            let mut u = project["lead"].clone();
+            u["id"] = json!(id);
+            u
+        }
+        None => Value::Null,
+    };
+    data(json!({ "project": project }))
+}
+
+/// What `issue_write_view` returns for `identifier`.
+pub struct View(pub Value);
+
+pub fn view(identifier: &str) -> View {
+    let mut v = fixture_data("issue_write_view");
+    v["issue"]["identifier"] = json!(identifier);
+    v["issue"]["id"] = json!(format!("id-{identifier}"));
+    View(v)
+}
+
+impl View {
+    pub fn order(mut self, sort: f64, priority: f64) -> View {
+        self.0["issue"]["sortOrder"] = json!(sort);
+        self.0["issue"]["prioritySortOrder"] = json!(priority);
+        self
+    }
+
+    /// Assigned to `id`, or nobody.
+    pub fn assigned_to(mut self, id: Option<&str>) -> View {
+        self.0["issue"]["assignee"] = match id {
+            Some(id) => {
+                let mut u = self.0["issue"]["assignee"].clone();
+                u["id"] = json!(id);
+                u
+            }
+            None => Value::Null,
+        };
+        self
+    }
+
+    /// In the project with this id and lead (`None`: nobody leads it).
+    pub fn in_project(mut self, project_id: &str, lead: Option<&str>) -> View {
+        self.0["issue"]["project"]["id"] = json!(project_id);
+        let owned = match ownership(project_id, lead).body.parse::<Value>() {
+            Ok(v) => v["data"]["project"].clone(),
+            Err(e) => panic!("{e}"),
+        };
+        self.0["write"]["project"] = owned;
+        self
+    }
+
+    pub fn without_project(mut self) -> View {
+        self.0["issue"]["project"] = Value::Null;
+        self.0["write"]["project"] = Value::Null;
+        self
+    }
+
+    pub fn reply(self) -> Reply {
+        data(self.0)
+    }
+}
+
+/// An `issueCreate` / `issueUpdate` payload carrying the fixture issue.
+pub fn issue_payload(field: &str, identifier: &str) -> Reply {
+    let mut issue = fixture_data("issue")["issue"].clone();
+    issue["identifier"] = json!(identifier);
+    issue["id"] = json!(format!("id-{identifier}"));
+    data(json!({ field: { "success": true, "issue": issue } }))
+}
+
+pub fn attachment_ok() -> Reply {
+    data(
+        json!({ "attachmentCreate": { "success": true, "attachment": {
+            "id": "00000000-0000-4000-8000-000000000080", "title": "Source", "subtitle": null,
+            "url": "https://example.com/source/1", "sourceType": null,
+            "createdAt": "2026-10-06T13:34:35.885Z"
+        }}}),
+    )
+}
+
+pub fn delete_ok() -> Reply {
+    data(json!({ "issueDelete": { "success": true } }))
+}
+
+pub fn comment_ok() -> Reply {
+    let comment = fixture_data("issue_comments")["issue"]["comments"]["nodes"][0].clone();
+    data(json!({ "commentCreate": { "success": true, "comment": comment } }))
+}
+
+/// The routes a plain create needs, with `extra` added (and overriding).
+pub fn create_routes(extra: Vec<(&str, Vec<Reply>)>) -> Vec<(&str, Vec<Reply>)> {
+    let mut routes: Vec<(&str, Vec<Reply>)> = vec![
+        ("Whoami", vec![whoami()]),
+        ("Teams", vec![teams()]),
+        ("ProjectRefs", vec![project_refs()]),
+        (
+            "ProjectOwnershipQuery",
+            vec![ownership(PROJECT, Some(ALICE))],
+        ),
+        ("Users", vec![users()]),
+        ("Labels", vec![labels()]),
+        ("Templates", vec![templates()]),
+        ("AttachmentsForUrlQuery", vec![no_issue_with_source()]),
+        ("IssueCreate", vec![issue_payload("issueCreate", "EX-30")]),
+        ("AttachmentCreate", vec![attachment_ok()]),
+        ("IssueDelete", vec![delete_ok()]),
+    ];
+    for (op, replies) in extra {
+        routes.retain(|(o, _)| *o != op);
+        routes.push((op, replies));
+    }
+    routes
+}
+
+/// A description that fills every section of `Sectioned Template`.
+pub const GOOD_BODY: &str =
+    "## Background\n\nWhy.\n\n## Acceptance criteria\n\n- done\n\n## Out of scope\n\nNothing.\n";
+
+pub fn write_file(sb: &Sandbox, name: &str, text: &str) -> String {
+    let path = sb.cwd().join(name);
+    std::fs::write(&path, text).unwrap();
+    path.to_string_lossy().into_owned()
+}

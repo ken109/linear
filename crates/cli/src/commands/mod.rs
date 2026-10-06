@@ -14,6 +14,7 @@ pub mod team;
 pub mod template;
 pub mod user;
 mod workspace;
+pub mod write;
 
 use crate::cli::{Cli, Command};
 use crate::error::{CliError, Result};

@@ -31,7 +31,7 @@ pub enum Command {
     /// Manage workspaces and credentials
     #[command(subcommand)]
     Workspace(WorkspaceCommand),
-    /// Read issues
+    /// Read and write issues
     #[command(subcommand)]
     Issue(crate::commands::issue::IssueCommand),
     /// Read projects

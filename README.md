@@ -107,6 +107,63 @@ result, and the findings that are new since the previous snapshot.
 - Only one refresh per workspace runs at a time, so a statusline that starts one on every render
   does not start a dozen.
 
+## Writing
+
+```sh
+linear issue create --title "Fix the thing" --project "My Project" \
+  --template "Bug report" --body-file body.md --source https://example.com/a \
+  [--milestone M1] [--assignee me] [--label bug] [--team ENG]
+linear issue update KK-12 --state "In Progress" --due 2026-11-01 [--milestone M2] [--assignee me]
+linear issue update KK-12 --project "Other Project" [--milestone M1]   # the old milestone is cleared
+linear issue comment KK-12 --body-file comment.md
+linear issue reorder KK-3 KK-1 KK-2                                    # same project; top first
+```
+
+`--body-file -` reads standard input. Names (states, projects, milestones, labels, users, teams)
+are resolved before anything is sent; one that matches nothing, or more than one thing, is a
+usage error (exit 2) that lists the candidates. Every write goes through the same steps, and
+nothing is sent until the first two have passed:
+
+1. **Ownership rules** (always on; exit 4). A project may be written only when you lead it. An
+   issue may be changed (or commented on, or reordered) when it is assigned to you or its project
+   is led by you. An issue may be created in a project you lead, or in one somebody else leads
+   only if it is assigned to you and you pass `--allow-foreign`. "You" is the viewer of the
+   selected workspace, and the credentials must belong to the workspace the configuration names.
+2. **Validators** (the `rules` of the workspace; exit 5; all violations are reported together).
+3. **The mutation.** A write made of several requests is all or nothing: `issue create` attaches
+   the source URL after creating the issue, and if the attachment keeps failing (it is tried
+   three times) the issue is deleted again. `issue reorder` puts the old values back if a
+   later write fails.
+
+`issue create` with a source URL that is already attached to an issue creates nothing and
+returns that issue (`"existing": true` with `--json`), so running it again is safe.
+
+`issue reorder` rewrites both `sortOrder` (manual order) and `prioritySortOrder` (Linear's
+default view); both are shown by `issue list --json`. The issues you name trade the values they
+already hold, so issues in between keep their place. Linear may adjust `prioritySortOrder` to
+its own liking within a priority, so the exact numbers are not guaranteed, only the order.
+
+### Validator rules
+
+Choose the rules a workspace enforces in `workspaces.toml`:
+
+```toml
+[workspaces.main]
+rules = ["template-sections", "source-attachment", "label-groups-exclusive"]
+# rule_operations = { "template-sections" = ["issue_create"] }   # narrow a rule to some operations
+```
+
+| Rule                     | What it checks                                                                                     |
+| ------------------------ | -------------------------------------------------------------------------------------------------- |
+| `template-sections`      | `--template` names a Linear template and the body fills every section (headings read from Linear) |
+| `source-attachment`      | `--source` is an http(s) URL; it is attached, and an issue that has it is returned instead         |
+| `label-groups-exclusive` | at most one label from each single-select label group                                              |
+
+Without a rule, its flag is optional (`--template` with no `template-sections` rule is ignored,
+with a note). Whatever the rules, an unknown name, an empty update or comment, a `--source`
+that is not an http(s) URL, a reorder across projects, and a workspace whose credentials belong to
+another workspace are always refused.
+
 ## Output and exit codes
 
 `--json` prints machine-readable output; errors then go to stderr as
@@ -167,10 +224,13 @@ cargo test --workspace
   responses (`tests/fixtures`), with a fixed `now`.
 - `crates/cli/tests`: the binary against a mock HTTP server (`LINEAR_API_URL`) in an isolated
   config directory (`LINEAR_CONFIG_DIR`).
-- `crates/cli/tests/live.rs` talks to a real workspace and is ignored by default:
+  `tests/issue_write.rs` answers by operation name (`write_support`), to check the order of
+  requests, rollback, idempotence and exit codes 4 and 5.
+- `crates/cli/tests/live*.rs` talk to a real (sandbox) workspace and are ignored by default;
+  `live_write.rs` creates issues there and cancels them when it is done:
 
   ```sh
-  LINEAR_API_KEY_SANDBOX=... cargo test -p linear --test live -- --ignored
+  LINEAR_API_KEY_SANDBOX=... cargo test -p linear --test live_write -- --ignored
   ```
 
 ## License

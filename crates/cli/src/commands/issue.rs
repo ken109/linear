@@ -1,8 +1,8 @@
-//! `linear issue list|view`.
+//! `linear issue list|view|create|update|comment|reorder` (the writes live in `write::issue`).
 
 use super::format::{date_time, fields, indent, opt_date, opt_text, person};
 use super::listing::{paginate, resolve_project, warn_truncated, ListArgs};
-use super::Ctx;
+use super::{write, Ctx};
 use crate::error::Result;
 use crate::output::table;
 use clap::{Args, Subcommand};
@@ -20,6 +20,14 @@ pub enum IssueCommand {
     List(ListCmd),
     /// Show one issue with its description and comments
     View(ViewCmd),
+    /// Create an issue (same origin URL: returns the existing one instead)
+    Create(super::write::issue::CreateCmd),
+    /// Change an issue's state, project, milestone, due date or assignee
+    Update(super::write::issue::UpdateCmd),
+    /// Write a comment on an issue
+    Comment(super::write::issue::CommentCmd),
+    /// Put issues of one project in a given order
+    Reorder(super::write::issue::ReorderCmd),
 }
 
 const STATE_TYPES: [&str; 6] = [
@@ -74,6 +82,10 @@ pub fn run(ctx: &Ctx, cmd: &IssueCommand) -> Result<()> {
     match cmd {
         IssueCommand::List(args) => list(ctx, args),
         IssueCommand::View(args) => view(ctx, args),
+        IssueCommand::Create(args) => write::issue::create(ctx, args),
+        IssueCommand::Update(args) => write::issue::update(ctx, args),
+        IssueCommand::Comment(args) => write::issue::comment(ctx, args),
+        IssueCommand::Reorder(args) => write::issue::reorder(ctx, args),
     }
 }
 
@@ -81,14 +93,14 @@ pub fn run(ctx: &Ctx, cmd: &IssueCommand) -> Result<()> {
 /// origin URL derived from the first attachment.
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
-struct IssueOut<'a> {
+pub(super) struct IssueOut<'a> {
     workspace: &'a str,
     #[serde(flatten)]
     issue: &'a Issue,
     source_url: Option<&'a str>,
 }
 
-fn out<'a>(workspace: &'a str, issue: &'a Issue) -> IssueOut<'a> {
+pub(super) fn out<'a>(workspace: &'a str, issue: &'a Issue) -> IssueOut<'a> {
     IssueOut {
         workspace,
         issue,
