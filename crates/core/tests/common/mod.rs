@@ -244,6 +244,7 @@ pub fn snapshot(issues: Vec<Issue>, projects: Vec<Project>) -> Snapshot {
         workspace: WS.to_owned(),
         issues,
         projects,
+        templates: Vec::new(),
     }
 }
 

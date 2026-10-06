@@ -12,10 +12,10 @@ mod scope;
 mod stale;
 mod validators;
 
-use crate::config::Rule;
+use crate::config::{Rule, WorkspaceConfig};
 use crate::error::Result;
 use crate::rules::RuleSet;
-use crate::types::{Issue, Project, ProjectStatusType};
+use crate::types::{Issue, Project, ProjectStatusType, Template};
 use chrono::{DateTime, NaiveDate, Utc};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -33,6 +33,10 @@ pub struct Snapshot {
     pub workspace: String,
     pub issues: Vec<Issue>,
     pub projects: Vec<Project>,
+    /// The workspace's issue templates, for `template-sections`. Only needed
+    /// when that rule is enabled.
+    #[serde(default)]
+    pub templates: Vec<Template>,
 }
 
 /// Audit settings, per workspace.
@@ -46,9 +50,25 @@ pub struct AuditConfig {
     /// days old is outdated.
     pub status_update_days: u32,
     /// Validator rules to apply to existing issues: the workspace's enabled
-    /// rules. `template-sections` is accepted but cannot be judged here, since
-    /// an issue carries neither its body nor the template it came from.
+    /// rules. `template-sections` needs [`Snapshot::templates`]; an issue does
+    /// not record which template it came from, so the closest one is used.
     pub validators: Vec<Rule>,
+}
+
+impl AuditConfig {
+    /// The audit settings of a workspace: its `[audit]` thresholds over the
+    /// defaults, and every validator rule it enables.
+    pub fn from_workspace(workspace: &WorkspaceConfig) -> Self {
+        let default = Self::default();
+        Self {
+            stale_days: workspace.audit.stale_days.unwrap_or(default.stale_days),
+            status_update_days: workspace
+                .audit
+                .status_update_days
+                .unwrap_or(default.status_update_days),
+            validators: workspace.rules.clone(),
+        }
+    }
 }
 
 impl Default for AuditConfig {

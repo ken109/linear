@@ -19,6 +19,8 @@ pub enum RuleId {
     StaleInProgress,
     /// An In Progress project's latest status update is out of date.
     StatusUpdateOutdated,
+    /// A validator rule (`template-sections`) applied to an existing issue.
+    TemplateSections,
     /// A validator rule (`source-attachment`) applied to an existing issue.
     SourceAttachment,
     /// A validator rule (`label-groups-exclusive`) applied to an existing issue.
@@ -37,6 +39,7 @@ impl RuleId {
             Self::ProjectWithoutLead => "project-without-lead",
             Self::StaleInProgress => "stale-in-progress",
             Self::StatusUpdateOutdated => "status-update-outdated",
+            Self::TemplateSections => "template-sections",
             Self::SourceAttachment => "source-attachment",
             Self::LabelGroupsExclusive => "label-groups-exclusive",
             Self::NotUpdatedSince => "not-updated-since",

@@ -102,6 +102,70 @@ fn round_trips_through_toml() {
     assert_eq!(Config::parse(&text).unwrap(), c);
 }
 
+// ------------------------------------------------------------------ audit settings
+
+const AUDIT_TOML: &str = r#"
+[workspaces.a]
+url_key = "a"
+rules = ["template-sections", "label-groups-exclusive"]
+
+[workspaces.a.audit]
+stale_days = 3
+status_update_days = 30
+
+[workspaces.b]
+url_key = "b"
+
+[workspaces.c]
+url_key = "c"
+
+[workspaces.c.audit]
+stale_days = 10
+"#;
+
+#[test]
+fn audit_settings_become_an_audit_config_over_the_defaults() {
+    use linear_core::audit::AuditConfig;
+    let c = Config::parse(AUDIT_TOML).unwrap();
+
+    let a = AuditConfig::from_workspace(c.get("a").unwrap());
+    assert_eq!(a.stale_days, 3);
+    assert_eq!(a.status_update_days, 30);
+    assert_eq!(
+        a.validators,
+        [Rule::TemplateSections, Rule::LabelGroupsExclusive]
+    );
+
+    assert_eq!(
+        AuditConfig::from_workspace(c.get("b").unwrap()),
+        AuditConfig::default()
+    );
+
+    let c = AuditConfig::from_workspace(c.get("c").unwrap());
+    assert_eq!((c.stale_days, c.status_update_days), (10, 14));
+}
+
+#[test]
+fn audit_settings_reject_unknown_keys_and_zero_days() {
+    for bad in [
+        "[workspaces.a]\nurl_key = \"a\"\n[workspaces.a.audit]\nstale = 3\n",
+        "[workspaces.a]\nurl_key = \"a\"\n[workspaces.a.audit]\nstale_days = 0\n",
+        "[workspaces.a]\nurl_key = \"a\"\n[workspaces.a.audit]\nstatus_update_days = 0\n",
+        "[workspaces.a]\nurl_key = \"a\"\n[workspaces.a.audit]\nstale_days = -1\n",
+    ] {
+        let err = Config::parse(bad).unwrap_err();
+        assert!(matches!(err, Error::Config(_)), "{bad:?} -> {err:?}");
+    }
+}
+
+#[test]
+fn audit_settings_round_trip_and_stay_out_of_the_file_when_unset() {
+    let c = Config::parse(AUDIT_TOML).unwrap();
+    let text = toml_edit::ser::to_string(&c).unwrap();
+    assert_eq!(Config::parse(&text).unwrap(), c);
+    assert!(!text.contains("[workspaces.b.audit]"), "{text}");
+}
+
 // ------------------------------------------------------------------ resolution
 
 fn pick(sel: Selectors<'_>) -> (String, Source) {

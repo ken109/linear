@@ -374,7 +374,7 @@ fn a_named_issue_is_validated_even_when_it_just_closed() {
 }
 
 #[test]
-fn template_sections_cannot_be_judged_from_an_issue_and_is_not_faked() {
+fn template_sections_without_templates_has_nothing_to_hold_an_issue_to() {
     let s = snapshot(vec![issue("KK-1").build()], vec![]);
     assert!(run_validators(&s, &[Rule::TemplateSections]).is_empty());
 }

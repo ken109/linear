@@ -60,6 +60,28 @@ pub struct WorkspaceConfig {
     /// Allow `linear api --mutation` (ownership rules and validators do not apply to it).
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub allow_raw_mutation: bool,
+    /// Thresholds for `linear audit`.
+    #[serde(default, skip_serializing_if = "AuditSettings::is_default")]
+    pub audit: AuditSettings,
+}
+
+/// `[workspaces.<name>.audit]`: thresholds for `linear audit`. What is left
+/// out keeps the audit's default.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct AuditSettings {
+    /// Days without an update before an In Progress issue is stale.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub stale_days: Option<u32>,
+    /// Days before a project's latest status update counts as outdated.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub status_update_days: Option<u32>,
+}
+
+impl AuditSettings {
+    fn is_default(&self) -> bool {
+        self == &Self::default()
+    }
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -73,6 +95,21 @@ pub struct Config {
 }
 
 impl WorkspaceConfig {
+    /// A threshold of zero days would flag everything at once.
+    fn validate_audit(&self, workspace: &str) -> Result<()> {
+        for (key, value) in [
+            ("stale_days", self.audit.stale_days),
+            ("status_update_days", self.audit.status_update_days),
+        ] {
+            if value == Some(0) {
+                return Err(Error::Config(format!(
+                    "workspace {workspace:?}: audit.{key} must be at least 1"
+                )));
+            }
+        }
+        Ok(())
+    }
+
     /// `rule_operations` may only narrow enabled rules to operations they support.
     fn validate_rules(&self, workspace: &str) -> Result<()> {
         for (rule, ops) in &self.rule_operations {
@@ -132,6 +169,7 @@ impl Config {
         for (name, ws) in &self.workspaces {
             validate_workspace_name(name)?;
             ws.validate_rules(name)?;
+            ws.validate_audit(name)?;
         }
         if let Some(default) = &self.default {
             if !self.workspaces.contains_key(default) {
