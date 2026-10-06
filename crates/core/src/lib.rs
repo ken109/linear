@@ -13,6 +13,7 @@ pub mod error;
 pub mod filters;
 pub mod guard;
 pub mod inputs;
+pub mod markdown;
 pub mod matching;
 pub mod metadata;
 pub mod project_write;

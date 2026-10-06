@@ -70,6 +70,77 @@ fn an_update_input_knows_whether_it_changes_anything() {
 }
 
 #[test]
+fn the_fields_an_issue_update_can_clear_say_so_with_an_explicit_null() {
+    let keep = serde_json::to_value(IssueUpdateInput::default()).unwrap();
+    assert_eq!(keep, json!({}));
+
+    let clear = serde_json::to_value(IssueUpdateInput {
+        description: Patch::Clear,
+        assignee_id: Patch::Clear,
+        project_id: Patch::Clear,
+        due_date: Patch::Clear,
+        ..Default::default()
+    })
+    .unwrap();
+    assert_eq!(
+        clear,
+        json!({ "description": null, "assigneeId": null, "projectId": null, "dueDate": null })
+    );
+
+    let set = serde_json::to_value(IssueUpdateInput {
+        description: Patch::Set("Body".into()),
+        assignee_id: Patch::Set("u".into()),
+        project_id: Patch::Set("p".into()),
+        due_date: Patch::Set(chrono::NaiveDate::from_ymd_opt(2026, 12, 1).unwrap()),
+        label_ids: Some(vec!["l1".into(), "l2".into()]),
+        ..Default::default()
+    })
+    .unwrap();
+    assert_eq!(
+        set,
+        json!({
+            "description": "Body", "assigneeId": "u", "projectId": "p",
+            "dueDate": "2026-12-01", "labelIds": ["l1", "l2"],
+        })
+    );
+    // No labels is an empty list, which removes them all; not leaving them alone.
+    let none = serde_json::to_value(IssueUpdateInput {
+        label_ids: Some(vec![]),
+        ..Default::default()
+    })
+    .unwrap();
+    assert_eq!(none, json!({ "labelIds": [] }));
+}
+
+#[test]
+fn every_field_of_an_issue_update_counts_towards_it_changing_something() {
+    for input in [
+        IssueUpdateInput {
+            description: Patch::Clear,
+            ..Default::default()
+        },
+        IssueUpdateInput {
+            assignee_id: Patch::Clear,
+            ..Default::default()
+        },
+        IssueUpdateInput {
+            project_id: Patch::Set("p".into()),
+            ..Default::default()
+        },
+        IssueUpdateInput {
+            due_date: Patch::Clear,
+            ..Default::default()
+        },
+        IssueUpdateInput {
+            label_ids: Some(vec![]),
+            ..Default::default()
+        },
+    ] {
+        assert!(!input.is_empty());
+    }
+}
+
+#[test]
 fn the_ordering_values_are_sent_as_numbers() {
     let v = serde_json::to_value(IssueUpdateInput {
         sort_order: Some(-12.5),

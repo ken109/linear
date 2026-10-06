@@ -23,7 +23,11 @@ pub enum IssueCommand {
     View(ViewCmd),
     /// Create an issue (same origin URL: returns the existing one instead)
     Create(super::write::issue::CreateCmd),
-    /// Change an issue's state, project, milestone, due date or assignee
+    /// Change an issue's state, project, milestone, due date, assignee, description, labels or source
+    ///
+    /// Only the fields that differ from now are sent; a run that changes nothing sends
+    /// nothing (`changed` is empty with --json). If attaching the source fails, the
+    /// other fields are put back.
     Update(super::write::issue::UpdateCmd),
     /// Write a comment on an issue
     Comment(super::write::issue::CommentCmd),

@@ -61,16 +61,23 @@ where
 pub struct IssueUpdateInput {
     #[cynic(skip_serializing_if = "Option::is_none")]
     pub title: Option<String>,
+    /// The description (markdown). `Patch::Clear` empties it.
+    #[cynic(skip_serializing_if = "Patch::is_keep")]
+    pub description: Patch<String>,
     #[cynic(skip_serializing_if = "Option::is_none")]
     pub state_id: Option<String>,
-    #[cynic(skip_serializing_if = "Option::is_none")]
-    pub assignee_id: Option<String>,
-    #[cynic(skip_serializing_if = "Option::is_none")]
-    pub project_id: Option<String>,
+    #[cynic(skip_serializing_if = "Patch::is_keep")]
+    pub assignee_id: Patch<String>,
+    #[cynic(skip_serializing_if = "Patch::is_keep")]
+    pub project_id: Patch<String>,
     #[cynic(skip_serializing_if = "Patch::is_keep")]
     pub project_milestone_id: Patch<String>,
+    #[cynic(skip_serializing_if = "Patch::is_keep")]
+    pub due_date: Patch<NaiveDate>,
+    /// The complete set of labels the issue ends up with (replaces the old
+    /// set; an empty list removes them all).
     #[cynic(skip_serializing_if = "Option::is_none")]
-    pub due_date: Option<NaiveDate>,
+    pub label_ids: Option<Vec<String>>,
     #[cynic(skip_serializing_if = "Option::is_none")]
     pub sort_order: Option<f64>,
     #[cynic(skip_serializing_if = "Option::is_none")]
@@ -81,11 +88,13 @@ impl IssueUpdateInput {
     /// `true` when nothing would change.
     pub fn is_empty(&self) -> bool {
         self.title.is_none()
+            && self.description.is_keep()
             && self.state_id.is_none()
-            && self.assignee_id.is_none()
-            && self.project_id.is_none()
+            && self.assignee_id.is_keep()
+            && self.project_id.is_keep()
             && self.project_milestone_id.is_keep()
-            && self.due_date.is_none()
+            && self.due_date.is_keep()
+            && self.label_ids.is_none()
             && self.sort_order.is_none()
             && self.priority_sort_order.is_none()
     }

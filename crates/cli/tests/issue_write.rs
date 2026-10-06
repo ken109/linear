@@ -482,14 +482,79 @@ fn update_sends_only_what_was_asked() {
         ],
     );
     assert_eq!(code(&o), 0, "{}", stderr(&o));
+    // The issue is already mine and already in that milestone: only the date differs.
     assert_eq!(
         mock.of("IssueUpdate")[1]["input"],
+        json!({ "dueDate": "2026-12-01" })
+    );
+
+    // Assigned to somebody else and in no milestone: all three are sent.
+    let mut unplanned = mine().assigned_to(Some(BOT));
+    unplanned.0["issue"]["projectMilestone"] = Value::Null;
+    let mock = Routed::start(update_routes(unplanned, vec![]));
+    let o = run(
+        &sb,
+        &mock,
+        &[
+            "issue",
+            "update",
+            "EX-23",
+            "--due",
+            "2026-12-01",
+            "--assignee",
+            "me",
+            "--milestone",
+            "milestone 1",
+        ],
+    );
+    assert_eq!(code(&o), 0, "{}", stderr(&o));
+    assert_eq!(
+        mock.of("IssueUpdate")[0]["input"],
         json!({
             "assigneeId": ALICE,
             "projectMilestoneId": "00000000-0000-4000-8000-000000000007",
             "dueDate": "2026-12-01",
         })
     );
+}
+
+#[test]
+fn an_update_that_is_already_true_sends_nothing() {
+    let sb = workspace_with_rules(&[]);
+    let mock = Routed::start(update_routes(
+        mine(),
+        // "Fixture Project" is the project it is in.
+        vec![(
+            "ProjectOwnershipQuery",
+            vec![ownership(PROJECT, Some(ALICE))],
+        )],
+    ));
+
+    let o = run(
+        &sb,
+        &mock,
+        &[
+            "issue",
+            "update",
+            "EX-23",
+            "--state",
+            "in progress",
+            "--assignee",
+            "me",
+            "--due",
+            "2026-11-01",
+            "--milestone",
+            "Milestone 1",
+            "--project",
+            "Fixture Project",
+            "--json",
+        ],
+    );
+    assert_eq!(code(&o), 0, "{}", stderr(&o));
+    mock.assert_read_only();
+    let v = stdout_json(&o);
+    assert_eq!(v["identifier"], "EX-23");
+    assert_eq!(v["changed"], json!([]));
 }
 
 #[test]

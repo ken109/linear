@@ -81,7 +81,7 @@ impl Rule {
     pub fn operations(self) -> &'static [Operation] {
         match self {
             Self::TemplateSections => &Operation::ALL,
-            Self::SourceAttachment => &[Operation::IssueCreate],
+            Self::SourceAttachment => &[Operation::IssueCreate, Operation::IssueUpdate],
             Self::LabelGroupsExclusive => &[Operation::IssueCreate, Operation::IssueUpdate],
         }
     }
@@ -268,6 +268,10 @@ pub struct Draft {
     /// The labels the issue will have, with their groups resolved. `None`
     /// when the write leaves labels alone.
     pub labels: Option<Vec<Label>>,
+    /// The id of the issue an update changes. `source-attachment` uses it to
+    /// tell an attachment that is already this issue's from one that another
+    /// issue carries.
+    pub issue: Option<String>,
 }
 
 impl Draft {
@@ -279,6 +283,7 @@ impl Draft {
             source: None,
             source_metadata: None,
             labels: None,
+            issue: None,
         }
     }
 
@@ -304,6 +309,12 @@ impl Draft {
 
     pub fn labels(mut self, labels: Vec<Label>) -> Self {
         self.labels = Some(labels);
+        self
+    }
+
+    /// The issue an update changes, by id.
+    pub fn issue(mut self, id: impl Into<String>) -> Self {
+        self.issue = Some(id.into());
         self
     }
 }
@@ -372,6 +383,9 @@ pub enum ViolationKind {
     SourceRequired,
     /// The source is not an http(s) URL.
     SourceInvalid,
+    /// The source is already attached to another issue (an update would take
+    /// it over).
+    SourceTaken,
     /// The source attachment's `metadata.kind` is missing or not one of the
     /// workspace's `source_kinds`.
     SourceKindInvalid,

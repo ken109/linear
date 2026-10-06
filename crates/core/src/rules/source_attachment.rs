@@ -4,6 +4,10 @@
 //! idempotence key: creating an issue whose source is already attached to
 //! another issue creates nothing and reports the existing one.
 //!
+//! An update (`issue update --source`) attaches the source to an existing
+//! issue: the same URL on the same issue is an upsert, the URL of another
+//! issue is refused. It is only checked when the update names a source.
+//!
 //! With `source_kinds` configured, the source attachment also carries a
 //! `metadata.kind` (`--meta kind=...`) that must be one of them. Without it,
 //! metadata is not looked at.
@@ -54,6 +58,11 @@ pub(super) enum Check {
 }
 
 pub(super) fn check(draft: &Draft, fetched: &Fetched, kinds: &[String]) -> Check {
+    let update = !draft.operation.is_create();
+    // An update that names no source leaves the attachments alone.
+    if update && draft.source.is_none() {
+        return Check::Violations(Vec::new());
+    }
     let url = match validate(draft.source.as_deref()) {
         Ok(url) => url,
         Err(problem) => {
@@ -68,6 +77,24 @@ pub(super) fn check(draft: &Draft, fetched: &Fetched, kinds: &[String]) -> Check
         (Some(_), None) => None,
         _ => kind_violation(url, draft.source_metadata.as_ref(), kinds),
     };
+    if update {
+        // The attachment may already be this issue's (an upsert); the one of
+        // another issue is not ours to take over.
+        let taken = existing
+            .filter(|owner| Some(owner.id.inner()) != draft.issue.as_deref())
+            .map(|owner| {
+                Violation::new(
+                    Rule::SourceAttachment,
+                    ViolationKind::SourceTaken,
+                    Some(url.to_owned()),
+                    format!(
+                        "the source {url} is already attached to {}",
+                        owner.identifier
+                    ),
+                )
+            });
+        return Check::Violations(taken.into_iter().chain(kind_problem).collect());
+    }
     match (kind_problem, existing) {
         (Some(v), _) => Check::Violations(vec![v]),
         (None, Some(existing)) => Check::Existing(existing.clone()),

@@ -498,8 +498,117 @@ fn rules_only_run_for_the_operations_they_support() {
         label("2", "b", Some(("g", "area", None))),
     ]);
     assert_eq!(rules.check(&draft, &fetched()), Ok(Outcome::Proceed));
-    assert!(!rules.applies(Rule::SourceAttachment, Operation::IssueUpdate));
+    assert!(!rules.applies(Rule::SourceAttachment, Operation::ProjectUpdate));
+    assert!(rules.applies(Rule::SourceAttachment, Operation::IssueUpdate));
     assert!(rules.applies(Rule::TemplateSections, Operation::ProjectUpdate));
+}
+
+// ------------------------------------------------- source on an issue update
+
+fn update_with_source() -> Draft {
+    Draft::new(Operation::IssueUpdate)
+        .issue("id-KK-1")
+        .source(SOURCE)
+}
+
+#[test]
+fn an_update_that_names_no_source_is_not_asked_for_one() {
+    let rules = all_rules();
+    let plain = Draft::new(Operation::IssueUpdate).issue("id-KK-1");
+    assert_eq!(rules.check(&plain, &fetched()), Ok(Outcome::Proceed));
+    assert!(rules.needs(&plain).source_urls.is_empty());
+    // Naming one makes it be looked up.
+    assert_eq!(
+        rules.needs(&update_with_source()).source_urls,
+        [SOURCE.to_owned()]
+    );
+}
+
+#[test]
+fn an_update_judges_the_source_url() {
+    let rules = all_rules();
+    let bad = Draft::new(Operation::IssueUpdate).source("ftp://example.com/x");
+    let err = rules.check(&bad, &fetched()).unwrap_err();
+    assert_eq!(
+        kinds(&err),
+        [(
+            Rule::SourceAttachment,
+            ViolationKind::SourceInvalid,
+            Some("ftp://example.com/x")
+        )]
+    );
+    // A new source on an issue that has none is fine, and nothing is "already there".
+    assert_eq!(
+        rules.check(&update_with_source(), &fetched()),
+        Ok(Outcome::Proceed)
+    );
+}
+
+#[test]
+fn an_update_may_upsert_its_own_attachment_but_not_take_another_issues() {
+    let rules = all_rules();
+    let mut f = fetched();
+    f.existing_by_source
+        .insert(SOURCE.into(), issue_ref("KK-1"));
+    // It is this issue's attachment: an upsert, never "already exists".
+    assert_eq!(rules.check(&update_with_source(), &f), Ok(Outcome::Proceed));
+
+    f.existing_by_source
+        .insert(SOURCE.into(), issue_ref("KK-7"));
+    let err = rules.check(&update_with_source(), &f).unwrap_err();
+    assert_eq!(
+        kinds(&err),
+        [(
+            Rule::SourceAttachment,
+            ViolationKind::SourceTaken,
+            Some(SOURCE)
+        )]
+    );
+    assert!(
+        err.to_string().contains("already attached to KK-7"),
+        "{err}"
+    );
+}
+
+#[test]
+fn an_update_judges_the_kind_of_what_it_writes() {
+    let rules = RuleSet::new(&[Rule::SourceAttachment])
+        .source_kinds(vec!["slack".to_owned(), "github".to_owned()]);
+    let with_kind = |kind: &str| {
+        update_with_source()
+            .source_metadata(AttachmentMetadata::from_pairs(&[format!("kind={kind}")]).unwrap())
+    };
+    assert_eq!(
+        rules.check(&with_kind("slack"), &fetched()),
+        Ok(Outcome::Proceed)
+    );
+    let err = rules.check(&with_kind("email"), &fetched()).unwrap_err();
+    assert_eq!(err.violations()[0].kind, ViolationKind::SourceKindInvalid);
+    // A new attachment with no kind at all.
+    let err = rules.check(&update_with_source(), &fetched()).unwrap_err();
+    assert_eq!(err.violations()[0].kind, ViolationKind::SourceKindInvalid);
+
+    // The issue's own attachment, left as it is: nothing is written, nothing is judged.
+    let mut f = fetched();
+    f.existing_by_source
+        .insert(SOURCE.into(), issue_ref("KK-1"));
+    assert_eq!(rules.check(&update_with_source(), &f), Ok(Outcome::Proceed));
+    // ... unless metadata is written onto it.
+    assert!(rules.check(&with_kind("email"), &f).is_err());
+}
+
+#[test]
+fn the_source_rule_can_be_narrowed_to_creation_in_the_configuration() {
+    let cfg = Config::parse(
+        "[workspaces.w]\nurl_key = \"w\"\nrules = [\"source-attachment\"]\n\
+         [workspaces.w.rule_operations]\nsource-attachment = [\"issue_create\"]\n",
+    )
+    .unwrap();
+    let rules = RuleSet::from_workspace(cfg.get("w").unwrap());
+    assert!(rules.applies(Rule::SourceAttachment, Operation::IssueCreate));
+    assert!(!rules.applies(Rule::SourceAttachment, Operation::IssueUpdate));
+    let bad = Draft::new(Operation::IssueUpdate).source("ftp://example.com/x");
+    assert_eq!(rules.check(&bad, &fetched()), Ok(Outcome::Proceed));
 }
 
 // ------------------------------------------------------------ configuration

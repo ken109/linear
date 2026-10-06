@@ -1,8 +1,13 @@
 //! `linear issue create|update|comment|reorder`.
+//!
+//! `update` is the write that can touch the most: fields of the issue, its
+//! description, its labels and its source attachment. It sends only what
+//! differs from now, and puts the issue's fields back if the attachment, the
+//! last step, cannot be made.
 
 use super::{read_text, resolve, retry, Rollback, WriteSession, ATTACH_WAITS};
 use crate::commands::format::person;
-use crate::commands::issue::out as issue_out;
+use crate::commands::issue::{out as issue_out, IssueOut};
 use crate::commands::Ctx;
 use crate::error::{CliError, Result};
 use chrono::NaiveDate;
@@ -13,14 +18,16 @@ use linear_core::inputs::{
     self, AttachmentCreate, AttachmentCreateInput, CommentCreate, CommentCreateInput, IssueCreate,
     IssueCreateInput, IssueDelete, IssueUpdate, IssueUpdateInput, Patch,
 };
+use linear_core::markdown::same_description;
 use linear_core::matching::match_state;
 use linear_core::metadata::AttachmentMetadata;
 use linear_core::read::{self, IssueWriteView};
 use linear_core::reorder::{self, OrderRow};
 use linear_core::rules::source_attachment::{self, metadata_needs_update};
 use linear_core::rules::{Draft, Operation, Outcome};
-use linear_core::types::Issue;
+use linear_core::types::{Issue, Label};
 use serde::Serialize;
+use std::collections::BTreeSet;
 use std::path::PathBuf;
 
 /// The title an origin attachment gets when `--source-title` is not given.
@@ -350,62 +357,150 @@ pub struct UpdateCmd {
     /// Assignee: `me`, an email or a name
     #[arg(long, value_name = "WHO")]
     pub assignee: Option<String>,
+    /// Replace the description with the contents of a file (`-` for standard input)
+    #[arg(long, value_name = "FILE")]
+    pub body_file: Option<PathBuf>,
+    /// The Linear template the new description must follow (checked by the
+    /// `template-sections` rule)
+    #[arg(long, value_name = "NAME", requires = "body_file")]
+    pub template: Option<String>,
+    /// Attach this http(s) URL as the issue's source. An attachment with the same URL
+    /// is updated, never duplicated; one that is already as asked sends nothing. With
+    /// the `source-attachment` rule, a URL that another issue carries is refused
+    #[arg(long, value_name = "URL")]
+    pub source: Option<String>,
+    /// Title of the source attachment (default: the stored title, or `Source`)
+    #[arg(long, value_name = "TITLE", requires = "source")]
+    pub source_title: Option<String>,
+    /// Metadata of the source attachment, KEY=VALUE (repeatable), read as in
+    /// `issue create`: a number is sent as a number, KEY=str:123 sends the text "123".
+    /// The stored metadata is replaced, not merged; identical metadata sends nothing
+    #[arg(long = "meta", value_name = "KEY=VALUE", requires = "source")]
+    pub meta: Vec<String>,
+    /// Set the labels the issue has to exactly these, by name (repeatable or
+    /// comma-separated); the labels it has now are dropped
+    #[arg(
+        long,
+        visible_alias = "label",
+        value_name = "NAME",
+        value_delimiter = ',',
+        conflicts_with_all = ["add_labels", "remove_labels"]
+    )]
+    pub labels: Vec<String>,
+    /// Add these labels to the ones the issue has (repeatable or comma-separated)
+    #[arg(long, value_name = "NAME", value_delimiter = ',')]
+    pub add_labels: Vec<String>,
+    /// Remove these labels from the ones the issue has (repeatable or comma-separated);
+    /// one it does not have is ignored
+    #[arg(long, value_name = "NAME", value_delimiter = ',')]
+    pub remove_labels: Vec<String>,
+}
+
+/// What `update` prints: the issue as it is now, and which fields were written.
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct Updated<'a> {
+    #[serde(flatten)]
+    issue: IssueOut<'a>,
+    /// The fields this run changed (empty: everything already was as asked, nothing was sent).
+    changed: Vec<&'static str>,
+}
+
+/// An old value of an optional field, as the patch that puts it back.
+fn put_back<T>(old: Option<T>) -> Patch<T> {
+    match old {
+        Some(v) => Patch::Set(v),
+        None => Patch::Clear,
+    }
 }
 
 pub fn update(ctx: &Ctx, cmd: &UpdateCmd) -> Result<()> {
+    let relabel =
+        !cmd.labels.is_empty() || !cmd.add_labels.is_empty() || !cmd.remove_labels.is_empty();
     if cmd.state.is_none()
         && cmd.project.is_none()
         && cmd.milestone.is_none()
         && cmd.due.is_none()
         && cmd.assignee.is_none()
+        && cmd.body_file.is_none()
+        && cmd.source.is_none()
+        && !relabel
     {
         return Err(CliError::usage(
-            "nothing to change: pass --state, --project, --milestone, --due or --assignee",
+            "nothing to change: pass --state, --project, --milestone, --due, --assignee, \
+             --body-file, --source, --labels, --add-labels or --remove-labels",
         ));
     }
+    // Everything that can be judged from the arguments alone comes first.
+    let body = cmd.body_file.as_deref().map(read_text).transpose()?;
+    if body.as_deref().is_some_and(|b| b.trim().is_empty()) {
+        return Err(CliError::usage("the body file is empty"));
+    }
+    let source = cmd.source.as_deref().map(str::trim);
+    let metadata = if cmd.meta.is_empty() {
+        None
+    } else {
+        Some(
+            AttachmentMetadata::from_pairs(&cmd.meta)
+                .map_err(|e| CliError::usage(e.to_string()))?,
+        )
+    };
 
     let ws = ctx.write_session()?;
+    // An origin that is not an http(s) URL is never attached. With the
+    // `source-attachment` rule on, the validators report it (exit 5) together
+    // with any other violation; without it, it is a usage error.
+    if let Some(s) = source {
+        if !ws
+            .rules
+            .applies(Rule::SourceAttachment, Operation::IssueUpdate)
+            && source_attachment::validate(Some(s)).is_err()
+        {
+            return Err(CliError::usage(format!(
+                "the source must be an http(s) URL, got {s:?}"
+            )));
+        }
+    }
     let view = fetch_issue(&ws, &cmd.issue)?;
     let issue = &view.issue;
     let current = view.write.project.as_ref();
 
-    // Resolve names to ids.
-    let mut input = IssueUpdateInput::default();
-    if let Some(name) = &cmd.state {
-        let state = match_state(&view.write.team.states, name)?;
-        input.state_id = Some(state.id.inner().to_owned());
-    }
+    // Resolve names to ids (read-only; unknown names stop here).
+    let state = cmd
+        .state
+        .as_deref()
+        .map(|name| match_state(&view.write.team.states, name))
+        .transpose()?;
     // The project the milestone is looked up in: the destination when moving, else the current one.
     let mut target = None;
-    let mut milestones_of = current;
     if let Some(reference) = &cmd.project {
         let dest = resolve::project(&ws, reference)?;
         if Some(dest.id.inner()) != current.map(|p| p.id.inner()) {
-            input.project_id = Some(dest.id.inner().to_owned());
-            if cmd.milestone.is_none() {
-                // The old project's milestone would be left dangling in the new one.
-                input.project_milestone_id = Patch::Clear;
-            }
             target = Some(dest);
         }
     }
-    if target.is_some() {
-        milestones_of = target.as_ref();
-    }
-    if let Some(name) = &cmd.milestone {
-        let project = milestones_of.ok_or_else(|| {
-            CliError::usage(format!(
-                "{} is not in a project, so it cannot have a milestone",
-                issue.identifier
-            ))
-        })?;
-        input.project_milestone_id =
-            Patch::Set(resolve::milestone(project, name)?.id.inner().to_owned());
-    }
-    input.due_date = cmd.due;
-    if let Some(who) = &cmd.assignee {
-        input.assignee_id = Some(resolve::user_id(&ws, who)?);
-    }
+    let milestone = match &cmd.milestone {
+        Some(name) => {
+            let project = target.as_ref().or(current).ok_or_else(|| {
+                CliError::usage(format!(
+                    "{} is not in a project, so it cannot have a milestone",
+                    issue.identifier
+                ))
+            })?;
+            Some(resolve::milestone(project, name)?)
+        }
+        None => None,
+    };
+    let assignee = cmd
+        .assignee
+        .as_deref()
+        .map(|who| resolve::user_id(&ws, who))
+        .transpose()?;
+    let labels = if relabel {
+        Some(labels_after(&ws, issue, cmd)?)
+    } else {
+        None
+    };
 
     // Guard, then validators.
     ws.guard(
@@ -416,22 +511,231 @@ pub fn update(ctx: &Ctx, cmd: &UpdateCmd) -> Result<()> {
         },
         false,
     )?;
-    ws.validate(&Draft::new(Operation::IssueUpdate))?;
+    if cmd.template.is_some()
+        && !ws
+            .rules
+            .applies(Rule::TemplateSections, Operation::IssueUpdate)
+    {
+        ws.note(
+            "--template is ignored: the template-sections rule is not enabled for this workspace",
+        );
+    }
+    let mut draft = Draft::new(Operation::IssueUpdate).issue(issue.id.inner());
+    if let Some(t) = &cmd.template {
+        draft = draft.template(t);
+    }
+    if let Some(b) = &body {
+        draft = draft.body(b);
+    }
+    if let Some(s) = source {
+        draft = draft.source(s);
+    }
+    if let Some(m) = &metadata {
+        draft = draft.source_metadata(m.clone());
+    }
+    if let Some(l) = &labels {
+        draft = draft.labels(l.clone());
+    }
+    ws.validate(&draft)?;
 
-    let data: IssueUpdate = ws
-        .client
-        .execute(&inputs::issue_update(issue.id.inner(), input))?;
-    let updated = changed_issue(data.issue_update, &issue.identifier)?;
+    // What to write, and what puts it back: only the fields that actually differ.
+    let mut input = IssueUpdateInput::default();
+    let mut restore = IssueUpdateInput::default();
+    let mut changed: Vec<&'static str> = Vec::new();
+    if let Some(b) = &body {
+        let b = b.trim_end();
+        if !same_description(issue.description.as_deref(), b) {
+            input.description = Patch::Set(b.to_owned());
+            restore.description = put_back(issue.description.clone());
+            changed.push("description");
+        }
+    }
+    if let Some(s) = state.filter(|s| s.id != issue.state.id) {
+        input.state_id = Some(s.id.inner().to_owned());
+        restore.state_id = Some(issue.state.id.inner().to_owned());
+        changed.push("state");
+    }
+    let old_project = issue.project.as_ref().map(|p| p.id.inner().to_owned());
+    let old_milestone = issue
+        .project_milestone
+        .as_ref()
+        .map(|m| m.id.inner().to_owned());
+    if let Some(dest) = &target {
+        input.project_id = Patch::Set(dest.id.inner().to_owned());
+        restore.project_id = put_back(old_project);
+        changed.push("project");
+        if milestone.is_none() && old_milestone.is_some() {
+            // The old project's milestone would be left dangling in the new one.
+            input.project_milestone_id = Patch::Clear;
+            restore.project_milestone_id = put_back(old_milestone.clone());
+            changed.push("milestone");
+        }
+    }
+    if let Some(m) = milestone {
+        let moved = target.is_some();
+        if moved || Some(m.id.inner()) != old_milestone.as_deref() {
+            input.project_milestone_id = Patch::Set(m.id.inner().to_owned());
+            restore.project_milestone_id = put_back(old_milestone);
+            changed.push("milestone");
+        }
+    }
+    if let Some(d) = cmd.due.filter(|d| Some(*d) != issue.due_date) {
+        input.due_date = Patch::Set(d);
+        restore.due_date = put_back(issue.due_date);
+        changed.push("dueDate");
+    }
+    if let Some(a) =
+        assignee.filter(|a| Some(a.as_str()) != issue.assignee.as_ref().map(|u| u.id.inner()))
+    {
+        input.assignee_id = Patch::Set(a);
+        restore.assignee_id = put_back(issue.assignee.as_ref().map(|u| u.id.inner().to_owned()));
+        changed.push("assignee");
+    }
+    if let Some(wanted) = &labels {
+        let ids = |labels: &[Label]| -> BTreeSet<String> {
+            labels.iter().map(|l| l.id.inner().to_owned()).collect()
+        };
+        if ids(wanted) != ids(&issue.labels) {
+            input.label_ids = Some(wanted.iter().map(|l| l.id.inner().to_owned()).collect());
+            restore.label_ids = Some(
+                issue
+                    .labels
+                    .iter()
+                    .map(|l| l.id.inner().to_owned())
+                    .collect(),
+            );
+            changed.push("labels");
+        }
+    }
+    let attachment = match source {
+        Some(url) => source_step(issue, url, cmd.source_title.as_deref(), metadata.as_ref()),
+        None => None,
+    };
+    if attachment.is_some() {
+        changed.push("source");
+    }
 
-    show_issue(ctx, &ws, &updated, "updated");
+    // Mutate. A source that cannot be attached puts the other fields back.
+    let mut rollback = Rollback::new();
+    let mut updated = None;
+    if !input.is_empty() {
+        let data: IssueUpdate = ws
+            .client
+            .execute(&inputs::issue_update(issue.id.inner(), input))?;
+        updated = Some(changed_issue(data.issue_update, &issue.identifier)?);
+        let client = &ws.client;
+        let id = issue.id.inner();
+        rollback.on_failure(
+            format!("restored {}'s earlier values", issue.identifier),
+            move || {
+                let r: IssueUpdate = client.execute(&inputs::issue_update(id, restore))?;
+                if r.issue_update.success {
+                    Ok(())
+                } else {
+                    Err(CliError::general("Linear refused to restore them"))
+                }
+            },
+        );
+    }
+    if let Some(input) = attachment {
+        let attached = retry(ws.out, "attaching the source", &ATTACH_WAITS, || {
+            let r: AttachmentCreate = ws
+                .client
+                .execute(&inputs::attachment_create(input.clone()))?;
+            if r.attachment_create.success {
+                Ok(())
+            } else {
+                Err(CliError::general("Linear could not attach the source"))
+            }
+        });
+        if let Err(cause) = attached {
+            return Err(rollback.fail(cause));
+        }
+        // The payload of the update predates the attachment.
+        updated = None;
+    }
+
+    // Show the issue as it is now.
+    let now = match updated {
+        Some(issue) => issue,
+        None if changed.is_empty() => view.issue.clone(),
+        None => fetch_issue(&ws, issue.id.inner())?.issue,
+    };
+    show_issue(ctx, &ws, &now, &changed);
     Ok(())
 }
 
-fn show_issue(ctx: &Ctx, ws: &WriteSession, issue: &Issue, verb: &str) {
-    let value = issue_out(&ws.workspace, issue);
+/// The labels an issue ends up with: `--labels` as given, or the ones it has
+/// now with `--add-labels` put in and `--remove-labels` taken out.
+fn labels_after(ws: &WriteSession, issue: &Issue, cmd: &UpdateCmd) -> Result<Vec<Label>> {
+    if !cmd.labels.is_empty() {
+        return resolve::labels(ws, &cmd.labels);
+    }
+    let add = resolve::labels(ws, &cmd.add_labels)?;
+    let remove = resolve::labels(ws, &cmd.remove_labels)?;
+    let mut now: Vec<Label> = issue
+        .labels
+        .iter()
+        .filter(|l| !remove.iter().any(|r| r.id == l.id))
+        .cloned()
+        .collect();
+    for label in add {
+        if !now.iter().any(|l| l.id == label.id) {
+            now.push(label);
+        }
+    }
+    Ok(now)
+}
+
+/// The attachment request that makes the issue carry `url` as asked, or `None`
+/// when it already does. Linear upserts on the URL and replaces what the
+/// attachment stores, so an attachment the issue has already is sent with its
+/// stored title, subtitle and metadata wherever the caller did not give one.
+fn source_step(
+    issue: &Issue,
+    url: &str,
+    title: Option<&str>,
+    metadata: Option<&AttachmentMetadata>,
+) -> Option<AttachmentCreateInput> {
+    let Some(stored) = issue.attachments.iter().find(|a| a.url == url) else {
+        return Some(AttachmentCreateInput {
+            issue_id: issue.id.inner().to_owned(),
+            url: url.to_owned(),
+            title: title.unwrap_or(DEFAULT_SOURCE_TITLE).to_owned(),
+            subtitle: None,
+            metadata: metadata.cloned(),
+        });
+    };
+    let new_title = title.filter(|t| *t != stored.title);
+    if new_title.is_none() && !metadata_needs_update(metadata, &stored.metadata) {
+        return None;
+    }
+    Some(AttachmentCreateInput {
+        issue_id: issue.id.inner().to_owned(),
+        url: url.to_owned(),
+        title: new_title.map_or_else(|| stored.title.clone(), str::to_owned),
+        subtitle: stored.subtitle.clone(),
+        // Replaced as a whole, so what is not given is sent as it is stored
+        // (when it is flat enough to be sent back).
+        metadata: metadata
+            .cloned()
+            .or_else(|| AttachmentMetadata::from_json(&stored.metadata).ok()),
+    })
+}
+
+fn show_issue(ctx: &Ctx, ws: &WriteSession, issue: &Issue, changed: &[&'static str]) {
+    let value = Updated {
+        issue: issue_out(&ws.workspace, issue),
+        changed: changed.to_vec(),
+    };
     ctx.out.emit(
         &value,
         || {
+            let verb = if changed.is_empty() {
+                "already as asked, nothing changed".to_owned()
+            } else {
+                format!("updated {}", changed.join(", "))
+            };
             format!(
                 "{}  {}  {}\n{}  ({verb}; {}, {})",
                 issue.identifier,
