@@ -402,6 +402,64 @@ fn creating_in_somebody_elses_project_is_refused_with_exit_4() {
 }
 
 #[test]
+fn a_lenient_workspace_lets_me_create_issues_for_others_in_any_project() {
+    let sb = lenient_workspace_with_rules(&ALL_RULES);
+    let body = write_file(&sb, "body.md", GOOD_BODY);
+    let foreign = || {
+        Routed::start(create_routes(vec![(
+            "ProjectOwnershipQuery",
+            vec![ownership(PROJECT, Some(BOT))],
+        )]))
+    };
+
+    // Somebody else's project, an issue for somebody else, no --allow-foreign.
+    let mock = foreign();
+    let o = run(
+        &sb,
+        &mock,
+        &create_args(&body, &["--assignee", "linear@example.com", "--quiet"]),
+    );
+    assert_eq!(code(&o), 0, "{}", stderr(&o));
+    let input = &mock.of("IssueCreate")[0]["input"];
+    assert_eq!(input["assigneeId"], BOT);
+    assert_eq!(input["projectId"], PROJECT);
+
+    // A project nobody leads, and the default assignee.
+    let mock = Routed::start(create_routes(vec![(
+        "ProjectOwnershipQuery",
+        vec![ownership(PROJECT, None)],
+    )]));
+    let o = run(&sb, &mock, &create_args(&body, &["--quiet"]));
+    assert_eq!(code(&o), 0, "{}", stderr(&o));
+    assert_eq!(mock.of("IssueCreate").len(), 1);
+
+    // The validators still apply: a body that misses the template sections.
+    let thin = write_file(&sb, "thin.md", "No sections.\n");
+    let mock = foreign();
+    let o = run(&sb, &mock, &create_args(&thin, &[]));
+    assert_eq!(code(&o), 5, "{}", stderr(&o));
+    mock.assert_read_only();
+}
+
+#[test]
+fn the_ownership_setting_defaults_to_strict() {
+    // The same request that a lenient workspace allows is refused without the key.
+    let sb = workspace_with_rules(&ALL_RULES);
+    let body = write_file(&sb, "body.md", GOOD_BODY);
+    let mock = Routed::start(create_routes(vec![(
+        "ProjectOwnershipQuery",
+        vec![ownership(PROJECT, Some(BOT))],
+    )]));
+    let o = run(
+        &sb,
+        &mock,
+        &create_args(&body, &["--assignee", "linear@example.com"]),
+    );
+    assert_eq!(code(&o), 4, "{}", stderr(&o));
+    mock.assert_read_only();
+}
+
+#[test]
 fn credentials_for_another_workspace_never_write() {
     let sb = workspace_with_rules(&ALL_RULES);
     let body = write_file(&sb, "body.md", GOOD_BODY);

@@ -55,6 +55,40 @@ fn add_then_list_shows_the_workspace_and_marks_the_first_as_default() {
 }
 
 #[test]
+fn list_shows_how_strict_the_ownership_rules_are() {
+    let sb = Sandbox::new();
+    add_example(&sb, "example", "example");
+    add_example(&sb, "team", "team-co");
+    let path = sb.config_dir().join("workspaces.toml");
+    let text = std::fs::read_to_string(&path).unwrap();
+    // `team` is the last table, so a key appended to the file lands in it.
+    std::fs::write(&path, format!("{text}ownership = \"lenient\"\n")).unwrap();
+
+    let o = sb.run(&["workspace", "list", "--json"], None, &[]);
+    assert_eq!(code(&o), 0, "{}", stderr(&o));
+    let v: serde_json::Value = serde_json::from_str(&stdout(&o)).unwrap();
+    assert_eq!(v[0]["ownership"], "strict");
+    assert_eq!(v[1]["ownership"], "lenient");
+
+    let o = sb.run(&["workspace", "list"], None, &[]);
+    let out = stdout(&o);
+    assert!(out.contains("OWNERSHIP"), "{out}");
+    assert!(out.contains("lenient") && out.contains("strict"), "{out}");
+
+    // A value that is not strict or lenient is a config error, not a silent default.
+    std::fs::write(
+        &path,
+        text.replace(
+            "[workspaces.team]",
+            "[workspaces.team]\nownership = \"loose\"",
+        ),
+    )
+    .unwrap();
+    let o = sb.run(&["workspace", "list"], None, &[]);
+    assert_ne!(code(&o), 0);
+}
+
+#[test]
 fn add_rejects_duplicates_and_unsafe_names() {
     let sb = Sandbox::new();
     add_example(&sb, "example", "example");

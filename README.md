@@ -85,6 +85,7 @@ default = "main"
 url_key = "my-company"   # linear.app/<url_key>
 default_team = "ENG"
 auth = "api-key"         # or "oauth" (not implemented yet)
+ownership = "strict"     # or "lenient": see "Ownership rules" below
 ```
 
 The workspace is chosen by, in order: `--workspace`, `LINEAR_WORKSPACE`, a `.linear.toml`
@@ -342,7 +343,8 @@ are resolved before anything is sent; one that matches nothing, or more than one
 usage error (exit 2) that lists the candidates. Every write goes through the same steps, and
 nothing is sent until the first two have passed:
 
-1. **Ownership rules** (always on; exit 4). A project may be written only when you lead it. An
+1. **Ownership rules** (always on; exit 4; see "Ownership rules" below for the `lenient`
+   setting). A project may be written only when you lead it. An
    issue may be changed (or commented on, or reordered) when it is assigned to you or its project
    is led by you. An issue may be created in a project you lead, or in one somebody else leads
    only if it is assigned to you and you pass `--allow-foreign`. "You" is the viewer of the
@@ -448,6 +450,28 @@ someone else; it cannot take one over.
 To require a section such as `## Definition of done` in every project body, give a Linear
 *project* template that heading, enable the `template-sections` rule and pass `--template`
 (see below); no heading is hard-coded in the CLI.
+
+### Ownership rules
+
+The ownership rules (exit 4) are always on. How strict they are is a per-workspace key:
+
+```toml
+[workspaces.team]
+ownership = "lenient"   # default: "strict"
+```
+
+| | `strict` (default) | `lenient` |
+| --- | --- | --- |
+| create an issue in a project somebody else leads | only assigned to you, with `--allow-foreign` | allowed, for anyone, no flag |
+| create an issue without a project | only assigned to you | allowed, for anyone |
+| change, comment on or reorder an issue owned by someone else (this includes moving it to another project) | refused | allowed |
+| cancel an issue (a `canceled` or `duplicate` state) that is not yours | refused | **refused** |
+| create or change a project (and its milestones and status updates) you do not lead | refused | **refused** |
+
+`linear workspace list` shows the value (`ownership` in `--json`). The setting is checked when
+the configuration is read; anything but `strict` or `lenient` is an error. Use `lenient` for a
+workspace where people file and edit issues for each other (a team workspace); keep `strict`
+for a personal one. Validators and the workspace check still apply in both.
 
 ### Validator rules
 

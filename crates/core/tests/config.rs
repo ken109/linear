@@ -102,6 +102,34 @@ fn round_trips_through_toml() {
     assert_eq!(Config::parse(&text).unwrap(), c);
 }
 
+// ------------------------------------------------------------------ ownership
+
+#[test]
+fn ownership_defaults_to_strict_and_accepts_lenient() {
+    let c = Config::parse(
+        "[workspaces.a]\nurl_key = \"a\"\n[workspaces.b]\nurl_key = \"b\"\nownership = \"lenient\"\n[workspaces.c]\nurl_key = \"c\"\nownership = \"strict\"\n",
+    )
+    .unwrap();
+    assert_eq!(c.get("a").unwrap().ownership, Ownership::Strict);
+    assert_eq!(c.get("b").unwrap().ownership, Ownership::Lenient);
+    assert_eq!(c.get("c").unwrap().ownership, Ownership::Strict);
+    assert_eq!(Ownership::Lenient.to_string(), "lenient");
+
+    // Strict stays out of the file; lenient is written and read back.
+    let text = toml_edit::ser::to_string(&c).unwrap();
+    assert_eq!(text.matches("ownership").count(), 1, "{text}");
+    assert_eq!(Config::parse(&text).unwrap(), c);
+}
+
+#[test]
+fn an_unknown_ownership_is_a_config_error() {
+    for bad in ["relaxed", "Strict", ""] {
+        let text = format!("[workspaces.a]\nurl_key = \"a\"\nownership = \"{bad}\"\n");
+        let err = Config::parse(&text).unwrap_err();
+        assert!(matches!(err, Error::Config(_)), "{bad:?} -> {err:?}");
+    }
+}
+
 // ------------------------------------------------------------------ audit settings
 
 const AUDIT_TOML: &str = r#"

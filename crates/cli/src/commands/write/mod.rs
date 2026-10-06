@@ -6,8 +6,9 @@
 //!
 //! 1. [`Ctx::write_session`] resolves the workspace, checks the credentials
 //!    belong to it, and learns who "me" is (the viewer).
-//! 2. [`WriteSession::guard`] asks the ownership rules whether the viewer may
-//!    make this write (exit code 4 when not).
+//! 2. [`WriteSession::guard`] asks the ownership rules (as strict as the
+//!    workspace's `ownership` setting says) whether the viewer may make this
+//!    write (exit code 4 when not).
 //! 3. [`WriteSession::validate`] runs the workspace's enabled validator rules
 //!    (exit code 5 when one fails), fetching whatever they need first. It may
 //!    also answer "this already exists" (source idempotence).
@@ -34,6 +35,7 @@ use super::Ctx;
 use crate::error::{CliError, Result};
 use crate::http::Client;
 use crate::output::Output;
+use linear_core::config::Ownership;
 use linear_core::error::ErrorCode;
 use linear_core::guard::{self, Denied, Viewer, Write};
 use linear_core::queries;
@@ -67,6 +69,8 @@ pub struct WriteSession {
     pub default_team: Option<String>,
     /// "Me" in this workspace.
     pub viewer: Viewer,
+    /// How strictly the ownership rules apply in this workspace.
+    pub ownership: Ownership,
     pub out: Output,
 }
 
@@ -86,6 +90,7 @@ impl Ctx {
         let who = super::verify(&client, &workspace, &config.url_key)?;
         Ok(WriteSession {
             viewer: Viewer::from_user(&workspace, &who.viewer),
+            ownership: config.ownership,
             rules: RuleSet::from_workspace(&config),
             default_team: config.default_team.clone(),
             workspace,
@@ -98,7 +103,12 @@ impl Ctx {
 impl WriteSession {
     /// Step 2: may the viewer make this write? Exit code 4 when not.
     pub fn guard(&self, write: &Write<'_>, allow_foreign: bool) -> Result<()> {
-        Ok(guard::check(&self.viewer, write, allow_foreign)?)
+        Ok(guard::check_with(
+            &self.viewer,
+            self.ownership,
+            write,
+            allow_foreign,
+        )?)
     }
 
     /// Step 3: run the enabled validators on what is about to be written.

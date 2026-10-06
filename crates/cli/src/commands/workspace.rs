@@ -7,7 +7,7 @@ use crate::http::Client;
 use crate::output::table;
 use crate::store::{self, CredentialSource};
 use linear_core::auth::{api_key_env_var, AuthMethod, Credential, Secret};
-use linear_core::config::{validate_workspace_name, Config};
+use linear_core::config::{validate_workspace_name, Config, Ownership};
 use serde::Serialize;
 use std::io::{IsTerminal, Read};
 
@@ -29,6 +29,7 @@ struct WorkspaceRow {
     url_key: String,
     default_team: Option<String>,
     auth: AuthMethod,
+    ownership: Ownership,
     default: bool,
     /// `"env"`, `"file"` or null. Never the credential itself.
     credentials: Option<&'static str>,
@@ -44,6 +45,7 @@ fn list(ctx: &Ctx) -> Result<()> {
             url_key: ws.url_key.clone(),
             default_team: ws.default_team.clone(),
             auth: ws.auth,
+            ownership: ws.ownership,
             default: config.default.as_deref() == Some(name),
             credentials: credential_kind(ctx, name),
         })
@@ -64,11 +66,15 @@ fn list(ctx: &Ctx) -> Result<()> {
                         r.url_key.clone(),
                         r.default_team.clone().unwrap_or_else(|| "-".into()),
                         r.auth.to_string(),
+                        r.ownership.to_string(),
                         r.credentials.map_or("not logged in", |k| k).to_owned(),
                     ]
                 })
                 .collect();
-            table(&["NAME", "URL KEY", "TEAM", "AUTH", "CREDENTIALS"], &body)
+            table(
+                &["NAME", "URL KEY", "TEAM", "AUTH", "OWNERSHIP", "CREDENTIALS"],
+                &body,
+            )
         },
         || rows.iter().map(|r| r.name.as_str()).collect::<Vec<_>>().join("\n"),
     );

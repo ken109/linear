@@ -1,6 +1,7 @@
 //! The ownership-based write guard.
 //!
-//! Writes are limited by who owns what, not by a per-workspace switch:
+//! Writes are limited by who owns what. This is the `strict` behaviour, the
+//! default of the workspace's `ownership` setting:
 //!
 //! - A **project** may be written (created or changed) only when its lead is
 //!   the viewer.
@@ -12,11 +13,18 @@
 //!   `--allow-foreign` *and* the issue is assigned to the viewer. That is the
 //!   only thing the flag allows.
 //!
+//! A workspace set to `lenient` ([`Ownership::Lenient`]) relaxes the issue
+//! rules for teams that work on each other's issues: an issue may be created
+//! for anyone, in any project, and an issue may be changed by anyone. What
+//! stays refused is the same in both: writing a project the viewer does not
+//! lead, and canceling an issue that is not the viewer's ([`Write::IssueCancel`]).
+//!
 //! "Me" is the workspace's viewer ([`Viewer`]); the CLI fetches and caches it
 //! per workspace. Everything here is a pure decision over ids; a refusal is a
 //! [`Denied`], which maps to exit code 4 ([`ErrorCode::WriteDenied`]), and it
 //! happens before anything is sent.
 
+use crate::config::Ownership;
 use crate::error::ErrorCode;
 use crate::rules::Operation;
 use crate::types::{Issue, Project, User};
@@ -86,6 +94,13 @@ pub enum Write<'a> {
         placement: Placement<'a>,
         moves_to: Option<Placement<'a>>,
     },
+    /// Cancel (or mark as a duplicate) an issue as it is now. Asked in addition
+    /// to [`Write::IssueUpdate`] when the change sets such a state: closing
+    /// somebody else's work needs ownership even in a lenient workspace.
+    IssueCancel {
+        assignee: Option<&'a str>,
+        placement: Placement<'a>,
+    },
 }
 
 impl<'a> Write<'a> {
@@ -94,7 +109,7 @@ impl<'a> Write<'a> {
             Self::ProjectCreate { .. } => Operation::ProjectCreate,
             Self::ProjectUpdate { .. } => Operation::ProjectUpdate,
             Self::IssueCreate { .. } => Operation::IssueCreate,
-            Self::IssueUpdate { .. } => Operation::IssueUpdate,
+            Self::IssueUpdate { .. } | Self::IssueCancel { .. } => Operation::IssueUpdate,
         }
     }
 
@@ -151,13 +166,28 @@ fn deny(op: Operation, reason: DenyReason, message: impl fmt::Display) -> Result
     })
 }
 
-/// Decide whether the viewer may perform `write`.
+/// Decide whether the viewer may perform `write` under the strict rules.
 ///
 /// `allow_foreign` is `--allow-foreign`. It matters only for
 /// [`Write::IssueCreate`] in a project somebody else leads, and only when the
 /// issue is assigned to the viewer; anywhere else it changes nothing.
 pub fn check(viewer: &Viewer, write: &Write<'_>, allow_foreign: bool) -> Result<(), Denied> {
+    check_with(viewer, Ownership::Strict, write, allow_foreign)
+}
+
+/// [`check`] under the workspace's `ownership` setting.
+pub fn check_with(
+    viewer: &Viewer,
+    ownership: Ownership,
+    write: &Write<'_>,
+    allow_foreign: bool,
+) -> Result<(), Denied> {
     let op = write.operation();
+    if ownership == Ownership::Lenient
+        && matches!(write, Write::IssueCreate { .. } | Write::IssueUpdate { .. })
+    {
+        return Ok(());
+    }
     match *write {
         Write::ProjectCreate { lead } => {
             if viewer.is(lead) {
@@ -217,14 +247,26 @@ pub fn check(viewer: &Viewer, write: &Write<'_>, allow_foreign: bool) -> Result<
                 ),
             },
         },
+        Write::IssueCancel {
+            assignee,
+            placement,
+        } => {
+            if owns_issue(viewer, assignee, placement) {
+                Ok(())
+            } else {
+                deny(
+                    op,
+                    DenyReason::IssueNotOwned,
+                    "canceling an issue needs it to be assigned to you or its project to be led by you",
+                )
+            }
+        }
         Write::IssueUpdate {
             assignee,
             placement,
             moves_to,
         } => {
-            let owned = viewer.is(assignee)
-                || matches!(placement, Placement::Project { lead } if viewer.is(lead));
-            if !owned {
+            if !owns_issue(viewer, assignee, placement) {
                 return deny(
                     op,
                     DenyReason::IssueNotOwned,
@@ -243,6 +285,10 @@ pub fn check(viewer: &Viewer, write: &Write<'_>, allow_foreign: bool) -> Result<
             }
         }
     }
+}
+
+fn owns_issue(viewer: &Viewer, assignee: Option<&str>, placement: Placement<'_>) -> bool {
+    viewer.is(assignee) || matches!(placement, Placement::Project { lead } if viewer.is(lead))
 }
 
 fn who(lead: Option<&str>) -> &'static str {

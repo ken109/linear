@@ -576,6 +576,79 @@ fn the_new_flags_follow_ownership() {
     }
 }
 
+/// An issue of somebody else's, in somebody else's project; the team also has a Canceled state.
+fn foreign_with_canceled_state() -> View {
+    let mut v = view("EX-23")
+        .assigned_to(Some(BOT))
+        .in_project(PROJECT, Some(BOT));
+    v.0["write"]["team"]["states"]["nodes"]
+        .as_array_mut()
+        .unwrap()
+        .push(json!({
+            "id": "00000000-0000-4000-8000-000000000023",
+            "name": "Canceled",
+            "type": "canceled",
+        }));
+    v
+}
+
+#[test]
+fn a_lenient_workspace_lets_me_change_issues_owned_by_others_but_not_cancel_them() {
+    let sb = lenient_workspace_with_rules(&["source-attachment", "label-groups-exclusive"]);
+    let body = write_file(&sb, "body.md", "A new body.\n");
+
+    // Body, labels, state, assignee: all allowed on somebody else's issue.
+    for args in [
+        vec!["--body-file", body.as_str()],
+        vec!["--labels", "Bug"],
+        vec!["--state", "Done"],
+        vec!["--due", "2026-12-01"],
+        vec!["--assignee", "me"],
+    ] {
+        let mock = Routed::start(routes(foreign_with_canceled_state(), vec![]));
+        let o = run(&sb, &mock, &update(&args));
+        assert_eq!(code(&o), 0, "{args:?}: {}", stderr(&o));
+        assert_eq!(mock.of("IssueUpdate").len(), 1, "{args:?}");
+    }
+
+    // A comment follows the same rule.
+    let mock = Routed::start(routes(
+        foreign_with_canceled_state(),
+        vec![("CommentCreate", vec![comment_ok()])],
+    ));
+    let comment = write_file(&sb, "comment.md", "Hello.\n");
+    let o = run(
+        &sb,
+        &mock,
+        &["issue", "comment", "EX-23", "--body-file", comment.as_str()],
+    );
+    assert_eq!(code(&o), 0, "{}", stderr(&o));
+
+    // Canceling is not: exit 4, nothing written.
+    let mock = Routed::start(routes(foreign_with_canceled_state(), vec![]));
+    let o = run(&sb, &mock, &update(&["--state", "Canceled"]));
+    assert_eq!(code(&o), 4, "{}", stderr(&o));
+    assert!(stderr(&o).contains("canceling"), "{}", stderr(&o));
+    mock.assert_read_only();
+
+    // Canceling my own issue is fine.
+    let own = foreign_with_canceled_state().assigned_to(Some(ALICE));
+    let mock = Routed::start(routes(own, vec![]));
+    let o = run(&sb, &mock, &update(&["--state", "Canceled"]));
+    assert_eq!(code(&o), 0, "{}", stderr(&o));
+}
+
+#[test]
+fn a_strict_workspace_refuses_every_change_to_issues_owned_by_others() {
+    let sb = workspace_with_rules(&[]);
+    for args in [vec!["--state", "Done"], vec!["--state", "Canceled"]] {
+        let mock = Routed::start(routes(foreign_with_canceled_state(), vec![]));
+        let o = run(&sb, &mock, &update(&args));
+        assert_eq!(code(&o), 4, "{args:?}: {}", stderr(&o));
+        mock.assert_read_only();
+    }
+}
+
 #[test]
 fn a_source_that_cannot_be_attached_puts_the_other_fields_back() {
     let sb = workspace_with_rules(&[]);

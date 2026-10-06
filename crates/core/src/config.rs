@@ -30,6 +30,35 @@ impl fmt::Display for AuthMethod {
     }
 }
 
+/// How strictly the ownership rules (exit 4) apply in a workspace.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum Ownership {
+    /// Writes need ownership: you lead the project, or the issue is yours.
+    /// The default.
+    #[default]
+    Strict,
+    /// For teams that work on each other's issues: creating an issue for
+    /// somebody else and changing an issue owned by someone else are allowed.
+    /// Writing projects, and canceling an issue that is not yours, stay refused.
+    Lenient,
+}
+
+impl Ownership {
+    pub fn is_strict(&self) -> bool {
+        *self == Self::Strict
+    }
+}
+
+impl fmt::Display for Ownership {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(match self {
+            Self::Strict => "strict",
+            Self::Lenient => "lenient",
+        })
+    }
+}
+
 /// A validator rule that can be enabled per workspace.
 #[derive(
     Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize, JsonSchema,
@@ -52,6 +81,10 @@ pub struct WorkspaceConfig {
     pub default_team: Option<String>,
     #[serde(default)]
     pub auth: AuthMethod,
+    /// How strictly the ownership rules apply: `"strict"` (the default) or
+    /// `"lenient"` (see [`Ownership`]).
+    #[serde(default, skip_serializing_if = "Ownership::is_strict")]
+    pub ownership: Ownership,
     /// Validator rules to enforce on writes.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub rules: Vec<Rule>,

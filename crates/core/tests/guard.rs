@@ -1,6 +1,7 @@
 //! The ownership-based write guard.
 
 use cynic::GraphQlResponse;
+use linear_core::config::Ownership;
 use linear_core::guard::*;
 use linear_core::queries::{IssueById, Projects, Whoami};
 use linear_core::rules::Operation;
@@ -207,6 +208,91 @@ fn the_flag_is_harmless_where_it_is_not_needed() {
         true,
     );
     allowed(Write::ProjectUpdate { lead: Some(ME) }, true);
+}
+
+// ------------------------------------------------------------------ lenient
+
+fn lenient(w: Write<'_>, allow_foreign: bool) -> Result<(), Denied> {
+    check_with(&me(), Ownership::Lenient, &w, allow_foreign)
+}
+
+#[test]
+fn strict_is_the_default_and_check_is_strict() {
+    assert_eq!(Ownership::default(), Ownership::Strict);
+    let w = Write::IssueCreate {
+        assignee: Some(BOB),
+        placement: bobs(),
+    };
+    assert_eq!(
+        check_with(&me(), Ownership::Strict, &w, false),
+        check(&me(), &w, false)
+    );
+    assert!(check(&me(), &w, false).is_err());
+}
+
+#[test]
+fn lenient_lets_me_create_issues_for_others_anywhere() {
+    for assignee in [Some(ME), Some(BOB), None] {
+        for placement in [mine(), bobs(), unled(), Placement::NoProject] {
+            let w = Write::IssueCreate {
+                assignee,
+                placement,
+            };
+            assert_eq!(lenient(w, false), Ok(()), "{w:?}");
+        }
+    }
+}
+
+#[test]
+fn lenient_lets_me_change_issues_owned_by_others() {
+    for assignee in [Some(BOB), None] {
+        for placement in [bobs(), unled(), Placement::NoProject] {
+            for moves_to in [None, Some(bobs()), Some(Placement::NoProject)] {
+                let w = Write::IssueUpdate {
+                    assignee,
+                    placement,
+                    moves_to,
+                };
+                assert_eq!(lenient(w, false), Ok(()), "{w:?}");
+            }
+        }
+    }
+}
+
+#[test]
+fn lenient_still_refuses_projects_that_are_not_mine() {
+    for w in [
+        Write::ProjectUpdate { lead: Some(BOB) },
+        Write::ProjectUpdate { lead: None },
+        Write::ProjectCreate { lead: Some(BOB) },
+    ] {
+        assert_eq!(
+            lenient(w, true).unwrap_err().reason,
+            DenyReason::ProjectNotLed
+        );
+    }
+    assert_eq!(
+        lenient(Write::ProjectUpdate { lead: Some(ME) }, false),
+        Ok(())
+    );
+}
+
+#[test]
+fn canceling_needs_ownership_in_both_modes() {
+    let cancel = |assignee, placement| Write::IssueCancel {
+        assignee,
+        placement,
+    };
+    for ownership in [Ownership::Strict, Ownership::Lenient] {
+        let check = |w| check_with(&me(), ownership, &w, false);
+        assert_eq!(check(cancel(Some(ME), bobs())), Ok(()));
+        assert_eq!(check(cancel(Some(BOB), mine())), Ok(()));
+        for placement in [bobs(), unled(), Placement::NoProject] {
+            let d = check(cancel(Some(BOB), placement)).unwrap_err();
+            assert_eq!(d.reason, DenyReason::IssueNotOwned, "{ownership}");
+            assert_eq!(d.operation, Operation::IssueUpdate);
+        }
+    }
 }
 
 // ------------------------------------------------------------------- errors

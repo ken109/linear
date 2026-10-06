@@ -25,7 +25,7 @@ use linear_core::read::{self, IssueWriteView};
 use linear_core::reorder::{self, OrderRow};
 use linear_core::rules::source_attachment::{self, metadata_needs_update};
 use linear_core::rules::{Draft, Operation, Outcome};
-use linear_core::types::{Issue, Label};
+use linear_core::types::{Issue, Label, StateType};
 use serde::Serialize;
 use std::collections::BTreeSet;
 use std::path::PathBuf;
@@ -511,6 +511,19 @@ pub fn update(ctx: &Ctx, cmd: &UpdateCmd) -> Result<()> {
         },
         false,
     )?;
+    // Closing somebody else's work stays refused even where the rules are lenient.
+    if state.is_some_and(|s| {
+        s.id != issue.state.id
+            && matches!(s.state_type(), StateType::Canceled | StateType::Duplicate)
+    }) {
+        ws.guard(
+            &Write::IssueCancel {
+                assignee: issue.assignee.as_ref().map(|u| u.id.inner()),
+                placement: placement_of(&view),
+            },
+            false,
+        )?;
+    }
     if cmd.template.is_some()
         && !ws
             .rules
