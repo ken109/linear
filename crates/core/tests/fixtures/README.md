@@ -11,6 +11,8 @@ Structure, nullability and value formats are exactly Linear's.
 | `issue.json`                | `queries::issue`              | project, milestone, grouped labels, attachment     |
 | `assigned_issues.json`      | `queries::assigned_started_issues` |                                               |
 | `projects.json`             | `queries::projects`           | status update, milestone                           |
+| `issue_list.json`           | `read::issue_list`            | `assigned_issues.json`'s page under `issues`       |
+| `issue_view.json`           | `read::issue_view`            | `issue.json` plus the live shape of the `detail` alias (description, priority, comments) |
 | `issue_comments.json`       | `queries::issue_comments`     |                                                    |
 | `templates.json`            | `queries::templates`          | `templateData` is a JSON document inside a string  |
 | `issue_update.json`         | `inputs::issue_update`        |                                                    |
