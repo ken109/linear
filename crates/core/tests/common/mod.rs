@@ -62,6 +62,8 @@ pub fn issue(identifier: &str) -> IssueB {
         "labels": { "nodes": [] },
         "dueDate": null,
         "estimate": null,
+        "sortOrder": 0.0,
+        "prioritySortOrder": 0.0,
         "createdAt": "2026-09-01T00:00:00Z",
         "updatedAt": "2026-10-19T00:00:00Z",
         "startedAt": null,

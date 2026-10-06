@@ -408,8 +408,8 @@ status = "implemented"
 via = ["types::Issue"]
 fields = [
   "assignee", "attachments", "completedAt", "createdAt", "dueDate", "estimate", "id",
-  "identifier", "labels", "parent", "project", "projectMilestone", "startedAt", "state", "team",
-  "title", "updatedAt", "url",
+  "identifier", "labels", "parent", "prioritySortOrder", "project", "projectMilestone",
+  "sortOrder", "startedAt", "state", "team", "title", "updatedAt", "url",
 ]
 
 [[entry]]
@@ -464,9 +464,9 @@ status = "unsupported"
 reason = "Internal ordering, sync or integration bookkeeping with no use in the CLI."
 fields = [
   "addedToCycleAt", "autoArchivedAt", "autoClosedAt", "boardOrder", "inheritsSharedAccess",
-  "integrationSourceType", "previousIdentifiers", "prioritySortOrder", "reactionData",
+  "integrationSourceType", "previousIdentifiers", "reactionData",
   "slaBreachesAt", "slaHighRiskAt", "slaMediumRiskAt", "slaStartedAt", "slaType",
-  "snoozedUntilAt", "sortOrder", "subIssueSortOrder", "trusted",
+  "snoozedUntilAt", "subIssueSortOrder", "trusted",
 ]
 
 [[entry]]

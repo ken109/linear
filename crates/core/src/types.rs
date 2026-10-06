@@ -304,6 +304,11 @@ pub struct Issue {
     pub labels: LabelNodes,
     pub due_date: Option<NaiveDate>,
     pub estimate: Option<f64>,
+    /// Position in a manual-order view (ascending, top first). `reorder` writes it.
+    pub sort_order: f64,
+    /// Position in a priority-order view, Linear's default (ascending, top first).
+    /// `reorder` writes it together with `sort_order`.
+    pub priority_sort_order: f64,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
     pub started_at: Option<DateTime<Utc>>,
