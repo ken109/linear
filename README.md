@@ -22,6 +22,52 @@ A fast, scriptable command-line client for [Linear](https://linear.app), written
 | `packages/linear-wasm` | `@ken109/linear-wasm` | The wasm as an npm package, with generated TypeScript types and zod schemas. |
 | `schema/`       | -             | Vendored Linear GraphQL SDL used to type-check queries.     |
 
+## Install
+
+```sh
+brew install ken109/tap/linear
+# or, from source (needs a Rust toolchain, 1.85 or newer):
+cargo install --git https://github.com/ken109/linear linear
+```
+
+Release archives for macOS (arm64, x86_64) and Linux (x86_64, static musl build) are attached
+to each [GitHub Release](https://github.com/ken109/linear/releases) as
+`linear-<version>-<target>.tar.gz` with a `.sha256` file beside each.
+
+While this repository is private, release assets cannot be downloaded without a token, and the
+Homebrew formula does not send one, so `brew install` works once the repository is public.
+Until then use `cargo install --git` (with git credentials that can read the repository) or
+`gh release download`.
+
+`linear --version` prints the workspace version in `Cargo.toml` (`[workspace.package] version`,
+inherited by `crates/cli`), so it equals the release tag without the leading `v`.
+
+### Releasing
+
+1. Set the same new version in `Cargo.toml` (`[workspace.package] version`) and in
+   `packages/linear-wasm/package.json`, refresh `Cargo.lock` (`cargo check`), and merge to `main`.
+2. Tag that commit and push the tag:
+
+   ```sh
+   git tag vX.Y.Z
+   git push origin vX.Y.Z
+   ```
+
+3. The `Release` workflow (`.github/workflows/release.yml`) fails unless the tag equals both
+   versions; it never bumps anything. It then builds the three binaries, builds the wasm npm
+   tarball (`ken109-linear-wasm-<version>.tgz`), attaches everything with checksums to a GitHub
+   Release, and commits a regenerated `Formula/linear.rb` to `ken109/homebrew-tap`. A tag with a
+   pre-release suffix (`v1.0.0-rc.1`) makes a pre-release and leaves the tap alone.
+
+The tap step needs the repository secret `TAP_GITHUB_TOKEN`: a token that can push to
+`ken109/homebrew-tap` (for a fine-grained token, `Contents: read and write` on that repository).
+
+To rehearse, run the workflow by hand with `dry_run` on (the default) from the Actions tab or
+`gh workflow run release.yml -f dry_run=true`. It builds and packages everything and uploads the
+archives, the wasm tarball and the generated formula to the run, without creating a Release or
+touching the tap. The formula is rendered from `packaging/linear.rb.in` by
+`scripts/release/formula.sh`.
+
 ## Build
 
 ```sh
