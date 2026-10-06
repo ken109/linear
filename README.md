@@ -80,6 +80,33 @@ Nothing is filtered unless asked for: use `--open` to leave out completed and ca
 `--json` prints Linear's own shape plus a `workspace` field; `--quiet` prints one key per line
 (issue identifier, project or initiative slug, milestone or template name, team key, user email).
 
+## Cache
+
+Commands always ask Linear. The cache exists for readers that must not wait for it (a hook, a
+statusline) and is only used when asked for (`--cached`); nothing consults it silently.
+
+```sh
+linear cache refresh            # fetch and store; every configured workspace unless one is selected
+linear cache show [--ttl 300]   # what is stored, how old it is, whether it can be trusted
+linear cache clear              # remove every entry, or only the selected workspace's
+```
+
+One JSON file per workspace in `$LINEAR_CACHE_DIR`, else `$XDG_CACHE_HOME/linear`, else
+`~/.cache/linear` (mode 0600), written to a temporary file and renamed into place. An entry has
+`schema_version`, `status` (`ok` or `failed`), `attempted_at`, `fetched_at`, the last `failure`,
+and `data`: the viewer ("me"), the viewer's issues In Progress and their projects, the `audit`
+result, and the findings that are new since the previous snapshot.
+
+- A failed refresh (no credentials, Linear unreachable, a bad key) keeps the previous snapshot
+  and records the failure beside it; it never replaces it with an empty one. `refresh` then names
+  the workspaces it could not reach (`unreachable` with `--json`) and exits 1.
+- An entry older than the TTL (5 minutes) is unknown, not healthy: `show` reports `expired`, and a
+  reader must not display it as current.
+- A file written with another `schema_version` is treated as missing and replaced by the next
+  refresh.
+- Only one refresh per workspace runs at a time, so a statusline that starts one on every render
+  does not start a dozen.
+
 ## Output and exit codes
 
 `--json` prints machine-readable output; errors then go to stderr as

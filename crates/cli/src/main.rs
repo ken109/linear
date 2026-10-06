@@ -1,5 +1,6 @@
 //! The `linear` command.
 
+mod cache;
 mod cli;
 mod commands;
 mod error;

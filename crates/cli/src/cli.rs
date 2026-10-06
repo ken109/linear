@@ -55,6 +55,9 @@ pub enum Command {
     /// Read users
     #[command(subcommand)]
     User(crate::commands::user::UserCommand),
+    /// Manage the cache that hooks and the statusline read
+    #[command(subcommand)]
+    Cache(crate::commands::cache::CacheCommand),
     /// Send a raw GraphQL query (read-only) and print the response data
     Api(ApiArgs),
 }

@@ -5,6 +5,7 @@ use super::Ctx;
 use crate::error::{CliError, Result};
 use crate::http::Client;
 use clap::Args;
+use linear_core::config::WorkspaceConfig;
 use linear_core::matching::match_project;
 use linear_core::read::{self, ProjectRefs, PROJECT_REFS_PAGE_SIZE};
 use linear_core::types::{PageVars, ProjectRef};
@@ -21,17 +22,21 @@ impl Ctx {
     pub fn session(&self) -> Result<Session> {
         let config = crate::store::read_config(&self.dirs)?;
         let resolved = self.resolve(&config)?;
-        let (credential, _) = self.credential(&resolved.name)?;
-        if credential.method() != resolved.config.auth {
+        self.session_for(&resolved.name, resolved.config)
+    }
+
+    /// Open a client with the credentials of a named workspace.
+    pub fn session_for(&self, name: &str, workspace: &WorkspaceConfig) -> Result<Session> {
+        let (credential, _) = self.credential(name)?;
+        if credential.method() != workspace.auth {
             return Err(CliError::auth(format!(
-                "workspace {:?} is configured for {} but the stored credentials are {}",
-                resolved.name,
-                resolved.config.auth,
+                "workspace {name:?} is configured for {} but the stored credentials are {}",
+                workspace.auth,
                 credential.method()
             )));
         }
         Ok(Session {
-            workspace: resolved.name.to_owned(),
+            workspace: name.to_owned(),
             client: Client::new(credential),
         })
     }
