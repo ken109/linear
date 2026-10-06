@@ -23,6 +23,8 @@ Structure, nullability and value formats are exactly Linear's.
 | `issue_comments.json`       | `queries::issue_comments`     |                                                    |
 | `templates.json`            | `queries::templates`          | `templateData` is a JSON document inside a string  |
 | `issue_update.json`         | `inputs::issue_update`        |                                                    |
+| `issue_write_view.json`     | `read::issue_write_view`      | **derived**: `issue.json` plus the `write` alias (team states, project with lead and milestone); shape verified against the sandbox |
+| `attachments_for_url.json`, `attachments_for_url_none.json` | `read::attachments_for_url` | **derived** from `issue.json`; shape verified against the sandbox |
 | `error_unauthenticated.json`| any, with a bad key           | HTTP 401                                           |
 | `error_too_complex.json`    | `projects` at 20 per page     | HTTP 400, `INPUT_ERROR`                            |
 | `initiatives.json`          | `queries::initiatives`        | **hand-written**: the free plan disables initiatives, so the sandbox cannot produce one |
@@ -30,3 +32,9 @@ Structure, nullability and value formats are exactly Linear's.
 The live read tests (`crates/cli/tests/live_read.rs`) also rely on this seed data in the sandbox: a second
 status update on `Fixture Project` and a completed project without a lead (`Finished Project`), and an issue template with heading
 nodes (`Sectioned Template`).
+
+The live write test (`crates/cli/tests/live_write.rs`) relies on `Sectioned Template`, `Fixture Project`
+(led by the key's owner) and `Finished Project` (no lead, so writes to it are refused). It cancels the issues it creates.
+
+The `sortOrder` and `prioritySortOrder` of the issues in `issue.json`, `issue_view.json`, `issue_list.json`,
+`assigned_issues.json` and `issue_update.json` were added by hand (the captures predate selecting them).

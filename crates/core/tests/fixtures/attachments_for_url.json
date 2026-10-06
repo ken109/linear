@@ -1,0 +1,15 @@
+{
+  "data": {
+    "attachmentsForURL": {
+      "nodes": [
+        {
+          "issue": {
+            "id": "00000000-0000-4000-8000-000000000003",
+            "identifier": "EX-23",
+            "url": "https://linear.app/example/issue/EX-23/write-the-fixture-issue"
+          }
+        }
+      ]
+    }
+  }
+}

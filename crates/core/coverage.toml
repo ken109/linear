@@ -44,9 +44,19 @@ fields = [
 [[entry]]
 type = "Query"
 status = "implemented"
-via = ["queries::issue", "queries::issue_comments"]
+via = ["queries::issue", "queries::issue_comments", "read::issue_write_view"]
+commands = ["issue update", "issue comment", "issue reorder"]
 fields = [
   "issue",
+]
+
+[[entry]]
+type = "Query"
+status = "implemented"
+via = ["read::attachments_for_url"]
+commands = ["issue create"]
+fields = [
+  "attachmentsForURL",
 ]
 
 [[entry]]
@@ -174,7 +184,7 @@ fields = [
   "_dummy", "administrableTeams", "agentActivities", "agentActivity", "agentSession",
   "agentSessionSandbox", "agentSessionSshAddress", "agentSessions", "agentSkill", "agentSkills",
   "archivedIntegrations", "archivedTeams", "attachmentIssue", "attachmentSources",
-  "attachmentsForURL", "customView", "customViewDetailsSuggestion", "customViewHasSubscribers",
+  "customView", "customViewDetailsSuggestion", "customViewHasSubscribers",
   "customViews", "customer", "customerNeed", "customerNeeds", "customerStatus",
   "customerStatuses", "customerTier", "customerTiers", "customers", "cycle", "cycles", "diff",
   "document", "documentContentHistory", "documentContentHistoryEntries",
@@ -206,9 +216,13 @@ fields = [
 [[entry]]
 type = "Mutation"
 status = "implemented"
-via = ["inputs::issue_update"]
+via = [
+  "inputs::issue_update", "inputs::issue_create", "inputs::issue_delete",
+  "inputs::attachment_create", "inputs::comment_create",
+]
+commands = ["issue create", "issue update", "issue comment", "issue reorder"]
 fields = [
-  "issueUpdate",
+  "attachmentCreate", "commentCreate", "issueCreate", "issueDelete", "issueUpdate",
 ]
 
 [[entry]]
@@ -216,9 +230,9 @@ type = "Mutation"
 status = "unsupported"
 reason = "A write command is planned (milestone 3: writes); until it exists, `linear api` refuses mutations."
 fields = [
-  "attachmentCreate", "attachmentLinkURL", "commentCreate", "commentUpdate", "initiativeCreate",
+  "attachmentLinkURL", "commentUpdate", "initiativeCreate",
   "initiativeToProjectCreate", "initiativeUpdate", "initiativeUpdateCreate", "issueAddLabel",
-  "issueBatchUpdate", "issueCreate", "issueLabelCreate", "issueRelationCreate",
+  "issueBatchUpdate", "issueLabelCreate", "issueRelationCreate",
   "issueRemoveLabel", "projectAddLabel", "projectCreate", "projectMilestoneCreate",
   "projectMilestoneUpdate", "projectRemoveLabel", "projectUpdate", "projectUpdateCreate",
   "projectUpdateUpdate",
@@ -295,7 +309,7 @@ fields = [
 [[entry]]
 type = "Mutation"
 status = "unsupported"
-reason = "Not part of the planned write surface: the CLI creates and updates, it does not delete, archive or restore."
+reason = "Not part of the planned write surface: the CLI creates and updates, it does not delete, archive or restore (its one delete, `issueDelete`, only rolls back an issue it just created)."
 fields = [
   "agentActivityDeleteQueued", "agentSkillDelete", "attachmentDelete", "commentDelete",
   "customViewDelete", "customerDelete", "customerNeedArchive", "customerNeedDelete",
@@ -305,7 +319,7 @@ fields = [
   "fileUploadDangerouslyDelete", "initiativeArchive", "initiativeDelete",
   "initiativeLabelDelete", "initiativeLabelRestore", "initiativeLabelRetire",
   "initiativeRelationDelete", "initiativeToProjectDelete", "initiativeUnarchive",
-  "initiativeUpdateArchive", "initiativeUpdateUnarchive", "issueArchive", "issueDelete",
+  "initiativeUpdateArchive", "initiativeUpdateUnarchive", "issueArchive",
   "issueLabelDelete", "issueLabelRestore", "issueLabelRetire", "issueRelationDelete",
   "issueToReleaseDelete", "issueToReleaseDeleteByIssueAndRelease", "issueUnarchive",
   "issueUnshare", "issueUnsubscribe", "notificationArchive", "notificationArchiveAll",

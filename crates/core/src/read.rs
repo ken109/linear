@@ -94,6 +94,114 @@ pub struct IssueBrief {
 
 nodes_container!(IssueBriefNodes, "IssueConnection", IssueBrief);
 
+// ---------------------------------------------------------------- write context
+//
+// What a write needs to know before it sends anything: who owns the thing
+// (for the write guard) and the names it may refer to (workflow states,
+// milestones). Read-only; shared by every command that writes.
+
+nodes_container!(WorkflowStateNodes, "WorkflowStateConnection", WorkflowState);
+
+/// A team's workflow states, to turn a state name into an id.
+#[derive(cynic::QueryFragment, Debug, Clone, PartialEq)]
+#[cynic(graphql_type = "Team")]
+pub struct TeamStates {
+    #[arguments(first: 50)]
+    pub states: WorkflowStateNodes,
+}
+
+/// A project as the write guard and name resolution see it: its lead and its
+/// milestones.
+#[derive(cynic::QueryFragment, Debug, Clone, PartialEq)]
+#[cynic(graphql_type = "Project")]
+pub struct ProjectOwnership {
+    pub id: cynic::Id,
+    pub slug_id: String,
+    pub name: String,
+    pub url: String,
+    pub lead: Option<User>,
+    #[arguments(first: 100)]
+    pub project_milestones: MilestoneNodes,
+}
+
+impl ProjectOwnership {
+    /// Where an issue in this project sits, as far as ownership is concerned.
+    pub fn placement(&self) -> crate::guard::Placement<'_> {
+        crate::guard::Placement::Project {
+            lead: self.lead.as_ref().map(|u| u.id.inner()),
+        }
+    }
+}
+
+/// What an issue write needs beyond the issue's fixed fragment.
+#[derive(cynic::QueryFragment, Debug, Clone, PartialEq)]
+#[cynic(graphql_type = "Issue")]
+pub struct IssueWriteDetail {
+    pub team: TeamStates,
+    pub project: Option<ProjectOwnership>,
+}
+
+#[derive(cynic::QueryFragment, Debug, Clone, PartialEq)]
+#[cynic(graphql_type = "Query", variables = "IdVars")]
+pub struct IssueWriteView {
+    #[arguments(id: $id)]
+    pub issue: Issue,
+    #[cynic(alias, rename = "issue")]
+    #[arguments(id: $id)]
+    pub write: IssueWriteDetail,
+}
+
+/// `id` is an issue id or an identifier such as `KK-1`.
+pub fn issue_write_view(id: impl Into<String>) -> Operation<IssueWriteView, IdVars> {
+    IssueWriteView::build(IdVars { id: id.into() })
+}
+
+#[derive(cynic::QueryFragment, Debug, Clone, PartialEq)]
+#[cynic(graphql_type = "Query", variables = "IdVars")]
+pub struct ProjectOwnershipQuery {
+    #[arguments(id: $id)]
+    pub project: ProjectOwnership,
+}
+
+/// `id` is the project's id (resolve a name or URL first with `project_refs`).
+pub fn project_ownership(id: impl Into<String>) -> Operation<ProjectOwnershipQuery, IdVars> {
+    ProjectOwnershipQuery::build(IdVars { id: id.into() })
+}
+
+// ---------------------------------------------------------------- issues by origin
+
+#[derive(cynic::QueryVariables, Debug, Clone)]
+pub struct UrlVars {
+    pub url: String,
+}
+
+/// An attachment, reduced to the issue it hangs on.
+#[derive(cynic::QueryFragment, Debug, Clone, PartialEq, Serialize)]
+#[cynic(graphql_type = "Attachment")]
+pub struct AttachmentOwner {
+    pub issue: IssueRef,
+}
+
+nodes_container!(
+    AttachmentOwnerNodes,
+    "AttachmentConnection",
+    AttachmentOwner
+);
+
+#[derive(cynic::QueryFragment, Debug, Clone, PartialEq)]
+#[cynic(graphql_type = "Query", variables = "UrlVars")]
+pub struct AttachmentsForUrlQuery {
+    #[cynic(rename = "attachmentsForURL")]
+    #[arguments(url: $url, first: 1)]
+    pub attachments_for_url: AttachmentOwnerNodes,
+}
+
+/// The issue that carries an attachment with exactly this URL, if any. This is
+/// the lookup behind source idempotence (`source-attachment`).
+pub fn attachments_for_url(url: impl Into<String>) -> Operation<AttachmentsForUrlQuery, UrlVars> {
+    AttachmentsForUrlQuery::build(UrlVars { url: url.into() })
+}
+
 // ---------------------------------------------------------------- projects
 
 #[derive(cynic::QueryVariables, Debug, Clone)]

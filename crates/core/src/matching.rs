@@ -162,6 +162,18 @@ pub fn match_team<'a>(rows: &'a [Team], reference: &str) -> Result<&'a Team> {
     )
 }
 
+/// A workflow state of one team, by id or name.
+pub fn match_state<'a>(rows: &'a [WorkflowState], reference: &str) -> Result<&'a WorkflowState> {
+    pick(
+        rows,
+        "state",
+        reference,
+        |s| s.id.inner() == reference || s.name == reference,
+        |s| same_ignoring_case(&s.name, reference),
+        |s| s.name.clone(),
+    )
+}
+
 /// A user by email, name or display name. `me` is resolved by the caller.
 pub fn match_user<'a>(rows: &'a [User], reference: &str) -> Result<&'a User> {
     pick(
