@@ -5,7 +5,7 @@
 //! are selected under an alias next to the entity's fixed fragment, so a view
 //! is still one request and `list` never pays for the extra fields.
 
-use crate::filters::{InitiativeFilter, IssueFilter, ProjectFilter};
+use crate::filters::{CycleFilter, InitiativeFilter, IssueFilter, ProjectFilter};
 use crate::nodes::{nodes_container, paged_container};
 use crate::queries::CommentNodes;
 use crate::schema;
@@ -207,6 +207,39 @@ pub struct AttachmentsForUrlQuery {
 /// the lookup behind source idempotence (`source-attachment`).
 pub fn attachments_for_url(url: impl Into<String>) -> Operation<AttachmentsForUrlQuery, UrlVars> {
     AttachmentsForUrlQuery::build(UrlVars { url: url.into() })
+}
+
+// ---------------------------------------------------------------- cycles
+
+#[derive(cynic::QueryVariables, Debug, Clone)]
+pub struct CycleListVars {
+    pub first: i32,
+    pub after: Option<String>,
+    pub filter: Option<CycleFilter>,
+}
+
+impl CycleListVars {
+    pub fn new(page: PageVars, filter: Option<CycleFilter>) -> Self {
+        Self {
+            first: page.first,
+            after: page.after,
+            filter,
+        }
+    }
+}
+
+#[derive(cynic::QueryFragment, Debug, Clone, PartialEq)]
+#[cynic(graphql_type = "Query", variables = "CycleListVars")]
+pub struct CycleList {
+    #[arguments(first: $first, after: $after, filter: $filter)]
+    pub cycles: CycleConnection,
+}
+
+pub const CYCLE_LIST_PAGE_SIZE: i32 = 100;
+
+/// The cycles that match `filter` (`CycleQuery::filter` narrows them to a team).
+pub fn cycles(vars: CycleListVars) -> Operation<CycleList, CycleListVars> {
+    CycleList::build(vars)
 }
 
 // ---------------------------------------------------------------- projects

@@ -62,6 +62,15 @@ fields = [
 [[entry]]
 type = "Query"
 status = "implemented"
+via = ["read::cycles"]
+commands = ["cycle", "issue create --held-on"]
+fields = [
+  "cycles",
+]
+
+[[entry]]
+type = "Query"
+status = "implemented"
 via = ["queries::whoami"]
 commands = ["workspace whoami"]
 fields = [
@@ -202,7 +211,7 @@ fields = [
   "archivedIntegrations", "archivedTeams", "attachmentIssue", "attachmentSources",
   "customView", "customViewDetailsSuggestion", "customViewHasSubscribers",
   "customViews", "customer", "customerNeed", "customerNeeds", "customerStatus",
-  "customerStatuses", "customerTier", "customerTiers", "customers", "cycle", "cycles", "diff",
+  "customerStatuses", "customerTier", "customerTiers", "customers", "cycle", "diff",
   "document", "documentContentHistory", "documentContentHistoryEntries",
   "documentContentHistoryTimeline", "documents", "emoji", "emojis", "entityExternalLink",
   "favorite", "favorites", "inboxNotifications", "initiativeFilterSuggestion", "initiativeLabel",

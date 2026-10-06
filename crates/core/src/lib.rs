@@ -9,6 +9,7 @@ pub mod auth;
 pub mod brief;
 pub mod cache;
 pub mod config;
+pub mod cycle;
 pub mod document;
 pub mod error;
 pub mod filters;

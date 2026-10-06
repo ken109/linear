@@ -453,6 +453,24 @@ impl ProjectQuery {
     }
 }
 
+// ---------------------------------------------------------------- cycles
+
+#[derive(cynic::InputObject, Debug, Clone, Default, PartialEq)]
+#[cynic(graphql_type = "CycleFilter")]
+pub struct CycleFilter {
+    #[cynic(skip_serializing_if = "Option::is_none")]
+    pub team: Option<TeamFilter>,
+}
+
+/// The cycles of the team with this key (ignoring case).
+pub fn cycles_of_team(key: &str) -> CycleFilter {
+    CycleFilter {
+        team: Some(TeamFilter {
+            key: Some(StringComparator::eq_ignore_case(key)),
+        }),
+    }
+}
+
 /// What `initiative list` can be narrowed by.
 #[derive(Debug, Clone, Default)]
 pub struct InitiativeQuery {

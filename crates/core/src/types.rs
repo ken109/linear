@@ -425,6 +425,35 @@ impl Issue {
 
 paged_container!(IssueConnection, "IssueConnection", Issue);
 
+// ---------------------------------------------------------------- cycle
+
+/// A team's cycle (a time-boxed iteration). Not part of [`Issue`]'s fixed
+/// fragment: the commands that need a cycle select it themselves.
+#[derive(cynic::QueryFragment, Debug, Clone, PartialEq, Serialize, JsonSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct Cycle {
+    #[schemars(with = "String")]
+    pub id: cynic::Id,
+    /// Linear numbers cycles per team; the schema types it as a float, but it is
+    /// always whole, so it is written as an integer (`7`, not `7.0`).
+    #[serde(serialize_with = "whole_number")]
+    pub number: f64,
+    pub name: Option<String>,
+    pub starts_at: DateTime<Utc>,
+    pub ends_at: DateTime<Utc>,
+}
+
+paged_container!(CycleConnection, "CycleConnection", Cycle);
+
+/// A float that has no fraction as an integer; anything else as it is.
+fn whole_number<S: serde::Serializer>(n: &f64, s: S) -> Result<S::Ok, S::Error> {
+    if n.fract() == 0.0 && n.abs() < 9e15 {
+        s.serialize_i64(*n as i64)
+    } else {
+        s.serialize_f64(*n)
+    }
+}
+
 // ---------------------------------------------------------------- comment
 
 #[derive(cynic::QueryFragment, Debug, Clone, PartialEq, Serialize, JsonSchema)]
