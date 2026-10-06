@@ -107,6 +107,52 @@ result, and the findings that are new since the previous snapshot.
 - Only one refresh per workspace runs at a time, so a statusline that starts one on every render
   does not start a dozen.
 
+## Audit
+
+`linear audit` finds Linear data that has drifted. It works on every configured workspace unless
+`--workspace`, `LINEAR_WORKSPACE` or a `.linear.toml` selects one, and prints findings with the
+command that fixes each (the fix names the workspace with `-w`).
+
+```sh
+linear audit                                    # every rule, every workspace
+linear audit --json -w main
+linear audit --issues KK-1,KK-2                 # only those issues and the projects they belong to
+linear audit --issues KK-1,KK-2 --since 2026-10-06T12:00:00Z   # and report each not updated since then
+linear audit --fail-on actionable               # exit code 6 when there is something for you to fix
+linear audit --cached                           # the last `linear cache refresh`, not Linear
+```
+
+| Rule                      | Finds                                                                                          |
+| ------------------------- | ---------------------------------------------------------------------------------------------- |
+| `project-state-vs-issues` | a project's status that its issues contradict (completed with open issues, ...)                |
+| `overdue`                 | a project, milestone or issue past its target date and still open                              |
+| `issue-without-milestone` | an open issue in a project that has milestones, but in none of them                            |
+| `project-without-lead`    | an open project nobody leads                                                                   |
+| `stale-in-progress`       | an In Progress issue with no update for `stale_days` (7)                                       |
+| `status-update-outdated`  | an In Progress project whose latest status update is older than its issues' last state change, or than `status_update_days` (14) |
+| `template-sections`, `source-attachment`, `label-groups-exclusive` | the workspace's [validator rules](#validator-rules), applied to open issues. An issue does not record its template, so the template whose sections its body shares most is used; a body that shares none follows none |
+| `not-updated-since`       | with `--issues` and `--since`: a named issue not updated since then                            |
+
+A finding is `actionable` when you own its target (you lead the project, or the issue is
+assigned to you) and informational otherwise. `--fail-on actionable` is the only thing that makes
+findings change the exit code (6). An issue named with `--issues` that no audited workspace has is
+listed as `unresolved_issues`, never silently dropped. A workspace that cannot be audited (no
+credentials, Linear unreachable) is listed under `failed_workspaces` and the command exits 1, unless
+`--fail-on` already exits with 6. `--cached` fails with exit 1 when an entry is missing or past its
+TTL: unknown is not clean.
+
+The thresholds are per workspace:
+
+```toml
+[workspaces.main.audit]
+stale_days = 7
+status_update_days = 14
+```
+
+Projects list only their first 100 issues, so the audit fetches issues from the issue side: every
+open issue plus any updated within `status_update_days` + 1 days (a state change updates the issue),
+and the issues named with `--issues` even if they are old and closed.
+
 ## Writing
 
 ```sh
@@ -232,6 +278,9 @@ cargo test --workspace
   ```sh
   LINEAR_API_KEY_SANDBOX=... cargo test -p linear --test live_write -- --ignored
   ```
+
+  `live_audit.rs` needs the discrepancies `scripts/seed-sandbox-audit.py` plants (run it once;
+  it is idempotent and refuses any workspace but the sandbox).
 
 ## License
 

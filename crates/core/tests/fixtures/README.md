@@ -36,5 +36,13 @@ nodes (`Sectioned Template`).
 The live write test (`crates/cli/tests/live_write.rs`) relies on `Sectioned Template`, `Fixture Project`
 (led by the key's owner) and `Finished Project` (no lead, so writes to it are refused). It cancels the issues it creates.
 
+The live audit test (`crates/cli/tests/live_audit.rs`) relies on the projects, milestone and issues named
+`audit-seed ...` that `scripts/seed-sandbox-audit.py` plants (an overdue project without a lead, a completed project with
+an open issue, issues that are late, half-filled, canceled and duplicate). Do not delete them.
+
+The `description` and `canceledAt` of the issues in `issue.json`, `issue_view.json`, `issue_list.json`,
+`assigned_issues.json` and `issue_update.json` were added by hand (the captures predate selecting them; the
+`description` is the one the live `Write the fixture issue` has).
+
 The `sortOrder` and `prioritySortOrder` of the issues in `issue.json`, `issue_view.json`, `issue_list.json`,
 `assigned_issues.json` and `issue_update.json` were added by hand (the captures predate selecting them).
