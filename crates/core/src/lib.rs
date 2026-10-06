@@ -21,6 +21,7 @@ pub mod rules;
 pub mod scalars;
 pub mod template;
 pub mod types;
+pub mod webhook;
 pub mod wire;
 pub mod workspace;
 
