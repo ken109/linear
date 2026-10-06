@@ -28,7 +28,7 @@ In the old tool a flag takes its value as `--flag value`; `<...>` below are valu
 | --- | --- | --- | --- |
 | `login` | `linear workspace login --with-token` | partial | The old tool does an OAuth PKCE login in the browser and refreshes its token. `linear` stores a personal API key (stdin or prompt, or `LINEAR_API_KEY_<NAME>`). `workspace add --auth oauth` exists but OAuth is not implemented. The issuer is the key's owner in both cases. |
 | `whoami` | `linear workspace whoami` | renamed | Prints workspace, user and where the credential came from. Shape differs (see below). |
-| `initiatives` | `linear initiative list --status --owner --limit --all` | renamed | Old: first 100, any status, JSON with `description`. New: default 50, `--all` for every page; the list JSON has no `description` (`initiative view` does). lt-three's old tool leaves out Completed initiatives; use `--status active,planned,proposed,canceled`. |
+| `initiatives` | `linear initiative list --status --owner --limit --all` | renamed | Old: first 100, any status, JSON with `description`. New: default 50, `--all` for every page; the list JSON has `description` too. lt-three's old tool leaves out Completed initiatives; use `--status active,planned,proposed,canceled`. |
 | `create-initiative --name --description-file` | `linear initiative create --name --description-file` | same | Both return the existing initiative when the name is taken. Linear refuses initiatives on the free plan. |
 | `projects` | `linear project list --open --lead --status-type --initiative --limit --all` | renamed | The old tool lists only unfinished projects (first 100, with `initiative`, `status`, `targetDate`, `url`). The equivalent is `project list --open --all`. Without `--open` the new command also lists completed and canceled ones. JSON is Linear's own shape (`status` is an object, initiatives are `initiatives.nodes`). |
 | `templates` | `linear template list --type` | renamed | Same set. |
@@ -37,7 +37,7 @@ In the old tool a flag takes its value as `--flag value`; `<...>` below are valu
 | `create-template --name --body-file --description` | `linear template create --name --body-file --description --team` | same | Same name returns the existing template; a body without a `## heading` is refused. |
 | `create-issue --template --project --title --body-file --source --source-title --milestone --assignee --label` | `linear issue create --template --project --title --body-file --source --source-title --milestone --assignee --label --team --allow-foreign` | same | See "Behaviour". `--template`, `--source` and `--body-file` are required by the old tool; in `linear` the first two are required only when the `template-sections` / `source-attachment` rules are on (`--body-file` is optional). `--allow-foreign` and the ownership rules are new. |
 | `update-issue --id --state --project --milestone --due --assignee` | `linear issue update <ISSUE> --state --project --milestone --due --assignee` | renamed | `--id KK-1` became the positional argument. `--assignee` takes `me`, an email or a name (old: email only). |
-| `issues --project --milestone` | `linear issue list --project --milestone --open --state-type --state --assignee --label --source-url --team --limit --all` | partial | Old: open issues of one project in `sortOrder` order (the order on screen). New: filter with `--open`; the order is Linear's default, not `sortOrder` (the JSON has `sortOrder` to sort by). See gap G5. |
+| `issues --project --milestone` | `linear issue list --project --milestone --open --order manual --state-type --state --assignee --label --source-url --team --limit --all` | renamed | Old: open issues of one project in `sortOrder` order (the order on screen). New: `--open --order manual` gives that order; `linear` sorts after fetching every page, because Linear cannot sort by `sortOrder`. Without `--order manual` the order is Linear's own. |
 | `reorder-issues --ids KK-1,KK-2` | `linear issue reorder <ISSUE>...` | renamed | Identifiers are positional, space or comma separated. Both write `sortOrder` and `prioritySortOrder`. |
 | `comment --id --body-file` | `linear issue comment <ISSUE> --body-file` | renamed | |
 | `create-project --name --summary --content-file --target-date --initiative --lead` | `linear project create --name --summary --body-file --target-date --initiative --lead --template --team` | renamed | `--content-file` is `--body-file`. In the old tool `--summary` and the body file are required; here they are optional. |
@@ -55,9 +55,9 @@ Only in lt-three's old tool:
 
 | Old command | New command | Status | Notes |
 | --- | --- | --- | --- |
-| `open-issues` | `linear issue list --open --all` | partial | The old command also returns issues closed within the last 14 days (for duplicate checks). `linear` has no completed-since filter. See gap G5. |
-| `cycle <date>` | | not provided | Resolves the cycle a meeting's commitments go into. Needed for lt-three's minutes workflow. |
-| `create-issue --held-on` | | not provided | Puts the new issue (or an existing one without a cycle) in that cycle. |
+| `open-issues` | `linear issue list --open --completed-since 14d --all --team` | renamed | The old command returns the open issues of its team and the ones completed or canceled within the last 14 days (for duplicate checks); next to `--open`, `--completed-since` is the same union. `issue list` has no default team, so pass `--team LT3` if the workspace has more than one. Fields differ (Linear's own shape, see below). |
+| `cycle <date>` | `linear cycle <DATE> --team` | renamed | Same rule (the cycle that contains the day after the meeting, judged at noon JST) and the same answer on lt-three. When there is none both fail and list the cycles there are (exit 1 old, exit 2 new). `--json` has `workspace`, `team`, `heldOn` and `name` besides `id`, `number`, `startsAt`, `endsAt`. |
+| `create-issue --held-on` | `linear issue create --held-on` | same | New issues get the cycle (the lookup runs before anything is created); an issue found by its source URL gets it only when it has none, and nothing else of it is touched. The lookup by source needs the `source-attachment` rule (the old tool always looked); `--json` reports `cycle` and `changed`. |
 | client credentials (`LINEAR_CLIENT_SECRET`, app token for CI) | `auth = "client_credentials"` in the workspace | same | Same grant as `tools/linear-auth.ts` (token endpoint, scope `read,write,initiative:write`, `LINEAR_CLIENT_ID` / `LINEAR_CLIENT_SECRET`), chosen per workspace instead of by the implicit credential order. The old tool let `LINEAR_API_KEY` win over the secret; here the workspace's `auth` decides. See the README. |
 
 New in `linear` (no old equivalent):
@@ -101,6 +101,7 @@ by a validator) and English messages; with `--json` the error is `{"error":{"cod
 | issue body that misses or leaves empty a template section | 1 | 5 | no / no |
 | unknown `--template` on `create-issue` | 1 | 5 | no / no |
 | `--source` that is not an http(s) URL | 1 | 5 | no / no (see below) |
+| a meeting day that no cycle contains (`cycle`, `create-issue --held-on`) | 1 | 2 | no / no |
 | delete a milestone that still holds an issue | 1 | 1 | no / no |
 | unknown issue (`update-issue`, `comment`, `reorder`) | 1 | 1 | no / no |
 
@@ -148,6 +149,8 @@ Success output of the old tool is a small JSON object (`{id, url}`, `{id, identi
 | `create-milestone` → `{id, name, targetDate}` | the milestone with `description`, `progress`, `status`, `sortOrder`, `project` |
 | `status-update` → `{id, url, health}` | the status update with `body`, `createdAt`, `user`, `project` |
 | `reorder-issues` → `{updated, unchanged}` | same keys (+ `workspace`) |
+| `cycle` → `{id, number, startsAt, endsAt}` | same keys (`number` stays an integer; timestamps lose the `.000`), plus `workspace`, `team`, `heldOn`, `name` |
+| `open-issues` → rows of `{id, identifier, title, url, updatedAt, state: {name, type}, project: {id, name}, assignee}` (`assignee` is the email, else the name) | `issue list --json`: Linear's own issue shape (`assignee` is the user object with `email` and `name`) |
 | `projects` → `status` is a string, `initiative` the first initiative name | `project list --json`: `status.name`, `initiatives.nodes[].name` |
 | `delete-milestone` → `{id, name, deleted}` | same keys (+ `workspace`) |
 
@@ -182,18 +185,19 @@ real workspaces (read-only; same login, so the same data), 2026-10-07.
 | --- | --- | --- |
 | open projects (`projects` / `project list --open --all`): set, name, status, target date, URL, initiative | same (8) | same (11) |
 | initiatives (`initiatives` / `initiative list --all`): set and name | same (1) | same (7; the old tool leaves out Completed) |
-| initiative `description` | **not in `initiative list --json`** (it is in `initiative view`) | same |
+| initiative `description` (`initiatives` / `initiative list --all --json`) | same (1) | same (7) |
 | templates (`templates` / `template list`): id, name, type, description | same (3) | same (5) |
 | `skeletons` / `template skeleton`, text | identical (27 lines) | identical (27 lines) |
 | `template <name>` / `template skeleton <name>` for every issue template | identical (3) | identical (3) |
 | `milestones` / `milestone list`: id, name, target date, for every open project | same (8 projects) | same (11 projects) |
 | `issues --project` / `issue list --project --open --all`: set, title, state, milestone | same set (47 issues in 8 projects) | the old tool has no `issues` |
-| `issues --project` order | **differs in 5 of 8 projects**: the old tool sorts by `sortOrder` (screen order), `linear` uses Linear's default order | n/a |
+| `issues --project` order (`issue list --open --all --order manual`) | same order in all 8 projects (before `--order manual` it differed in 5 of 8: the old tool sorts by `sortOrder`, the screen order) | n/a |
 | `status` / `project list`: which projects the old rule shows (started, or with an update), their health and "no update" marks | same (5 projects) | same (2) |
 | `status --project` / `project view`: latest update body, milestone names | same (5 projects) | same (2) |
 | `status --project`: earlier updates | old shows 3, `linear` 4 (it fetches 5 and shows them) | same |
-| `open-issues` / `issue list --open --all` | n/a | old 63, new 45: the 18 only in the old output are issues closed in the last 14 days (LT3-201 ... LT3-258) that `linear` has no filter for |
-| `cycle`, `create-issue --held-on` | n/a | not provided |
+| `open-issues` / `issue list --open --completed-since 14d --all` | n/a | same set (63); with plain `--open` it was 45, the 18 others being the issues closed in the last 14 days |
+| `cycle <date>` / `cycle <DATE>` | n/a | same cycle (id, number, start, end) for 2026-09-28, 10-05, 10-06, 10-12 and 10-19 (cycles #4 ... #7); a date no cycle contains fails in both and lists #1 ... #7 |
+| `create-issue --held-on` | n/a | not compared (a write; the sandbox team has no cycles, so it is covered by the mock tests of `crates/cli/tests/cycle.rs`) |
 
 Not compared: write commands (nothing is written to a real workspace), and `status --session` (it
 only prints when run from the hook).
@@ -206,13 +210,13 @@ done), **acceptable** (a known difference that callers can adapt to), **improvem
 
 | # | Gap | Severity |
 | --- | --- | --- |
-| G1 | Closed: `linear brief` replaces `status` (the markdown brief of unfinished projects with health, preview and a stale mark) and `linear brief --session` replaces `status --session` (the SessionStart hook: silent on failure, skipped in CI, 4 s budget). ken109's `session-start.sh` can call it instead of `tools/linear.ts`. | closed |
+| G1 | Closed: `linear brief` replaces `status` (the markdown brief of unfinished projects with health, preview and a stale mark) and `linear brief --session` replaces `status --session` (the SessionStart hook: silent on failure, skipped in CI, 4 s budget). ken109's `session-start.sh` can call it instead of `tools/linear.ts`. | **closed** |
 | G2 | No OAuth: `linear` uses a personal API key (`workspace add --auth oauth` is "not implemented"). Fine for ken109 (the creator is the key's owner, as with the OAuth login), but lt-three's CI creates issues as the app through client credentials (`LINEAR_CLIENT_SECRET`), which `linear` cannot do. | **closed** for client credentials: `auth = "client_credentials"` (id from `client_id` or `LINEAR_CLIENT_ID`, secret from `LINEAR_CLIENT_SECRET` only), token kept in memory, replaced on expiry or a refusal. This reverses the earlier decision to leave client credentials out; lt-three's CI needs them. Not implemented: the browser (PKCE) login, and checked only against a mock server (no app credential was available) |
-| G3 | lt-three only: `cycle <date>`, `create-issue --held-on` (cycle assignment, also for an existing issue without a cycle) and `open-issues` with recently closed issues have no equivalent. | blocks lt-three's minutes workflow |
+| G3 | lt-three only: `cycle <date>`, `create-issue --held-on` (cycle assignment, also for an existing issue without a cycle) and `open-issues` with recently closed issues had no equivalent. Now `linear cycle`, `issue create --held-on` and `issue list --open --completed-since 14d`. | **closed** |
 | G4 | Ownership rules (always on, exit 4) refuse writes the old tool allowed: updating an issue that is neither assigned to you nor in a project you lead, creating an issue assigned to someone else in a project you do not lead (`--allow-foreign` only covers issues assigned to you). lt-three's workflow creates issues for other members. | **closed**: `ownership = "lenient"` per workspace (default `strict`) allows creating issues for others and changing issues owned by others; projects, and canceling an issue that is not yours, stay refused (see the README) |
-| G5 | `issue list` cannot sort by `sortOrder`, the order `issue reorder` writes and the screen shows. The old `issues --project` printed that order; the JSON has `sortOrder`, so `jq 'sort_by(.sortOrder)'` works. | acceptable (workaround); an `--order manual` would remove it |
-| G6 | `initiative list --json` has no `description` (the old `initiatives` did); `initiative view` has it. | improvement |
-| G7 | No "closed since" filter on `issue list` (`--completed-since`), which lt-three's duplicate check used (14 days). Part of G3. | improvement |
+| G5 | `issue list` could not sort by `sortOrder`, the order `issue reorder` writes and the screen shows. Now `issue list --order manual`. | **closed** |
+| G6 | `initiative list --json` had no `description` (the old `initiatives` did). Now it has. | **closed** |
+| G7 | No "closed since" filter on `issue list`, which lt-three's duplicate check used (14 days). Now `issue list --completed-since` (`14d` or a date), also in the `open-issues` union with `--open`; part of G3. | **closed** |
 | G8 | Output shape of every write changed (see "Output shape"): skills and hooks that read `state`, `project`, `milestone`, `status` as strings must read `state.name`, ... Messages are English; the exit code is no longer always 1. | acceptable (one-time update of the skills) |
 | G9 | The default title of the source attachment is `Source` instead of `出どころ`. | **closed**: `source_title = "出どころ"` in the workspace sets the default for `issue create --source` and for a new attachment of `issue update --source` (the unset default stays `Source`) |
 | G10 | `template-sections` is applied to project bodies by default (exit 5 without `--template`); the old tool only checked issues. | acceptable (`rule_operations` mirrors the old behaviour) |
