@@ -158,8 +158,8 @@ without one is shown so that a forgotten update is noticed). Newest update first
 one last. For each: the initiative, the health and author of the latest update, its first three
 lines (list markers removed, long lines cut), the milestones done and the next one, and `**stale**`
 once the update is `--stale-days` old (default: `status_update_days` of the workspace's `[audit]`,
-14, the threshold `linear audit` uses). Ages are whole days; dates are shown in the machine's time
-zone. `--json` prints the same facts as data (`workspace`, `staleDays`, and per project `health`,
+14, the threshold `linear audit` uses). Dates are shown, and ages counted in calendar days, in the
+machine's time zone (an update written at 23:00 is "1 day ago" the next morning). `--json` prints the same facts as data (`workspace`, `staleDays`, and per project `health`,
 `update` with `ageDays`, `stale` and `preview`, and `milestones`); `--quiet` prints the slug ids.
 There is no `--cached`: the cache holds only the projects of your issues In Progress, which is
 another set.

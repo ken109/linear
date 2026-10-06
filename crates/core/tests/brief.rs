@@ -1,6 +1,7 @@
 //! The brief of unfinished projects, against a fixture of six projects:
 //!
-//! - in progress with a recent update, milestones (3 lines of 4 shown, a list marker removed)
+//! - in progress with an update exactly on the stale threshold, milestones (3 lines of 4
+//!   shown, a list marker removed)
 //! - in progress with no update ("no update" mark, last)
 //! - paused with a stale update by someone else (blank lines, numbered lines, a long line)
 //! - backlog with no update (not shown)
@@ -32,6 +33,10 @@ fn jst() -> FixedOffset {
 }
 
 fn brief_with(stale_days: u32) -> Brief {
+    brief_in(stale_days, jst())
+}
+
+fn brief_in(stale_days: u32, offset: FixedOffset) -> Brief {
     let meta = ResponseMeta {
         status: 200,
         ..Default::default()
@@ -42,10 +47,7 @@ fn brief_with(stale_days: u32) -> Brief {
         "example",
         &list.projects.nodes,
         now(),
-        &BriefOptions {
-            stale_days,
-            offset: jst(),
-        },
+        &BriefOptions { stale_days, offset },
     )
 }
 
@@ -98,11 +100,29 @@ fn an_update_is_stale_from_the_threshold_on() {
         (u.age_days, u.stale)
     };
     let brief = brief_with(14);
-    assert_eq!(age(&brief, "aaaaaaaaaaaa"), (13, false));
+    // eeee: 2026-10-07 in JST; aaaa: 2026-10-06 in JST (22:34); now is 2026-10-20 (21:00).
+    assert_eq!(age(&brief, "eeeeeeeeeeee"), (13, false));
+    assert_eq!(age(&brief, "aaaaaaaaaaaa"), (14, true));
     assert_eq!(age(&brief, "cccccccccccc"), (80, true));
     // The threshold is "this many days or more".
-    assert_eq!(age(&brief_with(13), "aaaaaaaaaaaa"), (13, true));
+    assert_eq!(age(&brief_with(13), "eeeeeeeeeeee"), (13, true));
+    assert_eq!(age(&brief_with(15), "aaaaaaaaaaaa"), (14, false));
     assert_eq!(age(&brief_with(100_000), "cccccccccccc"), (80, false));
+}
+
+#[test]
+fn days_are_calendar_days_of_the_offset_not_elapsed_hours() {
+    // aaaa was written 2026-10-06 13:34 UTC, 13 days and 22 hours before now (the 20th, 12:00
+    // UTC). Elapsed time says 13 days; the calendar says 14, unless the offset puts the update
+    // just after midnight and now just before it (UTC+11: the 7th 00:34, and the 20th 23:00).
+    let aaaa = |hours: i32| {
+        let brief = brief_in(14, FixedOffset::east_opt(hours * 3600).unwrap());
+        let p = brief.projects.iter().find(|p| p.slug_id == "aaaaaaaaaaaa");
+        p.unwrap().update.as_ref().unwrap().age_days
+    };
+    assert_eq!(aaaa(9), 14);
+    assert_eq!(aaaa(0), 14);
+    assert_eq!(aaaa(11), 13);
 }
 
 #[test]
@@ -130,9 +150,21 @@ fn nothing_to_show_renders_as_nothing() {
 
 #[test]
 fn dates_are_shown_in_the_given_offset() {
-    // eeee was written 2026-10-07 00:30 UTC: still the 7th in UTC, but 09:30 in JST.
-    let brief = brief_with(14);
-    assert!(render_markdown(&brief, jst()).contains("2026-10-07 (13 days ago)"));
+    // eeee was written 2026-10-07 00:30 UTC: the 7th in UTC and in JST (09:30), the 6th at UTC-5.
+    let line = |offset| {
+        let md = render_markdown(&brief_in(14, offset), offset);
+        md.lines()
+            .find(|l| l.ends_with("off track · Alice Example"))
+            .unwrap()
+            .to_owned()
+    };
+    assert_eq!(
+        line(jst()),
+        "  - 2026-10-07 (13 days ago) off track · Alice Example"
+    );
     let west = FixedOffset::west_opt(5 * 3600).unwrap();
-    assert!(render_markdown(&brief, west).contains("2026-10-06 (13 days ago)"));
+    assert_eq!(
+        line(west),
+        "  - 2026-10-06 (14 days ago, **stale**) off track · Alice Example"
+    );
 }

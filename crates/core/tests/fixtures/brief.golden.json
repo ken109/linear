@@ -36,8 +36,8 @@
       "update": {
         "url": "https://linear.app/example/project/aaaaaaaaaaaa/activity#u",
         "createdAt": "2026-10-06T13:34:22.881Z",
-        "ageDays": 13,
-        "stale": false,
+        "ageDays": 14,
+        "stale": true,
         "author": "Alice Example",
         "preview": [
           "Stage: parser done, writer in progress",

@@ -7,7 +7,7 @@
 //! as `project list`; the staleness threshold is the audit's
 //! `status_update_days`.
 //!
-//! Pure: `now` and the UTC offset used to show dates come from the caller.
+//! Pure: `now` and the UTC offset used to show dates and count days come from the caller.
 
 use crate::types::{
     Milestone, Project, ProjectMilestoneStatus, ProjectStatusType, ProjectUpdateHealthType,
@@ -24,10 +24,10 @@ pub const PREVIEW_WIDTH: usize = 120;
 /// What the brief is built with.
 #[derive(Debug, Clone, Copy)]
 pub struct BriefOptions {
-    /// A status update this many whole days old (or more) is stale. The audit's
+    /// A status update this many days old (or more) is stale. The audit's
     /// `status_update_days`, 14 by default.
     pub stale_days: u32,
-    /// The offset dates are shown in (the reader's local time).
+    /// The offset dates are shown and days are counted in (the reader's local time).
     pub offset: FixedOffset,
 }
 
@@ -64,7 +64,7 @@ pub struct BriefProject {
 pub struct BriefUpdate {
     pub url: String,
     pub created_at: DateTime<Utc>,
-    /// Whole days since it was written.
+    /// Calendar days since it was written, in the offset of [`BriefOptions`].
     pub age_days: i64,
     /// `age_days` has reached the threshold.
     pub stale: bool,
@@ -126,7 +126,10 @@ pub fn build(
 
 fn entry(p: &Project, now: DateTime<Utc>, options: &BriefOptions) -> BriefProject {
     let update = p.last_update.as_ref().map(|u| {
-        let age_days = (now - u.created_at).num_days();
+        // Calendar days in the reader's time zone, so that an update written at 23:00
+        // is "1 day ago" the next morning and the age agrees with the date shown.
+        let day = |t: DateTime<Utc>| t.with_timezone(&options.offset).date_naive();
+        let age_days = (day(now) - day(u.created_at)).num_days();
         BriefUpdate {
             url: u.url.clone(),
             created_at: u.created_at,

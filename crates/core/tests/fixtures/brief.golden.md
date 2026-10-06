@@ -6,7 +6,7 @@
     > Next: ask for it.
   - Milestones 1/1 done
 - **Ship the importer** (Platform) `aaaaaaaaaaaa`
-  - 2026-10-06 (13 days ago) on track · Alice Example
+  - 2026-10-06 (14 days ago, **stale**) on track · Alice Example
     > Stage: parser done, writer in progress
     > Next: wire the retry queue
     > Waiting: nothing
