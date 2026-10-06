@@ -1,0 +1,59 @@
+{
+  "name": "@ken109/linear-wasm",
+  "version": "0.1.0",
+  "description": "The pure core of the linear CLI (requests, responses, audit, refresh decisions, webhook checks) compiled to WebAssembly, with generated TypeScript types and zod schemas.",
+  "license": "MIT",
+  "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ken109/linear.git",
+    "directory": "packages/linear-wasm"
+  },
+  "sideEffects": false,
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./workers": {
+      "types": "./dist/workers.d.ts",
+      "default": "./dist/workers.js"
+    },
+    "./schemas": {
+      "types": "./dist/schemas.d.ts",
+      "default": "./dist/schemas.js"
+    },
+    "./linear.wasm": "./dist/wasm/linear_wasm_bg.wasm",
+    "./schema.json": "./schema.json",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist",
+    "schema.json",
+    "README.md"
+  ],
+  "scripts": {
+    "schema": "cargo run -q -p linear-wasm --example schema > schema.json",
+    "generate": "node scripts/generate.mjs",
+    "build:wasm": "sh scripts/build-wasm.sh",
+    "build": "sh scripts/build.sh",
+    "pack": "sh scripts/pack.sh",
+    "typecheck": "npm run generate && tsc --noEmit",
+    "test": "npm run generate && node --test \"test/*.test.ts\""
+  },
+  "peerDependencies": {
+    "zod": "^4.0.0"
+  },
+  "peerDependenciesMeta": {
+    "zod": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "typescript": "^5.9.0",
+    "zod": "^4.6.0"
+  }
+}

@@ -1,0 +1,2493 @@
+{
+  "$defs": {
+    "AssignedStartedIssues": {
+      "properties": {
+        "viewer": {
+          "$ref": "#/$defs/ViewerAssignedStarted"
+        }
+      },
+      "required": [
+        "viewer"
+      ],
+      "type": "object"
+    },
+    "Attachment": {
+      "properties": {
+        "createdAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "sourceType": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "subtitle": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "title": {
+          "type": "string"
+        },
+        "url": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "title",
+        "subtitle",
+        "url",
+        "sourceType",
+        "createdAt"
+      ],
+      "type": "object"
+    },
+    "AttachmentNodes": {
+      "properties": {
+        "nodes": {
+          "items": {
+            "$ref": "#/$defs/Attachment"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "nodes"
+      ],
+      "type": "object"
+    },
+    "AuditConfig": {
+      "additionalProperties": false,
+      "description": "Audit settings, per workspace.",
+      "properties": {
+        "stale_days": {
+          "default": 7,
+          "description": "`stale-in-progress`: an In Progress issue with no update for this many\ndays is stale.",
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "status_update_days": {
+          "default": 14,
+          "description": "`status-update-outdated`: a project's latest status update this many\ndays old is outdated.",
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "validators": {
+          "default": [],
+          "description": "Validator rules to apply to existing issues: the workspace's enabled\nrules. `template-sections` needs [`Snapshot::templates`]; an issue does\nnot record which template it came from, so the closest one is used.",
+          "items": {
+            "$ref": "#/$defs/Rule"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "stale_days",
+        "status_update_days",
+        "validators"
+      ],
+      "type": "object"
+    },
+    "AuditOptions": {
+      "description": "What an audit is narrowed to (`audit --issues KK-1,KK-2 --since <time>`).",
+      "properties": {
+        "issues": {
+          "default": null,
+          "description": "Issue identifiers, matched without regard to case.",
+          "items": {
+            "type": "string"
+          },
+          "type": [
+            "array",
+            "null"
+          ]
+        },
+        "since": {
+          "default": null,
+          "description": "The time those issues must have been updated at or after.",
+          "format": "date-time",
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "issues",
+        "since"
+      ],
+      "type": "object"
+    },
+    "AuditReport": {
+      "description": "The result of one audit of one workspace.",
+      "properties": {
+        "findings": {
+          "description": "Sorted by rule, then target kind, then target identifier.",
+          "items": {
+            "$ref": "#/$defs/Finding"
+          },
+          "type": "array"
+        },
+        "unresolved_issues": {
+          "default": [],
+          "description": "Issue identifiers asked for with `issues` that the snapshot does not\ncontain. They could not be checked, which is not the same as passing.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "findings",
+        "unresolved_issues"
+      ],
+      "type": "object"
+    },
+    "BuiltRequest": {
+      "description": "What `build_request` returns: where and what to POST.",
+      "properties": {
+        "body": {
+          "description": "The JSON text to send as the request body.",
+          "type": "string"
+        },
+        "url": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "url",
+        "body"
+      ],
+      "type": "object"
+    },
+    "Comment": {
+      "properties": {
+        "body": {
+          "type": "string"
+        },
+        "createdAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "issue": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/IssueRef"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "updatedAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "url": {
+          "type": "string"
+        },
+        "user": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/User"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "id",
+        "url",
+        "body",
+        "createdAt",
+        "updatedAt",
+        "user",
+        "issue"
+      ],
+      "type": "object"
+    },
+    "CommentNodes": {
+      "properties": {
+        "nodes": {
+          "items": {
+            "$ref": "#/$defs/Comment"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "nodes"
+      ],
+      "type": "object"
+    },
+    "ErrorBody": {
+      "description": "What a failed call reports.",
+      "properties": {
+        "apiCode": {
+          "description": "For a GraphQL error: Linear's own `extensions.code` (`INPUT_ERROR`, ...).",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "code": {
+          "$ref": "#/$defs/ErrorCodeName"
+        },
+        "message": {
+          "type": "string"
+        },
+        "retryAfterSecs": {
+          "description": "For a rate-limit error: how long to wait, if Linear said.",
+          "format": "uint64",
+          "minimum": 0,
+          "type": [
+            "integer",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "code",
+        "message"
+      ],
+      "type": "object"
+    },
+    "ErrorCodeName": {
+      "description": "The `code` of an error. These are `linear_core::ErrorCode::as_str`.",
+      "enum": [
+        "error",
+        "usage",
+        "auth",
+        "write_denied",
+        "validation",
+        "audit_findings"
+      ],
+      "type": "string"
+    },
+    "Failure": {
+      "description": "Why the last refresh failed, and when.",
+      "properties": {
+        "at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "message": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "at",
+        "message"
+      ],
+      "type": "object"
+    },
+    "Finding": {
+      "description": "One problem the audit found.",
+      "properties": {
+        "actionable": {
+          "description": "`true` when the viewer owns the target (leads the project, or is\nassigned the issue) and can fix it. Everything else is informational.",
+          "type": "boolean"
+        },
+        "fix": {
+          "description": "A command that fixes it. Placeholders such as `<state>` stand for a\nvalue the person has to choose.",
+          "type": "string"
+        },
+        "message": {
+          "type": "string"
+        },
+        "rule": {
+          "$ref": "#/$defs/RuleId"
+        },
+        "severity": {
+          "$ref": "#/$defs/Severity"
+        },
+        "target": {
+          "$ref": "#/$defs/Target"
+        },
+        "workspace": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "rule",
+        "severity",
+        "workspace",
+        "target",
+        "message",
+        "actionable",
+        "fix"
+      ],
+      "type": "object"
+    },
+    "Freshness": {
+      "description": "Whether an entry may be trusted.",
+      "oneOf": [
+        {
+          "description": "Fetched within the TTL.",
+          "properties": {
+            "age_secs": {
+              "format": "uint64",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "state": {
+              "const": "fresh",
+              "type": "string"
+            }
+          },
+          "required": [
+            "state",
+            "age_secs"
+          ],
+          "type": "object"
+        },
+        {
+          "description": "Fetched, but longer ago than the TTL: treat as unknown.",
+          "properties": {
+            "age_secs": {
+              "format": "uint64",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "state": {
+              "const": "expired",
+              "type": "string"
+            }
+          },
+          "required": [
+            "state",
+            "age_secs"
+          ],
+          "type": "object"
+        },
+        {
+          "description": "Never fetched successfully.",
+          "properties": {
+            "state": {
+              "const": "missing",
+              "type": "string"
+            }
+          },
+          "required": [
+            "state"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "HttpMeta": {
+      "additionalProperties": false,
+      "description": "The HTTP facts `parse_response` needs besides the body.",
+      "properties": {
+        "rateLimitResetMs": {
+          "description": "`X-RateLimit-Requests-Reset`: epoch milliseconds.",
+          "format": "int64",
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "retryAfterSecs": {
+          "description": "`Retry-After`, in seconds.",
+          "format": "uint64",
+          "minimum": 0,
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "status": {
+          "format": "uint16",
+          "maximum": 65535,
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "status"
+      ],
+      "type": "object"
+    },
+    "IdParams": {
+      "additionalProperties": false,
+      "description": "An issue, project, milestone or initiative: its id, or for issues and\nprojects its identifier (`KK-12`, a project slug).",
+      "properties": {
+        "id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "type": "object"
+    },
+    "Initiative": {
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "owner": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/User"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "slugId": {
+          "type": "string"
+        },
+        "status": {
+          "$ref": "#/$defs/InitiativeStatus"
+        },
+        "targetDate": {
+          "format": "date",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "url": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "slugId",
+        "name",
+        "url",
+        "status",
+        "targetDate",
+        "owner"
+      ],
+      "type": "object"
+    },
+    "InitiativeConnection": {
+      "properties": {
+        "nodes": {
+          "items": {
+            "$ref": "#/$defs/Initiative"
+          },
+          "type": "array"
+        },
+        "pageInfo": {
+          "$ref": "#/$defs/PageInfo"
+        }
+      },
+      "required": [
+        "nodes",
+        "pageInfo"
+      ],
+      "type": "object"
+    },
+    "InitiativeDetail": {
+      "description": "What an initiative `view` shows beyond the initiative's fixed fragment.",
+      "properties": {
+        "description": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "projects": {
+          "$ref": "#/$defs/ProjectBriefNodes"
+        }
+      },
+      "required": [
+        "description",
+        "projects"
+      ],
+      "type": "object"
+    },
+    "InitiativeRef": {
+      "description": "A reference to an initiative from a project.",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "url": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "url"
+      ],
+      "type": "object"
+    },
+    "InitiativeRefNodes": {
+      "properties": {
+        "nodes": {
+          "items": {
+            "$ref": "#/$defs/InitiativeRef"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "nodes"
+      ],
+      "type": "object"
+    },
+    "InitiativeStatus": {
+      "type": "string",
+      "x-known-values": [
+        "Active",
+        "Canceled",
+        "Completed",
+        "Planned",
+        "Proposed"
+      ]
+    },
+    "InitiativeView": {
+      "properties": {
+        "detail": {
+          "$ref": "#/$defs/InitiativeDetail"
+        },
+        "initiative": {
+          "$ref": "#/$defs/Initiative"
+        }
+      },
+      "required": [
+        "initiative",
+        "detail"
+      ],
+      "type": "object"
+    },
+    "Initiatives": {
+      "properties": {
+        "initiatives": {
+          "$ref": "#/$defs/InitiativeConnection"
+        }
+      },
+      "required": [
+        "initiatives"
+      ],
+      "type": "object"
+    },
+    "Issue": {
+      "properties": {
+        "assignee": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/User"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "attachments": {
+          "$ref": "#/$defs/AttachmentNodes"
+        },
+        "canceledAt": {
+          "format": "date-time",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "completedAt": {
+          "format": "date-time",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "createdAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "description": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "dueDate": {
+          "format": "date",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "estimate": {
+          "format": "double",
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "id": {
+          "type": "string"
+        },
+        "identifier": {
+          "type": "string"
+        },
+        "labels": {
+          "$ref": "#/$defs/LabelNodes"
+        },
+        "parent": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/IssueRef"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "prioritySortOrder": {
+          "description": "Position in a priority-order view, Linear's default (ascending, top first).\n`reorder` writes it together with `sort_order`.",
+          "format": "double",
+          "type": "number"
+        },
+        "project": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ProjectRef"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "projectMilestone": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Milestone"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "sortOrder": {
+          "description": "Position in a manual-order view (ascending, top first). `reorder` writes it.",
+          "format": "double",
+          "type": "number"
+        },
+        "startedAt": {
+          "format": "date-time",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "state": {
+          "$ref": "#/$defs/WorkflowState"
+        },
+        "team": {
+          "$ref": "#/$defs/Team"
+        },
+        "title": {
+          "type": "string"
+        },
+        "updatedAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "url": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "identifier",
+        "title",
+        "description",
+        "url",
+        "team",
+        "state",
+        "assignee",
+        "project",
+        "projectMilestone",
+        "labels",
+        "dueDate",
+        "estimate",
+        "sortOrder",
+        "prioritySortOrder",
+        "createdAt",
+        "updatedAt",
+        "startedAt",
+        "completedAt",
+        "canceledAt",
+        "parent",
+        "attachments"
+      ],
+      "type": "object"
+    },
+    "IssueBrief": {
+      "description": "An issue reduced to what a list inside another entity needs.",
+      "properties": {
+        "assignee": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/User"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "id": {
+          "type": "string"
+        },
+        "identifier": {
+          "type": "string"
+        },
+        "state": {
+          "$ref": "#/$defs/WorkflowState"
+        },
+        "title": {
+          "type": "string"
+        },
+        "url": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "identifier",
+        "title",
+        "url",
+        "state",
+        "assignee"
+      ],
+      "type": "object"
+    },
+    "IssueBriefNodes": {
+      "properties": {
+        "nodes": {
+          "items": {
+            "$ref": "#/$defs/IssueBrief"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "nodes"
+      ],
+      "type": "object"
+    },
+    "IssueById": {
+      "properties": {
+        "issue": {
+          "$ref": "#/$defs/Issue"
+        }
+      },
+      "required": [
+        "issue"
+      ],
+      "type": "object"
+    },
+    "IssueCommentsQuery": {
+      "properties": {
+        "issue": {
+          "$ref": "#/$defs/IssueWithComments"
+        }
+      },
+      "required": [
+        "issue"
+      ],
+      "type": "object"
+    },
+    "IssueConnection": {
+      "properties": {
+        "nodes": {
+          "items": {
+            "$ref": "#/$defs/Issue"
+          },
+          "type": "array"
+        },
+        "pageInfo": {
+          "$ref": "#/$defs/PageInfo"
+        }
+      },
+      "required": [
+        "nodes",
+        "pageInfo"
+      ],
+      "type": "object"
+    },
+    "IssueDetail": {
+      "description": "What a `view` shows beyond the issue's fixed fragment.",
+      "properties": {
+        "comments": {
+          "$ref": "#/$defs/CommentNodes"
+        },
+        "priority": {
+          "format": "double",
+          "type": "number"
+        },
+        "priorityLabel": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "priority",
+        "priorityLabel",
+        "comments"
+      ],
+      "type": "object"
+    },
+    "IssueRef": {
+      "description": "A reference to an issue from another entity.",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "identifier": {
+          "type": "string"
+        },
+        "url": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "identifier",
+        "url"
+      ],
+      "type": "object"
+    },
+    "IssueStateConnection": {
+      "properties": {
+        "nodes": {
+          "items": {
+            "$ref": "#/$defs/IssueStateRef"
+          },
+          "type": "array"
+        },
+        "pageInfo": {
+          "$ref": "#/$defs/PageInfo"
+        }
+      },
+      "required": [
+        "nodes",
+        "pageInfo"
+      ],
+      "type": "object"
+    },
+    "IssueStateRef": {
+      "description": "The state of an issue, selected only to count issues per state type.",
+      "properties": {
+        "state": {
+          "$ref": "#/$defs/WorkflowState"
+        }
+      },
+      "required": [
+        "state"
+      ],
+      "type": "object"
+    },
+    "IssueView": {
+      "properties": {
+        "detail": {
+          "$ref": "#/$defs/IssueDetail"
+        },
+        "issue": {
+          "$ref": "#/$defs/Issue"
+        }
+      },
+      "required": [
+        "issue",
+        "detail"
+      ],
+      "type": "object"
+    },
+    "IssueWithComments": {
+      "properties": {
+        "comments": {
+          "$ref": "#/$defs/CommentNodes"
+        }
+      },
+      "required": [
+        "comments"
+      ],
+      "type": "object"
+    },
+    "Label": {
+      "properties": {
+        "color": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "isGroup": {
+          "type": "boolean"
+        },
+        "name": {
+          "type": "string"
+        },
+        "parent": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/LabelGroup"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "color",
+        "isGroup",
+        "parent"
+      ],
+      "type": "object"
+    },
+    "LabelConnection": {
+      "properties": {
+        "nodes": {
+          "items": {
+            "$ref": "#/$defs/Label"
+          },
+          "type": "array"
+        },
+        "pageInfo": {
+          "$ref": "#/$defs/PageInfo"
+        }
+      },
+      "required": [
+        "nodes",
+        "pageInfo"
+      ],
+      "type": "object"
+    },
+    "LabelGroup": {
+      "description": "The group a label belongs to.",
+      "properties": {
+        "groupType": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/LabelGroupType"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "groupType"
+      ],
+      "type": "object"
+    },
+    "LabelGroupType": {
+      "type": "string",
+      "x-known-values": [
+        "multiSelect",
+        "singleSelect"
+      ]
+    },
+    "LabelNodes": {
+      "properties": {
+        "nodes": {
+          "items": {
+            "$ref": "#/$defs/Label"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "nodes"
+      ],
+      "type": "object"
+    },
+    "Labels": {
+      "properties": {
+        "issueLabels": {
+          "$ref": "#/$defs/LabelConnection"
+        }
+      },
+      "required": [
+        "issueLabels"
+      ],
+      "type": "object"
+    },
+    "Milestone": {
+      "properties": {
+        "description": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "progress": {
+          "format": "double",
+          "type": "number"
+        },
+        "project": {
+          "$ref": "#/$defs/ProjectRef"
+        },
+        "sortOrder": {
+          "format": "double",
+          "type": "number"
+        },
+        "status": {
+          "$ref": "#/$defs/ProjectMilestoneStatus"
+        },
+        "targetDate": {
+          "format": "date",
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "description",
+        "targetDate",
+        "status",
+        "sortOrder",
+        "progress",
+        "project"
+      ],
+      "type": "object"
+    },
+    "MilestoneDetail": {
+      "description": "What a milestone `view` shows beyond the milestone's fixed fragment.",
+      "properties": {
+        "issues": {
+          "$ref": "#/$defs/IssueBriefNodes"
+        }
+      },
+      "required": [
+        "issues"
+      ],
+      "type": "object"
+    },
+    "MilestoneNodes": {
+      "properties": {
+        "nodes": {
+          "items": {
+            "$ref": "#/$defs/Milestone"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "nodes"
+      ],
+      "type": "object"
+    },
+    "MilestoneView": {
+      "properties": {
+        "detail": {
+          "$ref": "#/$defs/MilestoneDetail"
+        },
+        "projectMilestone": {
+          "$ref": "#/$defs/Milestone"
+        }
+      },
+      "required": [
+        "projectMilestone",
+        "detail"
+      ],
+      "type": "object"
+    },
+    "MilestonesOfProject": {
+      "properties": {
+        "project": {
+          "$ref": "#/$defs/ProjectMilestones"
+        }
+      },
+      "required": [
+        "project"
+      ],
+      "type": "object"
+    },
+    "Mine": {
+      "description": "What the viewer looks at in one workspace, as of one successful fetch.",
+      "properties": {
+        "findings": {
+          "description": "The result of the audit.",
+          "items": {
+            "$ref": "#/$defs/Finding"
+          },
+          "type": "array"
+        },
+        "issues": {
+          "description": "Issues assigned to the viewer whose state type is `started`.",
+          "items": {
+            "$ref": "#/$defs/Issue"
+          },
+          "type": "array"
+        },
+        "new_findings": {
+          "description": "The findings that were not in the previous snapshot's audit: what a\nnotifier should report once.",
+          "items": {
+            "$ref": "#/$defs/Finding"
+          },
+          "type": "array"
+        },
+        "projects": {
+          "description": "The projects those issues belong to.",
+          "items": {
+            "$ref": "#/$defs/Project"
+          },
+          "type": "array"
+        },
+        "viewer": {
+          "$ref": "#/$defs/User",
+          "description": "The authenticated user (\"me\") in this workspace."
+        }
+      },
+      "required": [
+        "viewer",
+        "issues",
+        "projects",
+        "findings",
+        "new_findings"
+      ],
+      "type": "object"
+    },
+    "NoParams": {
+      "additionalProperties": false,
+      "description": "No parameters.",
+      "type": "object"
+    },
+    "Organization": {
+      "description": "The workspace itself, as Linear names it.",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "urlKey": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "urlKey"
+      ],
+      "type": "object"
+    },
+    "PageInfo": {
+      "description": "Relay page info.",
+      "properties": {
+        "endCursor": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "hasNextPage": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "hasNextPage",
+        "endCursor"
+      ],
+      "type": "object"
+    },
+    "PageParams": {
+      "additionalProperties": false,
+      "description": "One page of a listing. Both fields may be left out: the first page, at the\nsize that stays under Linear's query-complexity limit for that listing.",
+      "properties": {
+        "after": {
+          "description": "The `endCursor` of the previous page.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "first": {
+          "description": "How many items to ask for.",
+          "format": "int32",
+          "type": [
+            "integer",
+            "null"
+          ]
+        }
+      },
+      "type": "object"
+    },
+    "Project": {
+      "properties": {
+        "health": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ProjectUpdateHealthType"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "id": {
+          "type": "string"
+        },
+        "initiatives": {
+          "$ref": "#/$defs/InitiativeRefNodes"
+        },
+        "issues": {
+          "$ref": "#/$defs/IssueStateConnection"
+        },
+        "lastUpdate": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/StatusUpdate"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "lead": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/User"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "name": {
+          "type": "string"
+        },
+        "projectMilestones": {
+          "$ref": "#/$defs/MilestoneNodes"
+        },
+        "slugId": {
+          "type": "string"
+        },
+        "startDate": {
+          "format": "date",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "status": {
+          "$ref": "#/$defs/ProjectStatus"
+        },
+        "targetDate": {
+          "format": "date",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "updatedAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "url": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "slugId",
+        "name",
+        "url",
+        "status",
+        "lead",
+        "startDate",
+        "targetDate",
+        "health",
+        "projectMilestones",
+        "initiatives",
+        "lastUpdate",
+        "issues",
+        "updatedAt"
+      ],
+      "type": "object"
+    },
+    "ProjectBrief": {
+      "description": "A project reduced to what a list inside another entity needs.",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "slugId": {
+          "type": "string"
+        },
+        "status": {
+          "$ref": "#/$defs/ProjectStatus"
+        },
+        "targetDate": {
+          "format": "date",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "url": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "slugId",
+        "name",
+        "url",
+        "status",
+        "targetDate"
+      ],
+      "type": "object"
+    },
+    "ProjectBriefNodes": {
+      "properties": {
+        "nodes": {
+          "items": {
+            "$ref": "#/$defs/ProjectBrief"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "nodes"
+      ],
+      "type": "object"
+    },
+    "ProjectConnection": {
+      "properties": {
+        "nodes": {
+          "items": {
+            "$ref": "#/$defs/Project"
+          },
+          "type": "array"
+        },
+        "pageInfo": {
+          "$ref": "#/$defs/PageInfo"
+        }
+      },
+      "required": [
+        "nodes",
+        "pageInfo"
+      ],
+      "type": "object"
+    },
+    "ProjectDetail": {
+      "description": "What a project `view` shows beyond the project's fixed fragment.",
+      "properties": {
+        "content": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "description": {
+          "type": "string"
+        },
+        "projectUpdates": {
+          "$ref": "#/$defs/StatusUpdateNodes"
+        }
+      },
+      "required": [
+        "description",
+        "content",
+        "projectUpdates"
+      ],
+      "type": "object"
+    },
+    "ProjectMilestoneStatus": {
+      "type": "string",
+      "x-known-values": [
+        "done",
+        "next",
+        "overdue",
+        "unstarted"
+      ]
+    },
+    "ProjectMilestones": {
+      "properties": {
+        "projectMilestones": {
+          "$ref": "#/$defs/MilestoneNodes"
+        }
+      },
+      "required": [
+        "projectMilestones"
+      ],
+      "type": "object"
+    },
+    "ProjectRef": {
+      "description": "A reference to a project from another entity.",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "slugId": {
+          "type": "string"
+        },
+        "url": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "slugId",
+        "name",
+        "url"
+      ],
+      "type": "object"
+    },
+    "ProjectStatus": {
+      "description": "A project's status (the project-level analogue of a workflow state).",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "type": {
+          "$ref": "#/$defs/ProjectStatusType"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "type"
+      ],
+      "type": "object"
+    },
+    "ProjectStatusType": {
+      "type": "string",
+      "x-known-values": [
+        "backlog",
+        "planned",
+        "started",
+        "paused",
+        "completed",
+        "canceled"
+      ]
+    },
+    "ProjectUpdateHealthType": {
+      "type": "string",
+      "x-known-values": [
+        "onTrack",
+        "atRisk",
+        "offTrack"
+      ]
+    },
+    "ProjectView": {
+      "properties": {
+        "detail": {
+          "$ref": "#/$defs/ProjectDetail"
+        },
+        "project": {
+          "$ref": "#/$defs/Project"
+        }
+      },
+      "required": [
+        "project",
+        "detail"
+      ],
+      "type": "object"
+    },
+    "Projects": {
+      "properties": {
+        "projects": {
+          "$ref": "#/$defs/ProjectConnection"
+        }
+      },
+      "required": [
+        "projects"
+      ],
+      "type": "object"
+    },
+    "RefreshDecision": {
+      "description": "The answer.",
+      "properties": {
+        "freshness": {
+          "$ref": "#/$defs/Freshness",
+          "description": "What a reader should make of the *current* contents, whatever is\ndecided about refreshing them."
+        },
+        "reason": {
+          "$ref": "#/$defs/RefreshReason"
+        },
+        "refresh": {
+          "description": "Fetch from Linear now.",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "refresh",
+        "reason",
+        "freshness"
+      ],
+      "type": "object"
+    },
+    "RefreshEvent": {
+      "description": "What prompted the question.",
+      "oneOf": [
+        {
+          "description": "A reader wants the snapshot (a hook, the statusline, a page load).",
+          "properties": {
+            "kind": {
+              "const": "read",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        },
+        {
+          "description": "A scheduled run. It is a safety net behind webhooks, so it refreshes\nonce the snapshot is half way to stale.",
+          "properties": {
+            "kind": {
+              "const": "cron",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        },
+        {
+          "description": "A verified webhook delivery arrived.",
+          "properties": {
+            "action": {
+              "type": "string"
+            },
+            "kind": {
+              "const": "webhook",
+              "type": "string"
+            },
+            "resourceType": {
+              "description": "The delivery's resource type (`WebhookEvent::resource_type`).",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "resourceType",
+            "action"
+          ],
+          "type": "object"
+        },
+        {
+          "description": "A person asked for a refresh (`linear cache refresh`).",
+          "properties": {
+            "kind": {
+              "const": "manual",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "RefreshMeta": {
+      "additionalProperties": false,
+      "description": "What is known about a cached snapshot (a cache entry without its data).",
+      "properties": {
+        "failureBackoffSecs": {
+          "description": "Seconds to wait after a failure. Default [`DEFAULT_FAILURE_BACKOFF_SECS`].",
+          "format": "uint64",
+          "minimum": 0,
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "fetchedAt": {
+          "description": "When the last *successful* fetch finished. `None`: never fetched.",
+          "format": "date-time",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "lastFailureAt": {
+          "description": "When the most recent fetch failed, if the latest attempt failed.",
+          "format": "date-time",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "schemaVersion": {
+          "description": "The `schema_version` the snapshot was written with.",
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "ttlSecs": {
+          "description": "Seconds a snapshot stays fresh. Default [`DEFAULT_TTL_SECS`].",
+          "format": "uint64",
+          "minimum": 0,
+          "type": [
+            "integer",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "schemaVersion"
+      ],
+      "type": "object"
+    },
+    "RefreshReason": {
+      "description": "Why the decision is what it is.",
+      "oneOf": [
+        {
+          "const": "never-fetched",
+          "description": "Refresh: there is nothing cached.",
+          "type": "string"
+        },
+        {
+          "const": "schema-changed",
+          "description": "Refresh: the cache was written by a different `schema_version`, so it\nis treated as missing.",
+          "type": "string"
+        },
+        {
+          "const": "manual",
+          "description": "Refresh: a person asked.",
+          "type": "string"
+        },
+        {
+          "const": "webhook",
+          "description": "Refresh: a webhook says something the snapshot holds changed.",
+          "type": "string"
+        },
+        {
+          "const": "ttl-expired",
+          "description": "Refresh: the snapshot is older than the TTL.",
+          "type": "string"
+        },
+        {
+          "const": "cron-due",
+          "description": "Refresh: a scheduled run found the snapshot half way to stale.",
+          "type": "string"
+        },
+        {
+          "const": "fresh",
+          "description": "Leave it: the snapshot is within the TTL.",
+          "type": "string"
+        },
+        {
+          "const": "irrelevant-event",
+          "description": "Leave it: the webhook is about something a snapshot does not hold.",
+          "type": "string"
+        },
+        {
+          "const": "backing-off",
+          "description": "Leave it: the last fetch failed a moment ago; try again later.",
+          "type": "string"
+        }
+      ]
+    },
+    "RefreshStatus": {
+      "description": "How the last refresh went.",
+      "enum": [
+        "ok",
+        "failed"
+      ],
+      "type": "string"
+    },
+    "Rejection": {
+      "description": "Why a delivery was not accepted.",
+      "oneOf": [
+        {
+          "const": "malformed-signature",
+          "description": "The signature is not 64 hex digits.",
+          "type": "string"
+        },
+        {
+          "const": "signature-mismatch",
+          "description": "The signature is well formed but is not the one for this body and secret.",
+          "type": "string"
+        },
+        {
+          "const": "malformed-body",
+          "description": "The signature is right but the body is not a webhook payload.",
+          "type": "string"
+        },
+        {
+          "const": "missing-timestamp",
+          "description": "The signature is right but the body has no `webhookTimestamp`.",
+          "type": "string"
+        },
+        {
+          "const": "stale-timestamp",
+          "description": "The signature is right but the delivery is too old (or from the future).",
+          "type": "string"
+        }
+      ]
+    },
+    "Rule": {
+      "description": "A validator rule that can be enabled per workspace.",
+      "enum": [
+        "template-sections",
+        "source-attachment",
+        "label-groups-exclusive"
+      ],
+      "type": "string"
+    },
+    "RuleId": {
+      "description": "Which rule produced a finding. The declaration order is the order findings\nare reported in.",
+      "oneOf": [
+        {
+          "const": "project-state-vs-issues",
+          "description": "A project's status disagrees with the states of its issues.",
+          "type": "string"
+        },
+        {
+          "const": "overdue",
+          "description": "A project, milestone or issue is past its target date and still open.",
+          "type": "string"
+        },
+        {
+          "const": "issue-without-milestone",
+          "description": "An open issue sits in a project that has milestones, but in none of them.",
+          "type": "string"
+        },
+        {
+          "const": "project-without-lead",
+          "description": "A project that is not closed has no lead.",
+          "type": "string"
+        },
+        {
+          "const": "stale-in-progress",
+          "description": "An issue has been In Progress without any update for too long.",
+          "type": "string"
+        },
+        {
+          "const": "status-update-outdated",
+          "description": "An In Progress project's latest status update is out of date.",
+          "type": "string"
+        },
+        {
+          "const": "template-sections",
+          "description": "A validator rule (`template-sections`) applied to an existing issue.",
+          "type": "string"
+        },
+        {
+          "const": "source-attachment",
+          "description": "A validator rule (`source-attachment`) applied to an existing issue.",
+          "type": "string"
+        },
+        {
+          "const": "label-groups-exclusive",
+          "description": "A validator rule (`label-groups-exclusive`) applied to an existing issue.",
+          "type": "string"
+        },
+        {
+          "const": "not-updated-since",
+          "description": "An issue the caller said it touched was not updated since a given time.",
+          "type": "string"
+        }
+      ]
+    },
+    "Severity": {
+      "description": "How much a finding matters.",
+      "oneOf": [
+        {
+          "const": "warn",
+          "description": "Linear's data is wrong or out of date.",
+          "type": "string"
+        },
+        {
+          "const": "info",
+          "description": "Housekeeping: worth knowing, nothing is broken.",
+          "type": "string"
+        }
+      ]
+    },
+    "Snapshot": {
+      "description": "Everything the audit looks at, for one workspace.\n\n`issues` should hold the open issues worth auditing plus any issue whose\nstate changed recently; the rules only see what is here.",
+      "properties": {
+        "issues": {
+          "items": {
+            "$ref": "#/$defs/Issue"
+          },
+          "type": "array"
+        },
+        "projects": {
+          "items": {
+            "$ref": "#/$defs/Project"
+          },
+          "type": "array"
+        },
+        "templates": {
+          "default": [],
+          "description": "The workspace's issue templates, for `template-sections`. Only needed\nwhen that rule is enabled.",
+          "items": {
+            "$ref": "#/$defs/Template"
+          },
+          "type": "array"
+        },
+        "workspace": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "workspace",
+        "issues",
+        "projects",
+        "templates"
+      ],
+      "type": "object"
+    },
+    "StateType": {
+      "type": "string",
+      "x-known-values": [
+        "triage",
+        "backlog",
+        "unstarted",
+        "started",
+        "completed",
+        "canceled",
+        "duplicate"
+      ]
+    },
+    "StatusUpdate": {
+      "description": "A project status update (Linear's `ProjectUpdate`).",
+      "properties": {
+        "body": {
+          "type": "string"
+        },
+        "createdAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "health": {
+          "$ref": "#/$defs/ProjectUpdateHealthType"
+        },
+        "id": {
+          "type": "string"
+        },
+        "project": {
+          "$ref": "#/$defs/ProjectRef"
+        },
+        "updatedAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "url": {
+          "type": "string"
+        },
+        "user": {
+          "$ref": "#/$defs/User"
+        }
+      },
+      "required": [
+        "id",
+        "url",
+        "body",
+        "health",
+        "createdAt",
+        "updatedAt",
+        "user",
+        "project"
+      ],
+      "type": "object"
+    },
+    "StatusUpdateNodes": {
+      "properties": {
+        "nodes": {
+          "items": {
+            "$ref": "#/$defs/StatusUpdate"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "nodes"
+      ],
+      "type": "object"
+    },
+    "Target": {
+      "description": "The thing a finding is about.",
+      "properties": {
+        "id": {
+          "description": "Linear's id; with the workspace it identifies the target.",
+          "type": "string"
+        },
+        "identifier": {
+          "description": "What a person calls it: the issue identifier (`KK-12`), the project's\nslug id, or the milestone's name.",
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/TargetKind"
+        },
+        "title": {
+          "type": "string"
+        },
+        "url": {
+          "description": "A link to the target (a milestone links to its project).",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "id",
+        "identifier",
+        "title",
+        "url"
+      ],
+      "type": "object"
+    },
+    "TargetKind": {
+      "enum": [
+        "project",
+        "milestone",
+        "issue"
+      ],
+      "type": "string"
+    },
+    "Team": {
+      "description": "A team.",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "key": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "key",
+        "name"
+      ],
+      "type": "object"
+    },
+    "TeamConnection": {
+      "properties": {
+        "nodes": {
+          "items": {
+            "$ref": "#/$defs/Team"
+          },
+          "type": "array"
+        },
+        "pageInfo": {
+          "$ref": "#/$defs/PageInfo"
+        }
+      },
+      "required": [
+        "nodes",
+        "pageInfo"
+      ],
+      "type": "object"
+    },
+    "Teams": {
+      "properties": {
+        "teams": {
+          "$ref": "#/$defs/TeamConnection"
+        }
+      },
+      "required": [
+        "teams"
+      ],
+      "type": "object"
+    },
+    "Template": {
+      "properties": {
+        "description": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "team": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Team"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "templateData": true,
+        "type": {
+          "type": "string"
+        },
+        "updatedAt": {
+          "format": "date-time",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "description",
+        "type",
+        "team",
+        "templateData",
+        "updatedAt"
+      ],
+      "type": "object"
+    },
+    "Templates": {
+      "properties": {
+        "templates": {
+          "items": {
+            "$ref": "#/$defs/Template"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "templates"
+      ],
+      "type": "object"
+    },
+    "User": {
+      "description": "A person.",
+      "properties": {
+        "active": {
+          "type": "boolean"
+        },
+        "displayName": {
+          "type": "string"
+        },
+        "email": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "isMe": {
+          "type": "boolean"
+        },
+        "name": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "displayName",
+        "email",
+        "active",
+        "isMe"
+      ],
+      "type": "object"
+    },
+    "UserConnection": {
+      "properties": {
+        "nodes": {
+          "items": {
+            "$ref": "#/$defs/User"
+          },
+          "type": "array"
+        },
+        "pageInfo": {
+          "$ref": "#/$defs/PageInfo"
+        }
+      },
+      "required": [
+        "nodes",
+        "pageInfo"
+      ],
+      "type": "object"
+    },
+    "Users": {
+      "properties": {
+        "users": {
+          "$ref": "#/$defs/UserConnection"
+        }
+      },
+      "required": [
+        "users"
+      ],
+      "type": "object"
+    },
+    "UsersParams": {
+      "additionalProperties": false,
+      "description": "A page of users.",
+      "properties": {
+        "after": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "first": {
+          "format": "int32",
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "includeDisabled": {
+          "description": "Also list users who have been disabled.",
+          "type": [
+            "boolean",
+            "null"
+          ]
+        }
+      },
+      "type": "object"
+    },
+    "Verification": {
+      "description": "The outcome of checking a delivery.",
+      "oneOf": [
+        {
+          "properties": {
+            "event": {
+              "$ref": "#/$defs/WebhookEvent"
+            },
+            "status": {
+              "const": "valid",
+              "type": "string"
+            }
+          },
+          "required": [
+            "status",
+            "event"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "reason": {
+              "$ref": "#/$defs/Rejection"
+            },
+            "status": {
+              "const": "invalid",
+              "type": "string"
+            }
+          },
+          "required": [
+            "status",
+            "reason"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "ViewerAssignedStarted": {
+      "properties": {
+        "assignedIssues": {
+          "$ref": "#/$defs/IssueConnection"
+        }
+      },
+      "required": [
+        "assignedIssues"
+      ],
+      "type": "object"
+    },
+    "WebhookEvent": {
+      "description": "What a verified delivery says about itself.",
+      "properties": {
+        "action": {
+          "description": "`create`, `update` or `remove`.",
+          "type": "string"
+        },
+        "organizationId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "type": {
+          "description": "The kind of resource: `Issue`, `Project`, `ProjectUpdate`, ...",
+          "type": "string"
+        },
+        "webhookTimestamp": {
+          "description": "When Linear sent it, in epoch milliseconds.",
+          "format": "int64",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "action",
+        "type",
+        "organizationId",
+        "webhookTimestamp"
+      ],
+      "type": "object"
+    },
+    "Whoami": {
+      "description": "The authenticated user and the workspace the credential belongs to.",
+      "properties": {
+        "organization": {
+          "$ref": "#/$defs/Organization"
+        },
+        "viewer": {
+          "$ref": "#/$defs/User"
+        }
+      },
+      "required": [
+        "viewer",
+        "organization"
+      ],
+      "type": "object"
+    },
+    "WorkflowState": {
+      "description": "A workflow state. Decide on [`WorkflowState::state_type`], never on the\nname: names are per-team and renamable, types are not.",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "type": {
+          "$ref": "#/$defs/StateType"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "type"
+      ],
+      "type": "object"
+    },
+    "WorkspaceCache": {
+      "description": "The cache entry of one workspace.",
+      "properties": {
+        "attempted_at": {
+          "description": "When the last attempt finished, whether it worked or not.",
+          "format": "date-time",
+          "type": "string"
+        },
+        "data": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Mine"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The last successful snapshot. `None` while no fetch has ever succeeded."
+        },
+        "failure": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Failure"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The last failure. Kept until a later refresh succeeds."
+        },
+        "fetched_at": {
+          "description": "When `data` was fetched. `None` while no fetch has ever succeeded.",
+          "format": "date-time",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "schema_version": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "status": {
+          "$ref": "#/$defs/RefreshStatus",
+          "description": "How the last attempt went."
+        },
+        "workspace": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "schema_version",
+        "workspace",
+        "status",
+        "attempted_at",
+        "fetched_at",
+        "failure",
+        "data"
+      ],
+      "type": "object"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "operations": {
+    "assigned_started_issues": {
+      "data": {
+        "$ref": "#/$defs/AssignedStartedIssues"
+      },
+      "params": {
+        "$ref": "#/$defs/PageParams"
+      }
+    },
+    "initiative_view": {
+      "data": {
+        "$ref": "#/$defs/InitiativeView"
+      },
+      "params": {
+        "$ref": "#/$defs/IdParams"
+      }
+    },
+    "initiatives": {
+      "data": {
+        "$ref": "#/$defs/Initiatives"
+      },
+      "params": {
+        "$ref": "#/$defs/PageParams"
+      }
+    },
+    "issue": {
+      "data": {
+        "$ref": "#/$defs/IssueById"
+      },
+      "params": {
+        "$ref": "#/$defs/IdParams"
+      }
+    },
+    "issue_comments": {
+      "data": {
+        "$ref": "#/$defs/IssueCommentsQuery"
+      },
+      "params": {
+        "$ref": "#/$defs/IdParams"
+      }
+    },
+    "issue_view": {
+      "data": {
+        "$ref": "#/$defs/IssueView"
+      },
+      "params": {
+        "$ref": "#/$defs/IdParams"
+      }
+    },
+    "labels": {
+      "data": {
+        "$ref": "#/$defs/Labels"
+      },
+      "params": {
+        "$ref": "#/$defs/PageParams"
+      }
+    },
+    "milestone_view": {
+      "data": {
+        "$ref": "#/$defs/MilestoneView"
+      },
+      "params": {
+        "$ref": "#/$defs/IdParams"
+      }
+    },
+    "milestones_of_project": {
+      "data": {
+        "$ref": "#/$defs/MilestonesOfProject"
+      },
+      "params": {
+        "$ref": "#/$defs/IdParams"
+      }
+    },
+    "project_view": {
+      "data": {
+        "$ref": "#/$defs/ProjectView"
+      },
+      "params": {
+        "$ref": "#/$defs/IdParams"
+      }
+    },
+    "projects": {
+      "data": {
+        "$ref": "#/$defs/Projects"
+      },
+      "params": {
+        "$ref": "#/$defs/PageParams"
+      }
+    },
+    "teams": {
+      "data": {
+        "$ref": "#/$defs/Teams"
+      },
+      "params": {
+        "$ref": "#/$defs/PageParams"
+      }
+    },
+    "templates": {
+      "data": {
+        "$ref": "#/$defs/Templates"
+      },
+      "params": {
+        "$ref": "#/$defs/NoParams"
+      }
+    },
+    "users": {
+      "data": {
+        "$ref": "#/$defs/Users"
+      },
+      "params": {
+        "$ref": "#/$defs/UsersParams"
+      }
+    },
+    "whoami": {
+      "data": {
+        "$ref": "#/$defs/Whoami"
+      },
+      "params": {
+        "$ref": "#/$defs/NoParams"
+      }
+    }
+  },
+  "schemaVersion": 1,
+  "title": "linear-wasm"
+}
