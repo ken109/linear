@@ -119,6 +119,7 @@ linear template skeleton "Bug report"                       # the sections, read
 linear label list                                           # groups first, each followed by its labels
 linear team list
 linear user view me
+linear brief                                                # where each unfinished project stands
 ```
 
 Listings return at most 50 results; `--limit <N>` changes that and `--all` follows every page.
@@ -126,6 +127,52 @@ When a listing was cut short, a note goes to stderr (also with `--json` and `--q
 Nothing is filtered unless asked for: use `--open` to leave out completed and canceled work.
 `--json` prints Linear's own shape plus a `workspace` field; `--quiet` prints one key per line
 (issue identifier, project or initiative slug, milestone or template name, team key, user email).
+
+## Brief
+
+`linear brief` prints where each unfinished project stands, as markdown: the brief to read when a
+session starts. Unlike `linear status` (below) it asks Linear, not the cache.
+
+```console
+$ linear brief
+## Linear project status (main: projects in progress)
+
+- **Ship the importer** (Platform) `1a2b3c4d5e6f`
+  - 2026-10-06 (1 day ago) on track · Alice
+    > Stage: parser done, writer in progress
+    > Next: wire the retry queue
+    > Waiting: nothing
+  - Milestones 1/3 done · next: Writer (2026-10-20, 40%)
+- **Old research** `9f8e7d6c5b4a`
+  - 2026-08-01 (80 days ago, **stale**) at risk · Bob
+    > Stage: waiting for the vendor
+- **Tidy the backlog** `0a1b2c3d4e5f`
+  - No status update
+
+Details: `linear project view <slug>`. **A status update 14 days old or more is stale: check it before relying on it.**
+```
+
+A project is shown when it is not completed or canceled and it is In Progress or has a status
+update (one still in the backlog that has an update is being worked on; an In Progress project
+without one is shown so that a forgotten update is noticed). Newest update first, projects without
+one last. For each: the initiative, the health and author of the latest update, its first three
+lines (list markers removed, long lines cut), the milestones done and the next one, and `**stale**`
+once the update is `--stale-days` old (default: `status_update_days` of the workspace's `[audit]`,
+14, the threshold `linear audit` uses). Ages are whole days; dates are shown in the machine's time
+zone. `--json` prints the same facts as data (`workspace`, `staleDays`, and per project `health`,
+`update` with `ageDays`, `stale` and `preview`, and `milestones`); `--quiet` prints the slug ids.
+There is no `--cached`: the cache holds only the projects of your issues In Progress, which is
+another set.
+
+`linear brief --session` is for a SessionStart hook, where the output becomes part of the session's
+context and a failure must never get in the way of the session starting. It prints nothing in CI
+(when the `CI` environment variable is set, checked before anything else), prints nothing and
+exits 0 when anything fails (no credentials, offline, a bad key, a Linear error), and gives up after
+4 seconds in all, whatever is still running.
+
+```sh
+linear brief --session     # a SessionStart hook command
+```
 
 ## Cache
 
