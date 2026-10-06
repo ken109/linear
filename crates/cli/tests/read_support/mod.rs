@@ -57,3 +57,8 @@ pub fn stdout_json(o: &Output) -> serde_json::Value {
 pub fn assert_no_leak(o: &Output) {
     assert!(!stdout(o).contains(KEY) && !stderr(o).contains(KEY));
 }
+
+/// The `ProjectRefs` response used to resolve `Fixture Project`.
+pub const PROJECT_REFS: &str = r#"{"data":{"projects":{"nodes":[
+    {"id":"00000000-0000-4000-8000-000000000006","slugId":"aaaaaaaaaaaa","name":"Fixture Project","url":"https://linear.app/example/project/fixture-project-aaaaaaaaaaaa"}
+],"pageInfo":{"hasNextPage":false,"endCursor":null}}}}"#;

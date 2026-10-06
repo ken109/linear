@@ -13,9 +13,13 @@ Structure, nullability and value formats are exactly Linear's.
 | `projects.json`             | `queries::projects`           | status update, milestone                           |
 | `issue_list.json`           | `read::issue_list`            | `assigned_issues.json`'s page under `issues`       |
 | `issue_view.json`           | `read::issue_view`            | `issue.json` plus the live shape of the `detail` alias (description, priority, comments) |
+| `project_view.json`         | `read::project_view`          | `projects.json` with a second, newer status update (newest first) and an initiative; `detail` shape verified live |
 | `issue_comments.json`       | `queries::issue_comments`     |                                                    |
 | `templates.json`            | `queries::templates`          | `templateData` is a JSON document inside a string  |
 | `issue_update.json`         | `inputs::issue_update`        |                                                    |
 | `error_unauthenticated.json`| any, with a bad key           | HTTP 401                                           |
 | `error_too_complex.json`    | `projects` at 20 per page     | HTTP 400, `INPUT_ERROR`                            |
 | `initiatives.json`          | `queries::initiatives`        | **hand-written**: the free plan disables initiatives, so the sandbox cannot produce one |
+
+The live read tests (`crates/cli/tests/live_read.rs`) also rely on this seed data in the sandbox: a second
+status update on `Fixture Project` and a completed project without a lead (`Finished Project`).

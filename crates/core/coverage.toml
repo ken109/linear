@@ -86,6 +86,7 @@ fields = [
 type = "Query"
 status = "implemented"
 via = ["read::project_list", "read::project_refs", "read::project_view", "read::milestones_of_project"]
+commands = ["project list", "project view"]
 fields = [
   "project",
 ]

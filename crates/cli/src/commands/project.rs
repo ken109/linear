@@ -1,0 +1,318 @@
+//! `linear project list|view`.
+
+use super::format::{
+    date_time, fields, first_line, health, indent, milestone_status, opt_date, percent, person,
+    project_status_type,
+};
+use super::listing::{paginate, resolve_project, warn_truncated, ListArgs};
+use super::Ctx;
+use crate::error::Result;
+use crate::output::table;
+use clap::{Args, Subcommand};
+use linear_core::filters::ProjectQuery;
+use linear_core::queries::PROJECTS_PAGE_SIZE;
+use linear_core::read::{
+    self, ProjectDetail, ProjectList, ProjectListVars, ProjectView, PROJECT_VIEW_UPDATES,
+};
+use linear_core::types::{IssueCounts, Project};
+use serde::Serialize;
+
+#[derive(Debug, Subcommand)]
+pub enum ProjectCommand {
+    /// List projects with lead, status, target date and the latest status update
+    List(ListCmd),
+    /// Show one project: milestones, issue counts and status updates
+    View(ViewCmd),
+}
+
+const STATUS_TYPES: [&str; 6] = [
+    "backlog",
+    "planned",
+    "started",
+    "paused",
+    "completed",
+    "canceled",
+];
+
+#[derive(Debug, Args)]
+pub struct ListCmd {
+    /// Lead: `me`, `none`, an email, or a name
+    #[arg(long, value_name = "WHO")]
+    pub lead: Option<String>,
+    /// Status type (repeatable or comma-separated)
+    #[arg(long, value_name = "TYPE", value_delimiter = ',', value_parser = STATUS_TYPES)]
+    pub status_type: Vec<String>,
+    /// Only projects that are not completed or canceled
+    #[arg(long, conflicts_with = "status_type")]
+    pub open: bool,
+    /// Initiative name, ignoring case
+    #[arg(long, value_name = "NAME")]
+    pub initiative: Option<String>,
+    #[command(flatten)]
+    pub page: ListArgs,
+}
+
+#[derive(Debug, Args)]
+pub struct ViewCmd {
+    /// Project id, slug id, URL or name
+    pub project: String,
+    /// Also print the project's content document
+    #[arg(long)]
+    pub content: bool,
+}
+
+pub fn run(ctx: &Ctx, cmd: &ProjectCommand) -> Result<()> {
+    match cmd {
+        ProjectCommand::List(args) => list(ctx, args),
+        ProjectCommand::View(args) => view(ctx, args),
+    }
+}
+
+/// A project as `--json` prints it: Linear's fields, the workspace, and the
+/// issue counts by state type.
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct ProjectOut<'a> {
+    workspace: &'a str,
+    #[serde(flatten)]
+    project: &'a Project,
+    issue_counts: IssueCounts,
+}
+
+fn out<'a>(workspace: &'a str, project: &'a Project) -> ProjectOut<'a> {
+    ProjectOut {
+        workspace,
+        project,
+        issue_counts: project.issue_counts(),
+    }
+}
+
+/// `done/total`, with a `+` when the project has more issues than were counted.
+fn issues_done(c: &IssueCounts) -> String {
+    format!(
+        "{}/{}{}",
+        c.completed,
+        c.total(),
+        if c.complete { "" } else { "+" }
+    )
+}
+
+fn latest_update(p: &Project) -> String {
+    match &p.last_update {
+        Some(u) => format!("{} {}", date_time(&u.created_at), health(&u.health)),
+        None => "-".to_owned(),
+    }
+}
+
+fn list(ctx: &Ctx, args: &ListCmd) -> Result<()> {
+    let session = ctx.session()?;
+    let filter = ProjectQuery {
+        lead: args.lead.clone(),
+        status_types: args.status_type.clone(),
+        open: args.open,
+        initiative: args.initiative.clone(),
+    }
+    .filter();
+
+    let listing = paginate(PROJECTS_PAGE_SIZE, args.page.limit(), |page| {
+        let vars = ProjectListVars::new(page, filter.clone());
+        let data: ProjectList = session.client.execute(&read::project_list(vars))?;
+        Ok(data.projects)
+    })?;
+    if listing.truncated {
+        warn_truncated(listing.items.len());
+    }
+
+    let rows: Vec<ProjectOut> = listing
+        .items
+        .iter()
+        .map(|p| out(&session.workspace, p))
+        .collect();
+    ctx.out.emit(
+        &rows,
+        || {
+            if listing.items.is_empty() {
+                return "No projects found.".to_owned();
+            }
+            let body: Vec<Vec<String>> = listing
+                .items
+                .iter()
+                .map(|p| {
+                    vec![
+                        p.slug_id.clone(),
+                        p.name.clone(),
+                        p.status.name.clone(),
+                        person(&p.lead),
+                        opt_date(&p.target_date),
+                        issues_done(&p.issue_counts()),
+                        latest_update(p),
+                    ]
+                })
+                .collect();
+            table(
+                &[
+                    "SLUG",
+                    "NAME",
+                    "STATUS",
+                    "LEAD",
+                    "TARGET",
+                    "ISSUES",
+                    "LATEST UPDATE",
+                ],
+                &body,
+            )
+        },
+        || {
+            listing
+                .items
+                .iter()
+                .map(|p| p.slug_id.as_str())
+                .collect::<Vec<_>>()
+                .join("\n")
+        },
+    );
+    Ok(())
+}
+
+#[derive(Serialize)]
+struct ProjectViewOut<'a> {
+    #[serde(flatten)]
+    base: ProjectOut<'a>,
+    #[serde(flatten)]
+    detail: &'a ProjectDetail,
+}
+
+fn view(ctx: &Ctx, args: &ViewCmd) -> Result<()> {
+    let session = ctx.session()?;
+    let found = resolve_project(&session.client, &args.project)?;
+    let data: ProjectView = session
+        .client
+        .execute(&read::project_view(found.id.inner()))?;
+    let (p, d) = (&data.project, &data.detail);
+
+    let value = ProjectViewOut {
+        base: out(&session.workspace, p),
+        detail: d,
+    };
+    ctx.out
+        .emit(&value, || render(p, d, args.content), || p.slug_id.clone());
+    Ok(())
+}
+
+fn render(p: &Project, d: &ProjectDetail, with_content: bool) -> String {
+    let c = p.issue_counts();
+    let initiatives = if p.initiatives.is_empty() {
+        "-".to_owned()
+    } else {
+        p.initiatives
+            .iter()
+            .map(|i| i.name.as_str())
+            .collect::<Vec<_>>()
+            .join(", ")
+    };
+    let count_text = format!(
+        "{} total ({} started, {} unstarted, {} backlog, {} triage, {} completed, {} canceled){}",
+        c.total(),
+        c.started,
+        c.unstarted,
+        c.backlog,
+        c.triage,
+        c.completed,
+        c.canceled,
+        if c.complete {
+            ""
+        } else {
+            "; the project has more issues than were counted"
+        }
+    );
+    let mut text = format!(
+        "{}  ({})\n{}\n\n{}",
+        p.name,
+        p.slug_id,
+        p.url,
+        fields(&[
+            (
+                "Status",
+                format!(
+                    "{} ({})",
+                    p.status.name,
+                    project_status_type(&p.status.type_)
+                )
+            ),
+            ("Health", p.health.as_ref().map_or("-".to_owned(), health)),
+            ("Lead", person(&p.lead)),
+            ("Start", opt_date(&p.start_date)),
+            ("Target", opt_date(&p.target_date)),
+            ("Initiatives", initiatives),
+            ("Issues", count_text),
+            ("Updated", date_time(&p.updated_at)),
+        ])
+    );
+    if !d.description.trim().is_empty() {
+        text.push_str(&format!("\n\n{}", d.description.trim_end()));
+    }
+
+    if !p.project_milestones.is_empty() {
+        let mut ms: Vec<_> = p.project_milestones.iter().collect();
+        ms.sort_by(|a, b| a.sort_order.total_cmp(&b.sort_order));
+        text.push_str("\n\nMilestones");
+        for m in ms {
+            text.push_str(&format!(
+                "\n  [{}] {} ({}, {}, {})",
+                if milestone_status(&m.status) == "done" {
+                    "x"
+                } else {
+                    " "
+                },
+                m.name,
+                opt_date(&m.target_date),
+                percent(m.progress),
+                milestone_status(&m.status)
+            ));
+        }
+    }
+
+    // `lastUpdate` is Linear's own "latest"; the others come from the update
+    // list, newest first.
+    match &p.last_update {
+        None => text.push_str("\n\nLatest status update: none"),
+        Some(u) => {
+            text.push_str(&format!(
+                "\n\nLatest status update ({}, {}, {})\n{}\n  {}",
+                date_time(&u.created_at),
+                health(&u.health),
+                u.user.name,
+                indent(u.body.trim(), 2),
+                u.url
+            ));
+        }
+    }
+    let latest_id = p.last_update.as_ref().map(|u| u.id.inner());
+    let mut earlier: Vec<_> = d
+        .project_updates
+        .iter()
+        .filter(|u| Some(u.id.inner()) != latest_id)
+        .collect();
+    earlier.sort_by_key(|u| std::cmp::Reverse(u.created_at));
+    if !earlier.is_empty() {
+        text.push_str(&format!(
+            "\n\nEarlier status updates (up to {} shown)",
+            PROJECT_VIEW_UPDATES
+        ));
+        for u in earlier {
+            text.push_str(&format!(
+                "\n  {} {}: {}",
+                date_time(&u.created_at),
+                health(&u.health),
+                first_line(&u.body, 100)
+            ));
+        }
+    }
+
+    if with_content {
+        if let Some(content) = d.content.as_deref().filter(|s| !s.trim().is_empty()) {
+            text.push_str(&format!("\n\nContent\n{}", indent(content, 2)));
+        }
+    }
+    text
+}

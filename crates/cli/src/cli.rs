@@ -34,6 +34,9 @@ pub enum Command {
     /// Read issues
     #[command(subcommand)]
     Issue(crate::commands::issue::IssueCommand),
+    /// Read projects
+    #[command(subcommand)]
+    Project(crate::commands::project::ProjectCommand),
     /// Send a raw GraphQL query (read-only) and print the response data
     Api(ApiArgs),
 }

@@ -1,7 +1,9 @@
 //! Text helpers for the human-readable output of the read commands.
 
 use chrono::{DateTime, NaiveDate, Utc};
-use linear_core::types::User;
+use linear_core::types::{
+    ProjectMilestoneStatus, ProjectStatusType, ProjectUpdateHealthType, User,
+};
 
 pub fn date_time(t: &DateTime<Utc>) -> String {
     t.format("%Y-%m-%d").to_string()
@@ -46,4 +48,56 @@ pub fn fields(rows: &[(&str, String)]) -> String {
         .map(|(k, v)| format!("{:<width$} {}", format!("{k}:"), v, width = width))
         .collect::<Vec<_>>()
         .join("\n")
+}
+
+/// The first non-empty line, shortened to `max` characters.
+pub fn first_line(s: &str, max: usize) -> String {
+    let line = s
+        .lines()
+        .map(str::trim)
+        .find(|l| !l.is_empty())
+        .unwrap_or("");
+    if line.chars().count() > max {
+        let head: String = line.chars().take(max).collect();
+        format!("{head}...")
+    } else {
+        line.to_owned()
+    }
+}
+
+/// Linear's own spelling, as it appears in `--json`.
+pub fn health(h: &ProjectUpdateHealthType) -> String {
+    match h {
+        ProjectUpdateHealthType::OnTrack => "onTrack".into(),
+        ProjectUpdateHealthType::AtRisk => "atRisk".into(),
+        ProjectUpdateHealthType::OffTrack => "offTrack".into(),
+        ProjectUpdateHealthType::Other(s) => s.clone(),
+    }
+}
+
+pub fn project_status_type(t: &ProjectStatusType) -> String {
+    match t {
+        ProjectStatusType::Backlog => "backlog".into(),
+        ProjectStatusType::Planned => "planned".into(),
+        ProjectStatusType::Started => "started".into(),
+        ProjectStatusType::Paused => "paused".into(),
+        ProjectStatusType::Completed => "completed".into(),
+        ProjectStatusType::Canceled => "canceled".into(),
+        ProjectStatusType::Other(s) => s.clone(),
+    }
+}
+
+pub fn milestone_status(s: &ProjectMilestoneStatus) -> String {
+    match s {
+        ProjectMilestoneStatus::Done => "done".into(),
+        ProjectMilestoneStatus::Next => "next".into(),
+        ProjectMilestoneStatus::Overdue => "overdue".into(),
+        ProjectMilestoneStatus::Unstarted => "unstarted".into(),
+        ProjectMilestoneStatus::Other(s) => s.clone(),
+    }
+}
+
+/// Linear reports milestone progress as a percentage (0 to 100).
+pub fn percent(p: f64) -> String {
+    format!("{p:.0}%")
 }

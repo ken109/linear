@@ -115,3 +115,53 @@ fn paging_with_a_small_limit_and_with_all_agree() {
     assert_eq!(stdout(&o).lines().count(), 2);
     assert!(stderr(&o).contains("more exist"), "{}", stderr(&o));
 }
+
+#[test]
+#[ignore = "needs LINEAR_API_KEY_SANDBOX and network access"]
+fn projects_show_the_lead_and_open_excludes_finished_ones() {
+    let (sb, key) = sandbox();
+    let all = json(&sb, &key, &["project", "list"]);
+    let open = json(&sb, &key, &["project", "list", "--open"]);
+    let all = all.as_array().unwrap();
+    let open = open.as_array().unwrap();
+    assert!(!open.is_empty());
+    assert!(open.len() < all.len(), "a completed project is seeded");
+    for p in open {
+        let t = p["status"]["type"].as_str().unwrap();
+        assert!(t != "completed" && t != "canceled", "{t}");
+    }
+    // `ken109-linear projects` has no lead; here it is present and `me` finds it.
+    let mine = json(&sb, &key, &["project", "list", "--lead", "me"]);
+    assert!(!mine.as_array().unwrap().is_empty());
+    assert_eq!(mine[0]["lead"]["isMe"], true);
+}
+
+#[test]
+#[ignore = "needs LINEAR_API_KEY_SANDBOX and network access"]
+fn the_latest_status_update_is_the_newest_one() {
+    let (sb, key) = sandbox();
+    let v = json(&sb, &key, &["project", "view", "Fixture Project"]);
+    let updates = v["projectUpdates"]["nodes"].as_array().unwrap();
+    assert!(
+        updates.len() >= 2,
+        "the sandbox project has at least two status updates"
+    );
+    // `lastUpdate` (used by `project list`) is the newest of all updates, and
+    // the update list is newest first.
+    let newest = updates
+        .iter()
+        .map(|u| u["createdAt"].as_str().unwrap())
+        .max()
+        .unwrap();
+    assert_eq!(v["lastUpdate"]["createdAt"], newest);
+    assert_eq!(updates[0]["createdAt"], newest);
+    for pair in updates.windows(2) {
+        assert!(pair[0]["createdAt"].as_str() >= pair[1]["createdAt"].as_str());
+    }
+    assert!(!v["description"].as_str().unwrap_or("").is_empty());
+    assert!(v["issueCounts"]["completed"].as_u64().unwrap() >= 1);
+    assert!(!v["projectMilestones"]["nodes"]
+        .as_array()
+        .unwrap()
+        .is_empty());
+}
