@@ -54,6 +54,7 @@ class Linear:
         self._key = key
 
     requests = 0
+    remaining: int | None = None  # from the X-RateLimit-Requests-Remaining header
 
     def q(self, query: str, variables: dict | None = None) -> dict:
         body = json.dumps({"query": query, "variables": variables or {}}).encode()
@@ -68,6 +69,9 @@ class Linear:
             )
             try:
                 with urllib.request.urlopen(req, timeout=60) as r:
+                    left = r.headers.get("X-RateLimit-Requests-Remaining")
+                    if left is not None and left.isdigit():
+                        Linear.remaining = int(left)
                     out = json.load(r)
             except urllib.error.HTTPError as e:
                 text = e.read().decode(errors="replace")
@@ -939,6 +943,8 @@ def main() -> int:
     ap.add_argument("--linear-bin", default=os.environ.get("PARITY_LINEAR_BIN", ""),
                     help="the Rust binary (default: target/debug/linear of this checkout)")
     ap.add_argument("--report", default="", help="write the markdown report here (default: temp dir)")
+    ap.add_argument("--min-remaining", type=int, default=2100,
+                    help="do not start with fewer API requests left than this (a run uses ~1900)")
     ap.add_argument("--keep", action="store_true", help="do not clean up the sandbox at the end")
     ap.add_argument("--cleanup-only", action="store_true",
                     help="cancel and archive every leftover parity-* project/template and exit")
@@ -959,6 +965,11 @@ def main() -> int:
     if args.cleanup_only:
         print("cleanup:", cleanup(gql))
         return 0
+    print(f"requests left in this hour for the sandbox key: {Linear.remaining}")
+    if Linear.remaining is not None and Linear.remaining < args.min_remaining:
+        print(f"refusing to start: a run needs about {args.min_remaining} requests (--min-remaining); "
+              "wait for the hourly limit to refill", file=sys.stderr)
+        return 2
 
     repo = Path(__file__).resolve().parents[2]
     binary = args.linear_bin or str(repo / "target/debug/linear")
