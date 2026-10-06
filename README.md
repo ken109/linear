@@ -53,6 +53,33 @@ Credentials are stored in `~/.config/linear/credentials/<workspace>.json` (mode 
 `LINEAR_API_KEY_<NAME>` (for example `LINEAR_API_KEY_MAIN`) overrides the stored key.
 Tokens are never printed.
 
+## Reading
+
+```sh
+linear issue list --assignee me --state-type started        # my issues in progress
+linear issue list --source-url https://example.com/a        # find an issue by where it came from
+linear issue list --project "My Project" --milestone M1 --open --label bug
+linear issue view KK-12
+
+linear project list --open --lead me
+linear project view my-project-1a2b3c4d5e6f                 # id, slug, URL or name
+linear milestone list --project "My Project"
+linear milestone view "M1" --project "My Project"
+
+linear initiative list --status active
+linear template list
+linear template skeleton "Bug report"                       # the sections, read from Linear
+linear label list                                           # groups first, each followed by its labels
+linear team list
+linear user view me
+```
+
+Listings return at most 50 results; `--limit <N>` changes that and `--all` follows every page.
+When a listing was cut short, a note goes to stderr (also with `--json` and `--quiet`).
+Nothing is filtered unless asked for: use `--open` to leave out completed and canceled work.
+`--json` prints Linear's own shape plus a `workspace` field; `--quiet` prints one key per line
+(issue identifier, project or initiative slug, milestone or template name, team key, user email).
+
 ## Output and exit codes
 
 `--json` prints machine-readable output; errors then go to stderr as

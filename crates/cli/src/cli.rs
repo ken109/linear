@@ -37,6 +37,24 @@ pub enum Command {
     /// Read projects
     #[command(subcommand)]
     Project(crate::commands::project::ProjectCommand),
+    /// Read project milestones
+    #[command(subcommand)]
+    Milestone(crate::commands::milestone::MilestoneCommand),
+    /// Read initiatives
+    #[command(subcommand)]
+    Initiative(crate::commands::initiative::InitiativeCommand),
+    /// Read issue templates and their sections
+    #[command(subcommand)]
+    Template(crate::commands::template::TemplateCommand),
+    /// Read labels
+    #[command(subcommand)]
+    Label(crate::commands::label::LabelCommand),
+    /// Read teams
+    #[command(subcommand)]
+    Team(crate::commands::team::TeamCommand),
+    /// Read users
+    #[command(subcommand)]
+    User(crate::commands::user::UserCommand),
     /// Send a raw GraphQL query (read-only) and print the response data
     Api(ApiArgs),
 }

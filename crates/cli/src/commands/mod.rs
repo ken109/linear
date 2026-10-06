@@ -2,9 +2,15 @@
 
 mod api;
 mod format;
+pub mod initiative;
 pub mod issue;
+pub mod label;
 mod listing;
+pub mod milestone;
 pub mod project;
+pub mod team;
+pub mod template;
+pub mod user;
 mod workspace;
 
 use crate::cli::{Cli, Command};
@@ -33,6 +39,12 @@ pub fn run(cli: &Cli, out: Output) -> Result<()> {
         Command::Api(args) => api::run(&ctx, args),
         Command::Issue(cmd) => issue::run(&ctx, cmd),
         Command::Project(cmd) => project::run(&ctx, cmd),
+        Command::Milestone(cmd) => milestone::run(&ctx, cmd),
+        Command::Initiative(cmd) => initiative::run(&ctx, cmd),
+        Command::Template(cmd) => template::run(&ctx, cmd),
+        Command::Label(cmd) => label::run(&ctx, cmd),
+        Command::Team(cmd) => team::run(&ctx, cmd),
+        Command::User(cmd) => user::run(&ctx, cmd),
     }
 }
 

@@ -2,7 +2,7 @@
 
 use chrono::{DateTime, NaiveDate, Utc};
 use linear_core::types::{
-    ProjectMilestoneStatus, ProjectStatusType, ProjectUpdateHealthType, User,
+    InitiativeStatus, ProjectMilestoneStatus, ProjectStatusType, ProjectUpdateHealthType, User,
 };
 
 pub fn date_time(t: &DateTime<Utc>) -> String {
@@ -100,4 +100,15 @@ pub fn milestone_status(s: &ProjectMilestoneStatus) -> String {
 /// Linear reports milestone progress as a percentage (0 to 100).
 pub fn percent(p: f64) -> String {
     format!("{p:.0}%")
+}
+
+pub fn initiative_status(s: &InitiativeStatus) -> String {
+    match s {
+        InitiativeStatus::Active => "Active".into(),
+        InitiativeStatus::Canceled => "Canceled".into(),
+        InitiativeStatus::Completed => "Completed".into(),
+        InitiativeStatus::Planned => "Planned".into(),
+        InitiativeStatus::Proposed => "Proposed".into(),
+        InitiativeStatus::Other(s) => s.clone(),
+    }
 }

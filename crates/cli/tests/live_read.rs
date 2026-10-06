@@ -165,3 +165,78 @@ fn the_latest_status_update_is_the_newest_one() {
         .unwrap()
         .is_empty());
 }
+
+#[test]
+#[ignore = "needs LINEAR_API_KEY_SANDBOX and network access"]
+fn milestones_and_their_issues_are_read() {
+    let (sb, key) = sandbox();
+    let list = json(
+        &sb,
+        &key,
+        &["milestone", "list", "--project", "Fixture Project"],
+    );
+    let rows = list.as_array().unwrap();
+    assert!(!rows.is_empty());
+    let name = rows[0]["name"].as_str().unwrap().to_owned();
+    assert!(rows[0]["targetDate"].is_string());
+
+    let view = json(
+        &sb,
+        &key,
+        &["milestone", "view", &name, "--project", "Fixture Project"],
+    );
+    assert_eq!(view["name"], name.as_str());
+    assert!(!view["issues"]["nodes"].as_array().unwrap().is_empty());
+}
+
+#[test]
+#[ignore = "needs LINEAR_API_KEY_SANDBOX and network access"]
+fn templates_labels_teams_and_users_are_read() {
+    let (sb, key) = sandbox();
+
+    // The section definitions come from Linear: the seeded template has real headings.
+    let sections = json(&sb, &key, &["template", "view", "Sectioned Template"]);
+    assert_eq!(
+        sections["sections"],
+        serde_json::json!(["Background", "Acceptance criteria", "Out of scope"])
+    );
+    let o = sb.run(
+        &["template", "skeleton", "Sectioned Template"],
+        None,
+        &[("LINEAR_API_KEY_SANDBOX", &key)],
+    );
+    assert_eq!(code(&o), 0, "{}", stderr(&o));
+    assert_eq!(
+        stdout(&o),
+        "## Background\n\n## Acceptance criteria\n\n## Out of scope\n"
+    );
+
+    let labels = json(&sb, &key, &["label", "list"]);
+    let labels = labels.as_array().unwrap();
+    let child = labels.iter().find(|l| l["name"] == "api").unwrap();
+    assert_eq!(child["parent"]["name"], "area");
+    assert!(labels
+        .iter()
+        .any(|l| l["name"] == "area" && l["isGroup"] == true));
+
+    let teams = json(&sb, &key, &["team", "list"]);
+    assert!(teams.as_array().unwrap().iter().any(|t| t["key"] == "SAND"));
+
+    let me = json(&sb, &key, &["user", "view", "me"]);
+    assert_eq!(me["isMe"], true);
+    assert!(!me["email"].as_str().unwrap_or("").is_empty());
+    assert!(json(&sb, &key, &["user", "list"])
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|u| u["isMe"] == true));
+}
+
+#[test]
+#[ignore = "needs LINEAR_API_KEY_SANDBOX and network access"]
+fn initiatives_list_without_error_even_where_the_plan_has_none() {
+    // The free plan disables initiatives, so the sandbox returns an empty
+    // list; this only checks that the query is accepted.
+    let (sb, key) = sandbox();
+    assert!(json(&sb, &key, &["initiative", "list"]).is_array());
+}
