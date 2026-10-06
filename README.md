@@ -154,6 +154,75 @@ result, and the findings that are new since the previous snapshot.
 - Only one refresh per workspace runs at a time, so a statusline that starts one on every render
   does not start a dozen.
 
+### Reading from the cache: `--cached`
+
+```sh
+linear issue list --cached [--ttl 300]       # my issues In Progress, from the last refresh
+linear issue view KK-12 --cached
+linear project list --cached                 # the projects of those issues
+linear project view my-project --cached      # id, slug, URL or name, among those projects
+linear audit --cached
+```
+
+`--cached` reads the file and nothing else: no credentials, no request. It never falls back to
+Linear, and it never serves a snapshot it cannot vouch for. When the workspace has no snapshot,
+the snapshot is older than `--ttl` (default 300 seconds), or the file is unusable (another
+`schema_version`, another workspace's entry, not valid JSON), the command prints nothing on stdout,
+says why on stderr and exits 1; run `linear cache refresh`. A snapshot that a failed refresh could
+not renew is served only while it is within the TTL. A successful read says on stderr how old the
+snapshot is (not with `--quiet`); stdout has the same shape as a live read.
+
+Only what the snapshot holds can be read, so these commands qualify and no others:
+
+- `issue list`: the issues assigned to you that are In Progress (state type `started`). Filters
+  that would select something else are a usage error (exit 2): `--assignee` other than `me`,
+  `--state-type` other than `started`, `--state`, `--open`, `--team`, `--project`, `--milestone`,
+  `--label`, `--source-url`. `--limit` and `--all` work.
+- `issue view`: one of those issues, by identifier or id. The priority label and the comments are
+  not in the snapshot, so they are absent (not empty). An issue outside the snapshot exits 1.
+- `project list`: the projects those issues belong to (not every project you lead). No filters:
+  `--lead`, `--status-type`, `--open` and `--initiative` are a usage error.
+- `project view`: one of those projects, matched like a live reference. The description, status
+  update history and `--content` are not in the snapshot (`--content` is a usage error).
+- `audit --cached`: the findings of the last refresh (see [Audit](#audit)).
+
+The other reads (`milestone`, `initiative`, `template`, `label`, `team`, `user`) are not in the
+snapshot and have no `--cached`.
+
+### `linear status`
+
+One line for a statusline or a SessionStart hook. It reads the cache and nothing else, so it
+returns at once and never touches the network:
+
+```console
+$ linear status
+main: 3 in progress, 1 actionable
+$ linear status                  # the snapshot is older than the TTL
+main: unknown (snapshot 2h old)
+$ linear status                  # two workspaces, one never refreshed
+main: 3 in progress, 1 actionable | work: unknown (nothing cached)
+```
+
+`actionable` is the number of audit findings about things you own. Past `--ttl` (default 300
+seconds), with no snapshot, or with an unusable file, the workspace reads `unknown (...)` and no
+numbers are shown: old figures are never printed as current. A refresh that failed while the
+snapshot is still within the TTL adds ` (last refresh failed)`. Workspaces are joined with ` | `;
+`--workspace` (or `LINEAR_WORKSPACE`, or a `.linear.toml`) narrows it to one.
+
+The exit code is 0 whatever the state, because the line itself says it. `--json` prints one object
+per workspace for scripts:
+
+```json
+[{"workspace": "main", "state": "fresh", "ttl_secs": 300, "fetched_at": "2026-10-07T01:02:03Z",
+  "age_secs": 42, "in_progress": 3, "findings": 4, "actionable": 1, "new_findings": 0,
+  "refresh_failed": false, "reason": null, "line": "main: 3 in progress, 1 actionable"}]
+```
+
+`state` is `fresh`, `expired`, `missing` or `unusable`; the counts and `fetched_at` are `null`
+unless it is `fresh`, and `reason` says why when it is not (or what the failed refresh said).
+`--quiet` prints `<workspace> <state>` per line. Starting a refresh is the caller's job, for
+example `linear cache refresh >/dev/null 2>&1 &` when the line says `unknown`.
+
 ## Audit
 
 `linear audit` finds Linear data that has drifted. It works on every configured workspace unless
