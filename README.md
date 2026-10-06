@@ -18,7 +18,8 @@ A fast, scriptable command-line client for [Linear](https://linear.app), written
 | --------------- | ------------- | ----------------------------------------------------------- |
 | `crates/core`   | `linear-core` | Pure logic: types, request building, response parsing.      |
 | `crates/cli`    | `linear`      | The `linear` binary: HTTP, config, credentials, output.     |
-| `crates/wasm`   | `linear-wasm` | JSON-in/JSON-out wrapper over the core (skeleton).          |
+| `crates/wasm`   | `linear-wasm` | JSON-in/JSON-out wrapper over the core: the six functions a Worker needs. |
+| `packages/linear-wasm` | `@ken109/linear-wasm` | The wasm as an npm package, with generated TypeScript types and zod schemas. |
 | `schema/`       | -             | Vendored Linear GraphQL SDL used to type-check queries.     |
 
 ## Build

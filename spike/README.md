@@ -51,3 +51,28 @@ operations. Workers limits: 3 MB free / 10 MB paid, after compression.
 `wrangler deploy --dry-run` (no upload) reports `Total Upload: 333.17 KiB / gzip: 106.39 KiB`
 for the Worker. `wasm-opt` shrinks the raw size but not the compressed size, so
 it is not needed (`WASM_OPT=1 sh worker/scripts/build-wasm.sh` runs it if you want).
+
+## What came of it
+
+The spike's answer was yes, and the real thing has replaced it:
+
+- `crates/wasm` now exports six functions (`build_request`, `parse_response`, `audit`, `diff`,
+  `decide_refresh`, `verify_webhook`) over one table of operations, and the typed TypeScript
+  package built from it is in `packages/linear-wasm`. The two apps here follow the new envelope
+  (`{ ok, data }` instead of `{ ok, request }`) but are no longer maintained.
+- A panic aborts the module and reaches JavaScript as `RuntimeError: unreachable`; a small hook
+  keeps the message for `last_panic()` (see `crates/wasm/src/lib.rs`).
+
+Sizes after `audit`, `diff`, `decide_refresh`, `verify_webhook` and 15 operations were added
+(`wasm-release`, no `wasm-opt`, measured 2026-10-06 with `packages/linear-wasm/scripts/build-wasm.sh`):
+
+| build | raw | gzip -9 | brotli -q11 |
+| --- | ---: | ---: | ---: |
+| this spike (2 functions, 4 operations) | 333,579 | 105,698 | 86,402 |
+| 6 functions, 15 operations, panic hook | 666,956 | 188,240 | 144,734 |
+
+Where it went, from builds that leave functions out (before the upstream changes that added
+issue fields, so the totals are lower than the table): `audit` + `diff` about +160 KB raw / +45 KB
+gzip, `decide_refresh` +23 KB / +7 KB, `verify_webhook` (HMAC-SHA256) +19 KB / +6 KB, and the 11
+further operations with their types and the panic hook about +103 KB / +13 KB. At 188 KB gzipped
+it is 6% of the Workers free-plan limit (3 MB).

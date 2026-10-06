@@ -1,0 +1,89 @@
+name: wasm package
+
+# Builds the npm package of the wasm core (packages/linear-wasm): checks that its
+# committed JSON Schema matches the Rust types, generates the TypeScript, builds
+# the wasm, runs the tests (including the golden files that the native core must
+# match too) and makes the tarball a release attaches. The release workflow
+# itself is separate.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: packages/linear-wasm
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+      - uses: Swatinem/rust-cache@v2
+
+      # wasm-bindgen-cli must be the version of the wasm-bindgen crate in Cargo.lock.
+      - name: Find the wasm-bindgen version
+        id: bindgen
+        working-directory: .
+        run: |
+          version=$(cargo metadata --format-version 1 --locked \
+            | jq -r '.packages[] | select(.name=="wasm-bindgen") | .version')
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache@v4
+        id: bindgen-cache
+        with:
+          path: ~/.cargo/bin/wasm-bindgen
+          key: wasm-bindgen-cli-${{ steps.bindgen.outputs.version }}
+      - name: Install wasm-bindgen-cli
+        if: steps.bindgen-cache.outputs.cache-hit != 'true'
+        run: cargo install wasm-bindgen-cli --version "${{ steps.bindgen.outputs.version }}" --locked
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: packages/linear-wasm/package-lock.json
+      - run: npm ci
+
+      - name: schema.json is up to date
+        run: |
+          cargo run -q -p linear-wasm --example schema > schema.json
+          git diff --exit-code -- schema.json || {
+            echo "::error::schema.json is stale; run: cargo run -q -p linear-wasm --example schema > packages/linear-wasm/schema.json"
+            exit 1
+          }
+
+      - name: Build
+        run: sh scripts/build.sh | tee build.log
+      - name: Sizes
+        run: |
+          {
+            echo "### wasm size"
+            echo '```'
+            grep -E '^(raw|gzip|brotli):' build.log
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+      - run: npm run typecheck
+      - run: npm test
+
+      - name: Tarball
+        run: sh scripts/pack.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linear-wasm-tarball
+          path: packages/linear-wasm/out/*.tgz
+          if-no-files-found: error
+
+      # A build with the feature that exports a function that panics, to check
+      # how a panic looks from JavaScript. Last, because it replaces src/wasm.
+      - name: Panic probe
+        run: |
+          FEATURES=panic-probe sh scripts/build-wasm.sh
+          node --test test/panic.test.ts
