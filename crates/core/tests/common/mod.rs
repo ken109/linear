@@ -116,7 +116,7 @@ impl IssueB {
             "attachments",
             json!({ "nodes": [{
                 "id": "a-1", "title": "Source", "subtitle": null, "url": url,
-                "sourceType": null, "createdAt": "2026-09-01T00:00:00Z",
+                "sourceType": null, "metadata": {}, "createdAt": "2026-09-01T00:00:00Z",
             }] }),
         )
     }

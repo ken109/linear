@@ -14,6 +14,7 @@ pub mod filters;
 pub mod guard;
 pub mod inputs;
 pub mod matching;
+pub mod metadata;
 pub mod project_write;
 pub mod queries;
 pub mod read;
@@ -40,7 +41,7 @@ pub use workspace::InWorkspace;
 /// boundary (cache files, `--json`, the WebAssembly package). Bump it whenever
 /// one of those shapes changes; a reader that finds another version must not
 /// trust what it read.
-pub const SCHEMA_VERSION: u32 = 1;
+pub const SCHEMA_VERSION: u32 = 2;
 
 /// The default Linear GraphQL endpoint.
 pub const API_URL: &str = "https://api.linear.app/graphql";

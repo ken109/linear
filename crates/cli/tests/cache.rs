@@ -84,7 +84,7 @@ fn a_refresh_stores_the_viewer_the_issues_in_progress_and_the_audit() {
     assert_eq!(names, ["Whoami", "IssueList", "Projects"]);
 
     let e = read_entry(&sb);
-    assert_eq!(e["schema_version"], 1);
+    assert_eq!(e["schema_version"], linear_core::SCHEMA_VERSION);
     assert_eq!(e["workspace"], "example");
     assert_eq!(e["status"], "ok");
     assert!(e["failure"].is_null());
@@ -329,7 +329,10 @@ fn an_entry_of_another_schema_version_is_unusable_and_a_refresh_replaces_it() {
 
     let mock = Mock::start(replies());
     assert_eq!(code(&linear(&sb, &mock, &["cache", "refresh"])), 0);
-    assert_eq!(read_entry(&sb)["schema_version"], 1);
+    assert_eq!(
+        read_entry(&sb)["schema_version"],
+        linear_core::SCHEMA_VERSION
+    );
     assert!(show(&sb, &[])[0]["problem"].is_null());
 }
 

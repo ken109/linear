@@ -106,8 +106,8 @@ def label(name, group):
             'parent': {'id': 'lg-' + group, 'name': group, 'groupType': 'singleSelect'}}
 
 
-def source(url):
-    return {'nodes': [{'id': 'a-1', 'title': 'Source', 'subtitle': None, 'url': url, 'sourceType': None, 'createdAt': '2026-09-01T00:00:00Z'}]}
+def source(url, metadata=None):
+    return {'nodes': [{'id': 'a-1', 'title': 'Source', 'subtitle': None, 'url': url, 'sourceType': None, 'metadata': metadata or {}, 'createdAt': '2026-09-01T00:00:00Z'}]}
 
 
 def heading(text):
@@ -166,6 +166,16 @@ def validators_snapshot():
     return snapshot(issues, [], [template('Task', ['Goal', 'Done when'])])
 
 
+def source_kinds_snapshot():
+    me = user(True)
+    return snapshot([
+        issue('KK-20', assignee=me, attachments=source('https://example.com/a', {'kind': 'slack', 'ticket': 7})),
+        issue('KK-21', assignee=me, attachments=source('https://example.com/b', {'kind': 'email'})),
+        issue('KK-22', assignee=me, attachments=source('https://example.com/c')),
+        issue('KK-23', assignee=me),
+    ], [])
+
+
 def real_snapshot():
     issue_r = json.load(open(FIX + 'issue.json'))['data']['issue']
     projects_r = json.load(open(FIX + 'projects.json'))['data']['projects']['nodes']
@@ -188,6 +198,11 @@ def phase1():
           {'snapshot': validators_snapshot(), 'config': {'stale_days': 7, 'status_update_days': 14,
                                                          'validators': ['source-attachment', 'label-groups-exclusive', 'template-sections']},
            'options': None, 'now': NOW})
+    write('audit', 'validators-source-kinds', 'source-attachment with source_kinds: the source attachment needs a metadata.kind from the list.',
+          {'snapshot': source_kinds_snapshot(), 'config': {'stale_days': 7, 'status_update_days': 14,
+                                                           'validators': ['source-attachment'],
+                                                           'source_kinds': ['slack', 'life-decision']},
+           'options': None, 'now': NOW})
     write('audit', 'healthy-workspace', 'Nothing is wrong: no findings.',
           {'snapshot': clean_snapshot(), 'config': None, 'options': None, 'now': NOW})
     write('audit', 'empty-snapshot', 'No issues and no projects.',
@@ -202,7 +217,7 @@ def phase1():
           {'snapshot': clean_snapshot(), 'config': {'stale_day': 3}, 'options': None, 'now': NOW})
 
     # ---- refresh
-    base = {'schemaVersion': 1}
+    base = {'schemaVersion': 2}
     cases = [
         ('never-fetched', 'No cache at all.', None, {'kind': 'read'}),
         ('fresh-read', 'Fetched a minute ago: leave it.', {**base, 'fetchedAt': '2026-10-20T11:59:00Z'}, {'kind': 'read'}),

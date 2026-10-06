@@ -1,0 +1,285 @@
+{
+  "description": "source-attachment with source_kinds: the source attachment needs a metadata.kind from the list.",
+  "expected": {
+    "data": {
+      "findings": [
+        {
+          "actionable": true,
+          "fix": "linear issue update KK-21 --source <url> -w ken109",
+          "message": "KK-21 has no source attachment with a metadata.kind of: slack, life-decision",
+          "rule": "source-attachment",
+          "severity": "warn",
+          "target": {
+            "id": "i-KK-21",
+            "identifier": "KK-21",
+            "kind": "issue",
+            "title": "Title of KK-21",
+            "url": "https://linear.app/x/issue/KK-21"
+          },
+          "workspace": "ken109"
+        },
+        {
+          "actionable": true,
+          "fix": "linear issue update KK-22 --source <url> -w ken109",
+          "message": "KK-22 has no source attachment with a metadata.kind of: slack, life-decision",
+          "rule": "source-attachment",
+          "severity": "warn",
+          "target": {
+            "id": "i-KK-22",
+            "identifier": "KK-22",
+            "kind": "issue",
+            "title": "Title of KK-22",
+            "url": "https://linear.app/x/issue/KK-22"
+          },
+          "workspace": "ken109"
+        },
+        {
+          "actionable": true,
+          "fix": "linear issue update KK-23 --source <url> -w ken109",
+          "message": "KK-23 has no http(s) source attachment",
+          "rule": "source-attachment",
+          "severity": "warn",
+          "target": {
+            "id": "i-KK-23",
+            "identifier": "KK-23",
+            "kind": "issue",
+            "title": "Title of KK-23",
+            "url": "https://linear.app/x/issue/KK-23"
+          },
+          "workspace": "ken109"
+        }
+      ],
+      "unresolved_issues": []
+    },
+    "ok": true
+  },
+  "input": {
+    "config": {
+      "source_kinds": [
+        "slack",
+        "life-decision"
+      ],
+      "stale_days": 7,
+      "status_update_days": 14,
+      "validators": [
+        "source-attachment"
+      ]
+    },
+    "now": "2026-10-20T12:00:00Z",
+    "options": null,
+    "snapshot": {
+      "issues": [
+        {
+          "assignee": {
+            "active": true,
+            "displayName": "me",
+            "email": "u-me@example.com",
+            "id": "u-me",
+            "isMe": true,
+            "name": "Me"
+          },
+          "attachments": {
+            "nodes": [
+              {
+                "createdAt": "2026-09-01T00:00:00Z",
+                "id": "a-1",
+                "metadata": {
+                  "kind": "slack",
+                  "ticket": 7
+                },
+                "sourceType": null,
+                "subtitle": null,
+                "title": "Source",
+                "url": "https://example.com/a"
+              }
+            ]
+          },
+          "canceledAt": null,
+          "completedAt": null,
+          "createdAt": "2026-09-01T00:00:00Z",
+          "description": null,
+          "dueDate": null,
+          "estimate": null,
+          "id": "i-KK-20",
+          "identifier": "KK-20",
+          "labels": {
+            "nodes": []
+          },
+          "parent": null,
+          "prioritySortOrder": 0.0,
+          "project": null,
+          "projectMilestone": null,
+          "sortOrder": 0.0,
+          "startedAt": null,
+          "state": {
+            "id": "s-unstarted",
+            "name": "State unstarted",
+            "type": "unstarted"
+          },
+          "team": {
+            "id": "t-1",
+            "key": "KK",
+            "name": "Team"
+          },
+          "title": "Title of KK-20",
+          "updatedAt": "2026-10-19T00:00:00Z",
+          "url": "https://linear.app/x/issue/KK-20"
+        },
+        {
+          "assignee": {
+            "active": true,
+            "displayName": "me",
+            "email": "u-me@example.com",
+            "id": "u-me",
+            "isMe": true,
+            "name": "Me"
+          },
+          "attachments": {
+            "nodes": [
+              {
+                "createdAt": "2026-09-01T00:00:00Z",
+                "id": "a-1",
+                "metadata": {
+                  "kind": "email"
+                },
+                "sourceType": null,
+                "subtitle": null,
+                "title": "Source",
+                "url": "https://example.com/b"
+              }
+            ]
+          },
+          "canceledAt": null,
+          "completedAt": null,
+          "createdAt": "2026-09-01T00:00:00Z",
+          "description": null,
+          "dueDate": null,
+          "estimate": null,
+          "id": "i-KK-21",
+          "identifier": "KK-21",
+          "labels": {
+            "nodes": []
+          },
+          "parent": null,
+          "prioritySortOrder": 0.0,
+          "project": null,
+          "projectMilestone": null,
+          "sortOrder": 0.0,
+          "startedAt": null,
+          "state": {
+            "id": "s-unstarted",
+            "name": "State unstarted",
+            "type": "unstarted"
+          },
+          "team": {
+            "id": "t-1",
+            "key": "KK",
+            "name": "Team"
+          },
+          "title": "Title of KK-21",
+          "updatedAt": "2026-10-19T00:00:00Z",
+          "url": "https://linear.app/x/issue/KK-21"
+        },
+        {
+          "assignee": {
+            "active": true,
+            "displayName": "me",
+            "email": "u-me@example.com",
+            "id": "u-me",
+            "isMe": true,
+            "name": "Me"
+          },
+          "attachments": {
+            "nodes": [
+              {
+                "createdAt": "2026-09-01T00:00:00Z",
+                "id": "a-1",
+                "metadata": {},
+                "sourceType": null,
+                "subtitle": null,
+                "title": "Source",
+                "url": "https://example.com/c"
+              }
+            ]
+          },
+          "canceledAt": null,
+          "completedAt": null,
+          "createdAt": "2026-09-01T00:00:00Z",
+          "description": null,
+          "dueDate": null,
+          "estimate": null,
+          "id": "i-KK-22",
+          "identifier": "KK-22",
+          "labels": {
+            "nodes": []
+          },
+          "parent": null,
+          "prioritySortOrder": 0.0,
+          "project": null,
+          "projectMilestone": null,
+          "sortOrder": 0.0,
+          "startedAt": null,
+          "state": {
+            "id": "s-unstarted",
+            "name": "State unstarted",
+            "type": "unstarted"
+          },
+          "team": {
+            "id": "t-1",
+            "key": "KK",
+            "name": "Team"
+          },
+          "title": "Title of KK-22",
+          "updatedAt": "2026-10-19T00:00:00Z",
+          "url": "https://linear.app/x/issue/KK-22"
+        },
+        {
+          "assignee": {
+            "active": true,
+            "displayName": "me",
+            "email": "u-me@example.com",
+            "id": "u-me",
+            "isMe": true,
+            "name": "Me"
+          },
+          "attachments": {
+            "nodes": []
+          },
+          "canceledAt": null,
+          "completedAt": null,
+          "createdAt": "2026-09-01T00:00:00Z",
+          "description": null,
+          "dueDate": null,
+          "estimate": null,
+          "id": "i-KK-23",
+          "identifier": "KK-23",
+          "labels": {
+            "nodes": []
+          },
+          "parent": null,
+          "prioritySortOrder": 0.0,
+          "project": null,
+          "projectMilestone": null,
+          "sortOrder": 0.0,
+          "startedAt": null,
+          "state": {
+            "id": "s-unstarted",
+            "name": "State unstarted",
+            "type": "unstarted"
+          },
+          "team": {
+            "id": "t-1",
+            "key": "KK",
+            "name": "Team"
+          },
+          "title": "Title of KK-23",
+          "updatedAt": "2026-10-19T00:00:00Z",
+          "url": "https://linear.app/x/issue/KK-23"
+        }
+      ],
+      "projects": [],
+      "templates": [],
+      "workspace": "ken109"
+    }
+  }
+}

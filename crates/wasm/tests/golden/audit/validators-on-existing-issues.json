@@ -139,6 +139,7 @@
               {
                 "createdAt": "2026-09-01T00:00:00Z",
                 "id": "a-1",
+                "metadata": {},
                 "sourceType": null,
                 "subtitle": null,
                 "title": "Source",
@@ -214,6 +215,7 @@
               {
                 "createdAt": "2026-09-01T00:00:00Z",
                 "id": "a-1",
+                "metadata": {},
                 "sourceType": null,
                 "subtitle": null,
                 "title": "Source",
@@ -266,6 +268,7 @@
               {
                 "createdAt": "2026-09-01T00:00:00Z",
                 "id": "a-1",
+                "metadata": {},
                 "sourceType": null,
                 "subtitle": null,
                 "title": "Source",
@@ -330,6 +333,7 @@
               {
                 "createdAt": "2026-09-01T00:00:00Z",
                 "id": "a-1",
+                "metadata": {},
                 "sourceType": null,
                 "subtitle": null,
                 "title": "Source",

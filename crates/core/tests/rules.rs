@@ -2,6 +2,7 @@
 
 use cynic::GraphQlResponse;
 use linear_core::config::{Config, Rule};
+use linear_core::metadata::AttachmentMetadata;
 use linear_core::queries::{IssueById, Templates};
 use linear_core::rules::template_sections::{self, SectionProblem};
 use linear_core::rules::*;
@@ -611,4 +612,176 @@ fn audit_runs_the_same_rules_on_an_existing_issue() {
 
     // Rules that are off do not report.
     assert!(RuleSet::default().audit_issue(&bad).is_empty());
+}
+
+// ------------------------------------------------------- source kinds
+
+fn kind_rules() -> RuleSet {
+    RuleSet::new(&[Rule::SourceAttachment]).source_kinds(vec![
+        "life-decision".into(),
+        "slack".into(),
+        "repo".into(),
+    ])
+}
+
+fn with_kind(kind: &str) -> Draft {
+    Draft::new(Operation::IssueCreate)
+        .source(SOURCE)
+        .source_metadata(AttachmentMetadata::from_pairs(&[format!("kind={kind}")]).unwrap())
+}
+
+#[test]
+fn a_source_kind_from_the_list_passes() {
+    for kind in ["life-decision", "slack", "repo"] {
+        assert_eq!(
+            kind_rules().check(&with_kind(kind), &fetched()),
+            Ok(Outcome::Proceed),
+            "{kind}"
+        );
+    }
+}
+
+#[test]
+fn a_source_kind_outside_the_list_is_rejected_naming_the_source() {
+    let err = kind_rules()
+        .check(&with_kind("email"), &fetched())
+        .unwrap_err();
+    assert_eq!(
+        kinds(&err),
+        vec![(
+            Rule::SourceAttachment,
+            ViolationKind::SourceKindInvalid,
+            Some(SOURCE)
+        )]
+    );
+    let text = err.to_string();
+    assert!(text.contains("\"email\""), "{text}");
+    assert!(text.contains("life-decision, slack, repo"), "{text}");
+}
+
+#[test]
+fn a_missing_or_non_string_kind_is_rejected() {
+    let no_meta = Draft::new(Operation::IssueCreate).source(SOURCE);
+    let other_key = Draft::new(Operation::IssueCreate)
+        .source(SOURCE)
+        .source_metadata(AttachmentMetadata::from_pairs(&["ticket=7"]).unwrap());
+    let number = Draft::new(Operation::IssueCreate)
+        .source(SOURCE)
+        .source_metadata(AttachmentMetadata::from_pairs(&["kind=7"]).unwrap());
+    for draft in [no_meta, other_key, number] {
+        let err = kind_rules().check(&draft, &fetched()).unwrap_err();
+        assert_eq!(
+            kinds(&err),
+            vec![(
+                Rule::SourceAttachment,
+                ViolationKind::SourceKindInvalid,
+                Some(SOURCE)
+            )],
+            "{draft:?}"
+        );
+    }
+}
+
+#[test]
+fn without_source_kinds_the_metadata_is_not_looked_at() {
+    let rules = RuleSet::new(&[Rule::SourceAttachment]);
+    assert_eq!(
+        rules.check(&with_kind("anything"), &fetched()),
+        Ok(Outcome::Proceed)
+    );
+    let no_meta = Draft::new(Operation::IssueCreate).source(SOURCE);
+    assert_eq!(rules.check(&no_meta, &fetched()), Ok(Outcome::Proceed));
+    // An empty list is the same as none.
+    let empty = RuleSet::new(&[Rule::SourceAttachment]).source_kinds(vec![]);
+    assert_eq!(empty.check(&no_meta, &fetched()), Ok(Outcome::Proceed));
+}
+
+#[test]
+fn an_existing_source_stays_existing_unless_new_metadata_has_a_bad_kind() {
+    let mut f = fetched();
+    f.existing_by_source
+        .insert(SOURCE.into(), issue_ref("KK-7"));
+    // Nothing is written without metadata, so the kind is not judged.
+    let plain = Draft::new(Operation::IssueCreate).source(SOURCE);
+    assert!(matches!(
+        kind_rules().check(&plain, &f),
+        Ok(Outcome::AlreadyExists(_))
+    ));
+    // A good kind goes through to the update.
+    assert!(matches!(
+        kind_rules().check(&with_kind("slack"), &f),
+        Ok(Outcome::AlreadyExists(_))
+    ));
+    // A bad kind would be written onto the attachment: refused.
+    let err = kind_rules().check(&with_kind("email"), &f).unwrap_err();
+    assert_eq!(err.violations()[0].kind, ViolationKind::SourceKindInvalid);
+}
+
+fn issue_with_attachments(attachments: serde_json::Value) -> linear_core::types::Issue {
+    let d: IssueById = fixture("issue");
+    let mut issue = serde_json::to_value(d.issue).unwrap();
+    issue["attachments"] = json!({ "nodes": attachments });
+    serde_json::from_value(issue).unwrap()
+}
+
+fn attachment(url: &str, metadata: serde_json::Value) -> serde_json::Value {
+    json!({
+        "id": format!("a-{url}"), "title": "Source", "subtitle": null, "url": url,
+        "sourceType": null, "metadata": metadata, "createdAt": "2026-09-01T00:00:00Z",
+    })
+}
+
+#[test]
+fn audit_flags_an_issue_whose_source_has_no_allowed_kind() {
+    let rules = kind_rules();
+    let good = issue_with_attachments(json!([attachment(SOURCE, json!({ "kind": "slack" }))]));
+    assert!(rules.audit_issue(&good).is_empty());
+
+    for metadata in [
+        json!({}),
+        json!({ "kind": "email" }),
+        json!({ "kind": 3 }),
+        json!({ "kind": { "a": 1 } }),
+    ] {
+        let bad = issue_with_attachments(json!([attachment(SOURCE, metadata.clone())]));
+        let found = rules.audit_issue(&bad);
+        assert_eq!(found.len(), 1, "{metadata}");
+        assert_eq!(found[0].kind, ViolationKind::SourceKindInvalid);
+        assert_eq!(found[0].subject.as_deref(), Some("EX-23"));
+        assert!(found[0].message.contains("EX-23"), "{}", found[0].message);
+        assert!(found[0].message.contains("life-decision, slack, repo"));
+    }
+}
+
+#[test]
+fn audit_accepts_any_http_attachment_with_an_allowed_kind() {
+    let rules = kind_rules();
+    let issue = issue_with_attachments(json!([
+        attachment("https://example.com/pr/1", json!({ "nested": { "a": 1 } })),
+        attachment(SOURCE, json!({ "kind": "life-decision" })),
+    ]));
+    assert!(rules.audit_issue(&issue).is_empty());
+    // An attachment that is not http(s) never counts, whatever its kind.
+    let ftp = issue_with_attachments(json!([attachment("ftp://x/y", json!({ "kind": "slack" }))]));
+    let found = rules.audit_issue(&ftp);
+    assert_eq!(found[0].kind, ViolationKind::SourceRequired);
+}
+
+#[test]
+fn audit_without_source_kinds_ignores_metadata() {
+    let rules = RuleSet::new(&[Rule::SourceAttachment]);
+    let issue = issue_with_attachments(json!([attachment(SOURCE, json!({ "kind": "email" }))]));
+    assert!(rules.audit_issue(&issue).is_empty());
+}
+
+#[test]
+fn the_metadata_update_is_needed_only_when_given_and_different() {
+    use linear_core::rules::source_attachment::metadata_needs_update;
+    let stored = serde_json::Map::from_iter([("kind".to_owned(), json!("slack"))]);
+    let same = AttachmentMetadata::from_pairs(&["kind=slack"]).unwrap();
+    let other = AttachmentMetadata::from_pairs(&["kind=repo"]).unwrap();
+    assert!(!metadata_needs_update(None, &stored));
+    assert!(!metadata_needs_update(Some(&same), &stored));
+    assert!(metadata_needs_update(Some(&other), &stored));
+    assert!(metadata_needs_update(Some(&same), &serde_json::Map::new()));
 }

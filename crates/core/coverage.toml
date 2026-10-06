@@ -1181,7 +1181,7 @@ type = "Attachment"
 status = "implemented"
 via = ["types::Attachment"]
 fields = [
-  "createdAt", "id", "sourceType", "subtitle", "title", "url",
+  "createdAt", "id", "metadata", "sourceType", "subtitle", "title", "url",
 ]
 
 [[entry]]
@@ -1205,7 +1205,7 @@ type = "Attachment"
 status = "unsupported"
 reason = "Not selected in the fixed fragment; use `linear api` if it is needed."
 fields = [
-  "groupBySource", "metadata", "source",
+  "groupBySource", "source",
 ]
 
 [[entry]]

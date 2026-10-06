@@ -3,6 +3,7 @@
 
 use chrono::{TimeZone, Utc};
 use linear_core::inputs::*;
+use linear_core::metadata::AttachmentMetadata;
 use linear_core::read::{self, AttachmentsForUrlQuery, IssueWriteView};
 use linear_core::reorder::{plan, OrderChange, OrderRow};
 use linear_core::wire::{build_request, parse_response, ResponseMeta};
@@ -124,11 +125,32 @@ fn the_mutations_name_the_right_fields() {
         issue_id: "i-1".into(),
         url: "https://example.com/a".into(),
         title: "Source".into(),
+        subtitle: None,
+        metadata: None,
     }));
     assert!(attach.query.contains("attachmentCreate"));
     assert_eq!(
         attach.variables["input"],
         json!({ "issueId": "i-1", "url": "https://example.com/a", "title": "Source" })
+    );
+
+    let meta =
+        AttachmentMetadata::from_pairs(&["kind=slack", "ticket=42", "ratio=0.5", "id=str:42"])
+            .unwrap();
+    let attach = build_request(&attachment_create(AttachmentCreateInput {
+        issue_id: "i-1".into(),
+        url: "https://example.com/a".into(),
+        title: "Source".into(),
+        subtitle: Some("from Slack".into()),
+        metadata: Some(meta),
+    }));
+    assert_eq!(
+        attach.variables["input"],
+        json!({
+            "issueId": "i-1", "url": "https://example.com/a", "title": "Source",
+            "subtitle": "from Slack",
+            "metadata": { "kind": "slack", "ticket": 42, "ratio": 0.5, "id": "42" },
+        })
     );
 
     let comment = build_request(&comment_create(CommentCreateInput {
@@ -171,6 +193,8 @@ fn an_origin_lookup_returns_the_issue_that_carries_the_url() {
 
     let hit: AttachmentsForUrlQuery = parse("attachments_for_url");
     assert_eq!(hit.attachments_for_url.nodes[0].issue.identifier, "EX-23");
+    assert_eq!(hit.attachments_for_url.nodes[0].title, "Origin");
+    assert!(hit.attachments_for_url.nodes[0].metadata.is_empty());
     let none: AttachmentsForUrlQuery = parse("attachments_for_url_none");
     assert!(none.attachments_for_url.nodes.is_empty());
 }

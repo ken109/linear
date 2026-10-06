@@ -193,6 +193,8 @@ pub fn create(ctx: &Ctx, cmd: &CreateCmd) -> Result<()> {
                     .source_title
                     .clone()
                     .unwrap_or_else(|| DEFAULT_SOURCE_TITLE.to_owned()),
+                subtitle: None,
+                metadata: None,
             };
             let r: AttachmentCreate = ws.client.execute(&inputs::attachment_create(input))?;
             if r.attachment_create.success {

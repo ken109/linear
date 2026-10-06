@@ -126,6 +126,17 @@ impl Sandbox {
     }
 }
 
+/// Like `workspace_with_rules`, with `source_kinds` set for the `source-attachment` rule.
+pub fn workspace_with_source_kinds(kinds: &[&str]) -> Sandbox {
+    let sb = workspace_with_rules(&["source-attachment"]);
+    let path = sb.config_dir().join("workspaces.toml");
+    let mut text = std::fs::read_to_string(&path).unwrap();
+    let list: Vec<String> = kinds.iter().map(|k| format!("\"{k}\"")).collect();
+    text.push_str(&format!("source_kinds = [{}]\n", list.join(", ")));
+    std::fs::write(&path, text).unwrap();
+    sb
+}
+
 /// A sandbox with workspace `example` and the given validator rules enabled.
 pub fn workspace_with_rules(rules: &[&str]) -> Sandbox {
     let sb = workspace();
@@ -212,6 +223,17 @@ pub fn issue_with_source() -> Reply {
     data(fixture_data("attachments_for_url"))
 }
 
+/// The issue that carries the source, whose attachment stores this title,
+/// subtitle and metadata.
+pub fn issue_with_source_stored(title: &str, subtitle: Option<&str>, metadata: Value) -> Reply {
+    let mut v = fixture_data("attachments_for_url");
+    let node = &mut v["attachmentsForURL"]["nodes"][0];
+    node["title"] = json!(title);
+    node["subtitle"] = json!(subtitle);
+    node["metadata"] = metadata;
+    data(v)
+}
+
 /// A project with the given lead and one milestone.
 pub fn ownership(project_id: &str, lead: Option<&str>) -> Reply {
     let view = fixture_data("issue_write_view");
@@ -292,7 +314,7 @@ pub fn attachment_ok() -> Reply {
     data(
         json!({ "attachmentCreate": { "success": true, "attachment": {
             "id": "00000000-0000-4000-8000-000000000080", "title": "Source", "subtitle": null,
-            "url": "https://example.com/source/1", "sourceType": null,
+            "url": "https://example.com/source/1", "sourceType": null, "metadata": {},
             "createdAt": "2026-10-06T13:34:35.885Z"
         }}}),
     )

@@ -178,11 +178,15 @@ pub struct UrlVars {
     pub url: String,
 }
 
-/// An attachment, reduced to the issue it hangs on.
+/// An attachment as the origin lookup needs it: the issue it hangs on, and
+/// what it stores (to tell whether `--meta` would change it).
 #[derive(cynic::QueryFragment, Debug, Clone, PartialEq, Serialize, JsonSchema)]
 #[cynic(graphql_type = "Attachment")]
 pub struct AttachmentOwner {
     pub issue: IssueRef,
+    pub title: String,
+    pub subtitle: Option<String>,
+    pub metadata: serde_json::Map<String, serde_json::Value>,
 }
 
 nodes_container!(

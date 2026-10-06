@@ -333,7 +333,7 @@ fn bad_inputs_to_diff_are_usage_errors() {
 
 #[test]
 fn decide_refresh_answers_from_meta_event_and_now() {
-    let meta = json!({ "schemaVersion": 1, "fetchedAt": "2026-10-20T11:59:00Z" });
+    let meta = json!({ "schemaVersion": linear_core::SCHEMA_VERSION, "fetchedAt": "2026-10-20T11:59:00Z" });
     let d = data(api::decide_refresh(
         &meta.to_string(),
         r#"{"kind":"read"}"#,

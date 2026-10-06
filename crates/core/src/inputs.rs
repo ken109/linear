@@ -9,6 +9,7 @@
 //! Only the inputs the CLI needs so far are defined; cynic input structs may
 //! list a subset of the schema's fields.
 
+use crate::metadata::AttachmentMetadata;
 use crate::schema;
 use chrono::NaiveDate;
 use cynic::MutationBuilder;
@@ -191,6 +192,12 @@ pub struct AttachmentCreateInput {
     pub issue_id: String,
     pub url: String,
     pub title: String,
+    #[cynic(skip_serializing_if = "Option::is_none")]
+    pub subtitle: Option<String>,
+    /// Linear upserts on `url`: sending the URL of an existing attachment
+    /// replaces its title, subtitle and metadata.
+    #[cynic(skip_serializing_if = "Option::is_none")]
+    pub metadata: Option<AttachmentMetadata>,
 }
 
 #[derive(cynic::QueryVariables, Debug, Clone)]

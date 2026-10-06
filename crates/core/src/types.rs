@@ -332,6 +332,10 @@ pub struct Attachment {
     pub subtitle: Option<String>,
     pub url: String,
     pub source_type: Option<String>,
+    /// What the attachment carries beside its title: the flat `key -> string | number`
+    /// object `issue create --meta` writes. Attachments made by integrations may
+    /// nest, so it is read as free-form JSON.
+    pub metadata: serde_json::Map<String, serde_json::Value>,
     pub created_at: DateTime<Utc>,
 }
 

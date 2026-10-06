@@ -23,6 +23,7 @@ pub mod template_sections;
 
 use crate::config::{Rule, WorkspaceConfig};
 use crate::error::ErrorCode;
+use crate::metadata::AttachmentMetadata;
 use crate::types::{Issue, IssueRef, Label, Template};
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
@@ -122,6 +123,8 @@ impl TemplateKind {
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct RuleSet {
     rules: BTreeMap<Rule, BTreeSet<Operation>>,
+    /// `source-attachment`: the allowed values of `metadata.kind`. Empty: not checked.
+    source_kinds: Vec<String>,
 }
 
 impl RuleSet {
@@ -132,7 +135,15 @@ impl RuleSet {
                 .iter()
                 .map(|r| (*r, r.operations().iter().copied().collect()))
                 .collect(),
+            source_kinds: Vec::new(),
         }
+    }
+
+    /// Require the source attachment's `metadata.kind` to be one of `kinds`
+    /// (`source-attachment` only; an empty list turns the check off).
+    pub fn source_kinds(mut self, kinds: Vec<String>) -> Self {
+        self.source_kinds = kinds;
+        self
     }
 
     /// Build from a workspace's configuration, honouring `rule_operations`.
@@ -140,7 +151,7 @@ impl RuleSet {
     /// names an unsupported operation; if one slips through it is dropped
     /// here rather than widened.
     pub fn from_workspace(cfg: &WorkspaceConfig) -> Self {
-        let mut set = Self::new(&cfg.rules);
+        let mut set = Self::new(&cfg.rules).source_kinds(cfg.source_kinds.clone());
         for (rule, ops) in &cfg.rule_operations {
             if let Some(slot) = set.rules.get_mut(rule) {
                 *slot = ops
@@ -198,12 +209,14 @@ impl RuleSet {
                 Rule::TemplateSections => {
                     violations.extend(template_sections::check(draft, fetched));
                 }
-                Rule::SourceAttachment => match source_attachment::check(draft, fetched) {
-                    source_attachment::Check::Existing(issue) => {
-                        return Ok(Outcome::AlreadyExists(issue));
+                Rule::SourceAttachment => {
+                    match source_attachment::check(draft, fetched, &self.source_kinds) {
+                        source_attachment::Check::Existing(issue) => {
+                            return Ok(Outcome::AlreadyExists(issue));
+                        }
+                        source_attachment::Check::Violations(v) => violations.extend(v),
                     }
-                    source_attachment::Check::Violations(v) => violations.extend(v),
-                },
+                }
                 Rule::LabelGroupsExclusive => {
                     if let Some(labels) = &draft.labels {
                         violations.extend(label_groups::check(labels));
@@ -229,7 +242,7 @@ impl RuleSet {
         let enabled = |rule: Rule| self.rules.get(&rule).is_some_and(|ops| !ops.is_empty());
         let mut violations = Vec::new();
         if enabled(Rule::SourceAttachment) {
-            violations.extend(source_attachment::check_existing(issue));
+            violations.extend(source_attachment::check_existing(issue, &self.source_kinds));
         }
         if enabled(Rule::LabelGroupsExclusive) {
             violations.extend(label_groups::check(&issue.labels));
@@ -249,6 +262,9 @@ pub struct Draft {
     pub body: Option<String>,
     /// The origin URL (`--source`).
     pub source: Option<String>,
+    /// The metadata of the source attachment (`--meta`). The `source-attachment`
+    /// rule reads its `kind`.
+    pub source_metadata: Option<AttachmentMetadata>,
     /// The labels the issue will have, with their groups resolved. `None`
     /// when the write leaves labels alone.
     pub labels: Option<Vec<Label>>,
@@ -261,6 +277,7 @@ impl Draft {
             template: None,
             body: None,
             source: None,
+            source_metadata: None,
             labels: None,
         }
     }
@@ -277,6 +294,11 @@ impl Draft {
 
     pub fn source(mut self, url: impl Into<String>) -> Self {
         self.source = Some(url.into());
+        self
+    }
+
+    pub fn source_metadata(mut self, metadata: AttachmentMetadata) -> Self {
+        self.source_metadata = Some(metadata);
         self
     }
 
@@ -350,6 +372,9 @@ pub enum ViolationKind {
     SourceRequired,
     /// The source is not an http(s) URL.
     SourceInvalid,
+    /// The source attachment's `metadata.kind` is missing or not one of the
+    /// workspace's `source_kinds`.
+    SourceKindInvalid,
     /// More than one label of a single-select group.
     LabelGroupConflict,
 }

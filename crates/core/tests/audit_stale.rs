@@ -446,7 +446,8 @@ fn thresholds_come_from_workspace_settings_with_defaults_for_what_is_absent() {
         AuditConfig {
             stale_days: 3,
             status_update_days: 14,
-            validators: vec![]
+            validators: vec![],
+            source_kinds: vec![]
         }
     );
     assert_eq!(
@@ -458,7 +459,8 @@ fn thresholds_come_from_workspace_settings_with_defaults_for_what_is_absent() {
         AuditConfig {
             stale_days: 7,
             status_update_days: 14,
-            validators: vec![]
+            validators: vec![],
+            source_kinds: vec![]
         }
     );
     assert!(serde_json::from_str::<AuditConfig>(r#"{ "stale": 3 }"#).is_err());

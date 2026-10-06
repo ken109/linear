@@ -17,7 +17,7 @@
     },
     "meta": {
       "fetchedAt": "2026-10-20T11:59:00Z",
-      "schemaVersion": 1,
+      "schemaVersion": 2,
       "ttlSecs": 30
     },
     "now": "2026-10-20T12:00:00Z"

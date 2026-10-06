@@ -60,6 +60,12 @@ pub struct WorkspaceConfig {
     /// must be one the rule can apply to.
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     pub rule_operations: BTreeMap<Rule, Vec<Operation>>,
+    /// The values `metadata.kind` of a source attachment may take, for the
+    /// `source-attachment` rule. When set, an issue created with `--source`
+    /// must also pass `--meta kind=<one of these>`, and `audit` flags issues
+    /// whose source attachments have none. Unset: the kind is not checked.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub source_kinds: Vec<String>,
     /// Allow `linear api --mutation` (ownership rules and validators do not apply to it).
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub allow_raw_mutation: bool,
@@ -109,6 +115,25 @@ impl WorkspaceConfig {
                     "workspace {workspace:?}: audit.{key} must be at least 1"
                 )));
             }
+        }
+        Ok(())
+    }
+
+    /// `source_kinds` belongs to `source-attachment`: it needs the rule, and
+    /// every entry must be a real kind (an empty list would refuse everything).
+    fn validate_source_kinds(&self, workspace: &str) -> Result<()> {
+        if self.source_kinds.is_empty() {
+            return Ok(());
+        }
+        if !self.rules.contains(&Rule::SourceAttachment) {
+            return Err(Error::Config(format!(
+                "workspace {workspace:?}: source_kinds needs the source-attachment rule in rules"
+            )));
+        }
+        if self.source_kinds.iter().any(|k| k.trim().is_empty()) {
+            return Err(Error::Config(format!(
+                "workspace {workspace:?}: source_kinds must not contain an empty kind"
+            )));
         }
         Ok(())
     }
@@ -173,6 +198,7 @@ impl Config {
             validate_workspace_name(name)?;
             ws.validate_rules(name)?;
             ws.validate_audit(name)?;
+            ws.validate_source_kinds(name)?;
         }
         if let Some(default) = &self.default {
             if !self.workspaces.contains_key(default) {

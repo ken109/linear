@@ -54,6 +54,9 @@ pub struct AuditConfig {
     /// rules. `template-sections` needs [`Snapshot::templates`]; an issue does
     /// not record which template it came from, so the closest one is used.
     pub validators: Vec<Rule>,
+    /// `source-attachment`: the values `metadata.kind` of a source attachment
+    /// may take. Empty: the kind is not checked.
+    pub source_kinds: Vec<String>,
 }
 
 impl AuditConfig {
@@ -68,6 +71,7 @@ impl AuditConfig {
                 .status_update_days
                 .unwrap_or(default.status_update_days),
             validators: workspace.rules.clone(),
+            source_kinds: workspace.source_kinds.clone(),
         }
     }
 }
@@ -78,6 +82,7 @@ impl Default for AuditConfig {
             stale_days: 7,
             status_update_days: 14,
             validators: Vec::new(),
+            source_kinds: Vec::new(),
         }
     }
 }
@@ -164,7 +169,7 @@ impl<'a> Ctx<'a> {
             config,
             now,
             today: now.date_naive(),
-            rules: RuleSet::new(&config.validators),
+            rules: RuleSet::new(&config.validators).source_kinds(config.source_kinds.clone()),
             scope,
             projects: snapshot
                 .projects

@@ -20,6 +20,11 @@
         "id": {
           "type": "string"
         },
+        "metadata": {
+          "additionalProperties": true,
+          "description": "What the attachment carries beside its title: the flat `key -> string | number`\nobject `issue create --meta` writes. Attachments made by integrations may\nnest, so it is read as free-form JSON.",
+          "type": "object"
+        },
         "sourceType": {
           "type": [
             "string",
@@ -45,6 +50,7 @@
         "subtitle",
         "url",
         "sourceType",
+        "metadata",
         "createdAt"
       ],
       "type": "object"
@@ -67,6 +73,14 @@
       "additionalProperties": false,
       "description": "Audit settings, per workspace.",
       "properties": {
+        "source_kinds": {
+          "default": [],
+          "description": "`source-attachment`: the values `metadata.kind` of a source attachment\nmay take. Empty: the kind is not checked.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
         "stale_days": {
           "default": 7,
           "description": "`stale-in-progress`: an In Progress issue with no update for this many\ndays is stale.",
@@ -93,7 +107,8 @@
       "required": [
         "stale_days",
         "status_update_days",
-        "validators"
+        "validators",
+        "source_kinds"
       ],
       "type": "object"
     },
@@ -2488,6 +2503,6 @@
       }
     }
   },
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "title": "linear-wasm"
 }

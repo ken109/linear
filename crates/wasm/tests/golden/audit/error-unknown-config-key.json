@@ -3,7 +3,7 @@
   "expected": {
     "error": {
       "code": "usage",
-      "message": "invalid config: unknown field `stale_day`, expected one of `stale_days`, `status_update_days`, `validators` at line 1 column 12"
+      "message": "invalid config: unknown field `stale_day`, expected one of `stale_days`, `status_update_days`, `validators`, `source_kinds` at line 1 column 12"
     },
     "ok": false
   },

@@ -87,6 +87,7 @@
               "subtitle": null,
               "url": "https://example.com/source/1",
               "sourceType": "unknown",
+              "metadata": {},
               "createdAt": "2026-10-06T13:34:36.673Z"
             }
           ]

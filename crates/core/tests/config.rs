@@ -263,3 +263,39 @@ fn a_malformed_repo_file_is_a_config_error() {
     .unwrap_err();
     assert!(matches!(err, Error::Config(_)));
 }
+
+// ------------------------------------------------------------- source_kinds
+
+#[test]
+fn source_kinds_belong_to_the_source_attachment_rule() {
+    let ok = Config::parse(
+        "[workspaces.w]\nurl_key = \"w\"\nrules = [\"source-attachment\"]\nsource_kinds = [\"slack\", \"repo\"]\n",
+    )
+    .unwrap();
+    assert_eq!(ok.get("w").unwrap().source_kinds, ["slack", "repo"]);
+
+    // Absent by default, and not written back when empty.
+    let none = Config::parse("[workspaces.w]\nurl_key = \"w\"\n").unwrap();
+    assert!(none.get("w").unwrap().source_kinds.is_empty());
+    assert!(!toml_edit::ser::to_string(&none)
+        .unwrap()
+        .contains("source_kinds"));
+
+    // It feeds the audit's settings.
+    let audit = linear_core::audit::AuditConfig::from_workspace(ok.get("w").unwrap());
+    assert_eq!(audit.source_kinds, ["slack", "repo"]);
+}
+
+#[test]
+fn source_kinds_without_the_rule_or_with_an_empty_kind_is_an_error() {
+    for bad in [
+        "[workspaces.w]\nurl_key = \"w\"\nsource_kinds = [\"slack\"]\n",
+        "[workspaces.w]\nurl_key = \"w\"\nrules = [\"label-groups-exclusive\"]\nsource_kinds = [\"slack\"]\n",
+        "[workspaces.w]\nurl_key = \"w\"\nrules = [\"source-attachment\"]\nsource_kinds = [\"slack\", \"  \"]\n",
+        "[workspaces.w]\nurl_key = \"w\"\nrules = [\"source-attachment\"]\nsource_kind = [\"slack\"]\n",
+        "[workspaces.w]\nurl_key = \"w\"\nrules = [\"source-attachment\"]\nsource_kinds = [1]\n",
+    ] {
+        let err = Config::parse(bad).unwrap_err();
+        assert!(matches!(err, Error::Config(_)), "{bad:?} -> {err:?}");
+    }
+}
