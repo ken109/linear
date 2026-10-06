@@ -20,26 +20,6 @@ pub(super) fn run(ctx: &Ctx, out: &mut Vec<Finding>) {
     }
 }
 
-fn finding(
-    ctx: &Ctx,
-    rule: RuleId,
-    severity: Severity,
-    target: Target,
-    actionable: bool,
-    message: String,
-    fix: String,
-) -> Finding {
-    Finding {
-        rule,
-        severity,
-        workspace: ctx.workspace().to_owned(),
-        target,
-        message,
-        actionable,
-        fix: format!("{fix} -w {}", ctx.workspace()),
-    }
-}
-
 fn days_before(today: NaiveDate, date: NaiveDate) -> i64 {
     (today - date).num_days()
 }
@@ -84,8 +64,7 @@ fn project_state_vs_issues(ctx: &Ctx, p: &Project, out: &mut Vec<Finding>) {
         ),
         _ => return,
     };
-    out.push(finding(
-        ctx,
+    out.push(ctx.finding(
         RuleId::ProjectStateVsIssues,
         Severity::Warn,
         project_target(p),
@@ -99,8 +78,7 @@ fn project_without_lead(ctx: &Ctx, p: &Project, out: &mut Vec<Finding>) {
     if p.lead.is_some() || project_is_closed(p) {
         return;
     }
-    out.push(finding(
-        ctx,
+    out.push(ctx.finding(
         RuleId::ProjectWithoutLead,
         Severity::Info,
         project_target(p),
@@ -119,8 +97,7 @@ fn project_overdue(ctx: &Ctx, p: &Project, out: &mut Vec<Finding>) {
         return;
     }
     let late = days_before(ctx.today, target_date);
-    out.push(finding(
-        ctx,
+    out.push(ctx.finding(
         RuleId::Overdue,
         Severity::Warn,
         project_target(p),
@@ -147,8 +124,7 @@ fn milestones_overdue(ctx: &Ctx, p: &Project, out: &mut Vec<Finding>) {
             continue;
         }
         let late = days_before(ctx.today, target_date);
-        out.push(finding(
-            ctx,
+        out.push(ctx.finding(
             RuleId::Overdue,
             Severity::Warn,
             Target {
@@ -181,8 +157,7 @@ fn issue_overdue(ctx: &Ctx, i: &Issue, out: &mut Vec<Finding>) {
         return;
     }
     let late = days_before(ctx.today, due);
-    out.push(finding(
-        ctx,
+    out.push(ctx.finding(
         RuleId::Overdue,
         Severity::Warn,
         issue_target(i),
@@ -209,8 +184,7 @@ fn issue_without_milestone(ctx: &Ctx, i: &Issue, out: &mut Vec<Finding>) {
     if project_is_closed(p) || p.project_milestones.is_empty() {
         return;
     }
-    out.push(finding(
-        ctx,
+    out.push(ctx.finding(
         RuleId::IssueWithoutMilestone,
         Severity::Info,
         issue_target(i),

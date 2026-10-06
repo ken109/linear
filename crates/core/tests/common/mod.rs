@@ -4,7 +4,7 @@
 #![allow(dead_code)]
 
 use chrono::{DateTime, TimeZone, Utc};
-use linear_core::audit::{Finding, Snapshot};
+use linear_core::audit::{AuditConfig, AuditReport, Finding, Snapshot};
 use linear_core::types::{Issue, Project};
 use serde_json::{json, Value};
 
@@ -113,6 +113,8 @@ impl IssueB {
 
 pub struct ProjectB(Value);
 
+/// An in-progress project with no lead and a status update posted the day
+/// before `now()`, so that no staleness rule fires unless a test asks for it.
 pub fn project(slug: &str) -> ProjectB {
     ProjectB(json!({
         "id": format!("p-{slug}"),
@@ -130,9 +132,13 @@ pub fn project(slug: &str) -> ProjectB {
         "issues": { "nodes": [], "pageInfo": { "hasNextPage": false, "endCursor": null } },
         "updatedAt": "2026-10-19T00:00:00Z",
     }))
+    .update_at("2026-10-19T00:00:00Z")
 }
 
 impl ProjectB {
+    pub fn no_update(self) -> Self {
+        self.set("lastUpdate", Value::Null)
+    }
     fn set(mut self, key: &str, v: Value) -> Self {
         self.0[key] = v;
         self
@@ -203,6 +209,37 @@ pub fn snapshot(issues: Vec<Issue>, projects: Vec<Project>) -> Snapshot {
         issues,
         projects,
     }
+}
+
+fn fixture(name: &str) -> String {
+    std::fs::read_to_string(format!(
+        "{}/tests/fixtures/{name}.json",
+        env!("CARGO_MANIFEST_DIR")
+    ))
+    .unwrap()
+}
+
+/// The anonymized sandbox responses (issue EX-23 and its project), as a
+/// snapshot. Captured on 2026-10-06.
+pub fn sandbox_snapshot() -> Snapshot {
+    let issue: cynic::GraphQlResponse<linear_core::queries::IssueById> =
+        serde_json::from_str(&fixture("issue")).unwrap();
+    let projects: cynic::GraphQlResponse<linear_core::queries::Projects> =
+        serde_json::from_str(&fixture("projects")).unwrap();
+    snapshot(
+        vec![issue.data.unwrap().issue],
+        projects.data.unwrap().projects.nodes,
+    )
+}
+
+/// Audit with the default thresholds.
+pub fn audit(s: &Snapshot, now: DateTime<Utc>) -> AuditReport {
+    linear_core::audit::audit(s, &AuditConfig::default(), now)
+}
+
+/// A timestamp in RFC 3339, for brevity in assertions.
+pub fn ts(s: &str) -> DateTime<Utc> {
+    s.parse().unwrap()
 }
 
 /// The findings of one rule, as `(target identifier, actionable)` pairs.

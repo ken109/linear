@@ -7,6 +7,7 @@
 
 mod consistency;
 mod finding;
+mod stale;
 
 use crate::types::{Issue, Project, ProjectStatusType};
 use chrono::{DateTime, NaiveDate, Utc};
@@ -26,14 +27,36 @@ pub struct Snapshot {
     pub projects: Vec<Project>,
 }
 
+/// The thresholds of the staleness rules, set per workspace.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default, deny_unknown_fields)]
+pub struct AuditConfig {
+    /// `stale-in-progress`: an In Progress issue with no update for this many
+    /// days is stale.
+    pub stale_days: u32,
+    /// `status-update-outdated`: a project's latest status update this many
+    /// days old is outdated.
+    pub status_update_days: u32,
+}
+
+impl Default for AuditConfig {
+    fn default() -> Self {
+        Self {
+            stale_days: 7,
+            status_update_days: 14,
+        }
+    }
+}
+
 /// Run every rule over `snapshot`.
 ///
-/// `now` decides what is overdue; target dates are compared as calendar dates
-/// in UTC.
-pub fn audit(snapshot: &Snapshot, now: DateTime<Utc>) -> AuditReport {
-    let ctx = Ctx::new(snapshot, now);
+/// `now` decides what is overdue or stale; target dates are compared as
+/// calendar dates in UTC, ages in whole days since the timestamp.
+pub fn audit(snapshot: &Snapshot, config: &AuditConfig, now: DateTime<Utc>) -> AuditReport {
+    let ctx = Ctx::new(snapshot, config, now);
     let mut findings = Vec::new();
     consistency::run(&ctx, &mut findings);
+    stale::run(&ctx, &mut findings);
     findings.sort_by(|a, b| {
         (a.rule, a.target.kind, &a.target.identifier).cmp(&(
             b.rule,
@@ -47,14 +70,18 @@ pub fn audit(snapshot: &Snapshot, now: DateTime<Utc>) -> AuditReport {
 /// What the rules share.
 pub(crate) struct Ctx<'a> {
     pub snapshot: &'a Snapshot,
+    pub config: &'a AuditConfig,
+    pub now: DateTime<Utc>,
     pub today: NaiveDate,
     projects: HashMap<&'a str, &'a Project>,
 }
 
 impl<'a> Ctx<'a> {
-    fn new(snapshot: &'a Snapshot, now: DateTime<Utc>) -> Self {
+    fn new(snapshot: &'a Snapshot, config: &'a AuditConfig, now: DateTime<Utc>) -> Self {
         Self {
             snapshot,
+            config,
+            now,
             today: now.date_naive(),
             projects: snapshot
                 .projects
@@ -72,6 +99,28 @@ impl<'a> Ctx<'a> {
 
     pub fn workspace(&self) -> &str {
         &self.snapshot.workspace
+    }
+
+    /// Build a finding for this workspace. `fix` is the command without the
+    /// workspace flag, which is added here.
+    pub fn finding(
+        &self,
+        rule: RuleId,
+        severity: Severity,
+        target: Target,
+        actionable: bool,
+        message: String,
+        fix: String,
+    ) -> Finding {
+        Finding {
+            rule,
+            severity,
+            workspace: self.workspace().to_owned(),
+            target,
+            message,
+            actionable,
+            fix: format!("{fix} -w {}", self.workspace()),
+        }
     }
 }
 

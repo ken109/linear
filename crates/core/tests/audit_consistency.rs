@@ -4,9 +4,21 @@
 mod common;
 
 use common::*;
-use cynic::GraphQlResponse;
-use linear_core::audit::{audit, RuleId, Severity, TargetKind};
-use linear_core::queries::{IssueById, Projects};
+use linear_core::audit::{Finding, RuleId, Severity, TargetKind};
+
+/// The findings of the consistency rules only (the staleness rules have their
+/// own tests).
+fn of_consistency(findings: &[Finding]) -> Vec<&Finding> {
+    findings
+        .iter()
+        .filter(|f| {
+            !matches!(
+                f.rule,
+                RuleId::StaleInProgress | RuleId::StatusUpdateOutdated
+            )
+        })
+        .collect()
+}
 
 fn rule(s: &linear_core::audit::Snapshot, r: RuleId) -> Vec<(String, bool)> {
     of_rule(&audit(s, now()).findings, r)
@@ -379,23 +391,6 @@ fn a_snapshot_round_trips_through_json() {
 
 // ------------------------------------------- real (anonymized) responses
 
-fn fixture(name: &str) -> String {
-    std::fs::read_to_string(format!(
-        "{}/tests/fixtures/{name}.json",
-        env!("CARGO_MANIFEST_DIR")
-    ))
-    .unwrap()
-}
-
-fn sandbox_snapshot() -> linear_core::audit::Snapshot {
-    let issue: GraphQlResponse<IssueById> = serde_json::from_str(&fixture("issue")).unwrap();
-    let projects: GraphQlResponse<Projects> = serde_json::from_str(&fixture("projects")).unwrap();
-    snapshot(
-        vec![issue.data.unwrap().issue],
-        projects.data.unwrap().projects.nodes,
-    )
-}
-
 #[test]
 fn the_sandbox_data_is_clean_when_nothing_is_late() {
     // The fixture was captured on 2026-10-06; its dates are all later.
@@ -404,7 +399,8 @@ fn the_sandbox_data_is_clean_when_nothing_is_late() {
         &s,
         chrono::Utc.with_ymd_and_hms(2026, 10, 7, 0, 0, 0).unwrap(),
     );
-    assert!(report.findings.is_empty(), "{:#?}", report.findings);
+    let consistency = of_consistency(&report.findings);
+    assert!(consistency.is_empty(), "{consistency:#?}");
 }
 
 #[test]
@@ -412,9 +408,8 @@ fn the_sandbox_data_goes_overdue_when_the_dates_pass() {
     let s = sandbox_snapshot();
     let late = chrono::Utc.with_ymd_and_hms(2027, 1, 5, 0, 0, 0).unwrap();
     let report = audit(&s, late);
-    let got: Vec<_> = report
-        .findings
-        .iter()
+    let got: Vec<_> = of_consistency(&report.findings)
+        .into_iter()
         .map(|f| {
             (
                 f.rule,
