@@ -173,7 +173,7 @@ fn issue_overdue(ctx: &Ctx, i: &Issue, out: &mut Vec<Finding>) {
             plural(late),
             i.state.name
         ),
-        format!("linear issue update {} --due-date <date>", i.identifier),
+        format!("linear issue update {} --due <date>", i.identifier),
     ));
 }
 

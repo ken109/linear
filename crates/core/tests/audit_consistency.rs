@@ -331,10 +331,7 @@ fn findings_carry_workspace_target_and_a_fix_for_that_workspace() {
     assert_eq!(f.target.kind, TargetKind::Issue);
     assert_eq!(f.target.id, "i-KK-9");
     assert_eq!(f.target.url, "https://linear.app/x/issue/KK-9");
-    assert_eq!(
-        f.fix,
-        "linear issue update KK-9 --due-date <date> -w ken109"
-    );
+    assert_eq!(f.fix, "linear issue update KK-9 --due <date> -w ken109");
 }
 
 #[test]
