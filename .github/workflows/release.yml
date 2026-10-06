@@ -1,0 +1,265 @@
+name: Release
+
+# Pushing a tag vX.Y.Z builds the `linear` binary for macOS (arm64, x86_64) and Linux
+# (x86_64, static musl), builds the wasm npm tarball, attaches all of them with their
+# checksums to a GitHub Release, and commits a regenerated Formula/linear.rb to the
+# Homebrew tap ken109/homebrew-tap.
+#
+# The tag must equal the workspace version in Cargo.toml and the version in
+# packages/linear-wasm/package.json; the workflow fails otherwise and bumps nothing.
+#
+# workflow_dispatch with dry_run (the default) runs the whole build and packaging and
+# uploads everything, the formula included, to the run, but creates no Release and
+# does not touch the tap.
+#
+# Secret: TAP_GITHUB_TOKEN, a token that can push to ken109/homebrew-tap.
+
+on:
+  push:
+    tags: ["v*.*.*"]
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: Build and package only; create no Release and do not touch the tap
+        type: boolean
+        default: true
+
+env:
+  CARGO_TERM_COLOR: always
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  version:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.v.outputs.version }}
+      tag: ${{ steps.v.outputs.tag }}
+      dry_run: ${{ steps.v.outputs.dry_run }}
+      prerelease: ${{ steps.v.outputs.prerelease }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: v
+        env:
+          EVENT: ${{ github.event_name }}
+          REF_TYPE: ${{ github.ref_type }}
+          REF_NAME: ${{ github.ref_name }}
+          DRY_RUN_INPUT: ${{ inputs.dry_run }}
+        run: |
+          if [ "$EVENT" = push ]; then
+            [ "$REF_TYPE" = tag ] || { echo "expected a tag push" >&2; exit 1; }
+            version=$(sh scripts/release/check-version.sh "$REF_NAME")
+            dry_run=false
+          else
+            # A manual run has no tag: check the two versions agree and use that version.
+            version=$(sh scripts/release/check-version.sh)
+            dry_run=$DRY_RUN_INPUT
+          fi
+          prerelease=false
+          case "$version" in *-*) prerelease=true ;; esac
+          {
+            echo "version=$version"
+            echo "tag=v$version"
+            echo "dry_run=$dry_run"
+            echo "prerelease=$prerelease"
+          } >> "$GITHUB_OUTPUT"
+          echo "version $version, dry_run $dry_run, prerelease $prerelease"
+
+  build:
+    needs: version
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: aarch64-apple-darwin
+            os: macos-latest
+          - target: x86_64-apple-darwin
+            os: macos-latest # cross-compiled on the arm64 runner
+          - target: x86_64-unknown-linux-musl
+            os: ubuntu-latest
+    runs-on: ${{ matrix.os }}
+    env:
+      VERSION: ${{ needs.version.outputs.version }}
+      CARGO_PROFILE_RELEASE_STRIP: "true"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ matrix.target }}
+      - name: Install musl tools
+        if: matrix.target == 'x86_64-unknown-linux-musl'
+        run: sudo apt-get update && sudo apt-get install -y musl-tools
+      - name: Build
+        run: cargo build --release --locked -p linear --target ${{ matrix.target }}
+      - name: Smoke test
+        run: |
+          bin=target/${{ matrix.target }}/release/linear
+          if [ "${{ matrix.target }}" = x86_64-apple-darwin ]; then
+            run="arch -x86_64 $bin"
+          else
+            run=$bin
+          fi
+          out=$($run --version)
+          echo "$out"
+          [ "$out" = "linear $VERSION" ] || { echo "expected 'linear $VERSION'" >&2; exit 1; }
+      - name: Package
+        run: sh scripts/release/package.sh "$VERSION" "${{ matrix.target }}" "target/${{ matrix.target }}/release/linear" dist
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linear-${{ matrix.target }}
+          path: dist/*
+          if-no-files-found: error
+
+  wasm:
+    needs: version
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: packages/linear-wasm
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+      - uses: Swatinem/rust-cache@v2
+
+      # wasm-bindgen-cli must be the version of the wasm-bindgen crate in Cargo.lock.
+      - name: Find the wasm-bindgen version
+        id: bindgen
+        working-directory: .
+        run: |
+          version=$(cargo metadata --format-version 1 --locked \
+            | jq -r '.packages[] | select(.name=="wasm-bindgen") | .version')
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache@v4
+        id: bindgen-cache
+        with:
+          path: ~/.cargo/bin/wasm-bindgen
+          key: wasm-bindgen-cli-${{ steps.bindgen.outputs.version }}
+      - name: Install wasm-bindgen-cli
+        if: steps.bindgen-cache.outputs.cache-hit != 'true'
+        run: cargo install wasm-bindgen-cli --version "${{ steps.bindgen.outputs.version }}" --locked
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: packages/linear-wasm/package-lock.json
+      - run: npm ci
+      - run: sh scripts/build.sh
+      - run: sh scripts/pack.sh
+      - name: Tarball is named after the release version
+        env:
+          VERSION: ${{ needs.version.outputs.version }}
+        run: |
+          ls out
+          [ -f "out/ken109-linear-wasm-$VERSION.tgz" ] || { echo "expected out/ken109-linear-wasm-$VERSION.tgz" >&2; exit 1; }
+      - name: Checksum
+        working-directory: packages/linear-wasm/out
+        run: sha256sum *.tgz > "$(ls *.tgz).sha256"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linear-wasm
+          path: |
+            packages/linear-wasm/out/*.tgz
+            packages/linear-wasm/out/*.sha256
+          if-no-files-found: error
+
+  formula:
+    needs: [version, build]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: linear-*-*
+          path: dist
+          merge-multiple: true
+      - name: Generate the formula
+        env:
+          VERSION: ${{ needs.version.outputs.version }}
+        run: |
+          ls -l dist
+          sha() { cut -d' ' -f1 "dist/linear-$VERSION-$1.tar.gz.sha256"; }
+          mkdir -p formula
+          sh scripts/release/formula.sh "$VERSION" \
+            "$(sha aarch64-apple-darwin)" \
+            "$(sha x86_64-apple-darwin)" \
+            "$(sha x86_64-unknown-linux-musl)" \
+            formula/linear.rb
+          cat formula/linear.rb
+      - uses: actions/upload-artifact@v4
+        with:
+          name: formula
+          path: formula/linear.rb
+          if-no-files-found: error
+
+  release:
+    needs: [version, build, wasm, formula]
+    if: needs.version.outputs.dry_run != 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      TAG: ${{ needs.version.outputs.tag }}
+      PRERELEASE: ${{ needs.version.outputs.prerelease }}
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: linear-*
+          path: dist
+          merge-multiple: true
+      - name: Create the release and attach the files
+        run: |
+          ls -l dist
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            # A re-run of a failed release: replace the assets.
+            gh release upload "$TAG" dist/* --clobber --repo "$GITHUB_REPOSITORY"
+          else
+            flags=""
+            [ "$PRERELEASE" = true ] && flags="--prerelease"
+            gh release create "$TAG" dist/* --repo "$GITHUB_REPOSITORY" \
+              --verify-tag --title "$TAG" --generate-notes $flags
+          fi
+
+  tap:
+    # After the release, because the formula points at its assets. Pre-releases are not
+    # offered through brew.
+    needs: [version, release]
+    if: needs.version.outputs.dry_run != 'true' && needs.version.outputs.prerelease != 'true'
+    runs-on: ubuntu-latest
+    env:
+      VERSION: ${{ needs.version.outputs.version }}
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: formula
+          path: formula
+      - uses: actions/checkout@v4
+        with:
+          repository: ken109/homebrew-tap
+          token: ${{ secrets.TAP_GITHUB_TOKEN }}
+          path: tap
+      - name: Commit the formula
+        working-directory: tap
+        run: |
+          mkdir -p Formula
+          cp ../formula/linear.rb Formula/linear.rb
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add Formula/linear.rb
+          if git diff --cached --quiet; then
+            echo "Formula/linear.rb is already up to date"
+          else
+            git commit -m "linear $VERSION"
+            git push
+          fi
