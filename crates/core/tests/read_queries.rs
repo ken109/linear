@@ -41,7 +41,7 @@ fn an_issue_view_selects_the_issue_twice_under_two_names() {
     let view: IssueView = parse("issue_view");
     assert_eq!(view.issue.identifier, "EX-23");
     assert_eq!(
-        view.detail.description.as_deref(),
+        view.issue.description.as_deref(),
         Some("Body of the fixture issue.")
     );
     assert_eq!(view.detail.priority_label, "High");

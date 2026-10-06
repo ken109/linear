@@ -407,9 +407,9 @@ type = "Issue"
 status = "implemented"
 via = ["types::Issue"]
 fields = [
-  "assignee", "attachments", "completedAt", "createdAt", "dueDate", "estimate", "id",
-  "identifier", "labels", "parent", "prioritySortOrder", "project", "projectMilestone",
-  "sortOrder", "startedAt", "state", "team", "title", "updatedAt", "url",
+  "assignee", "attachments", "canceledAt", "completedAt", "createdAt", "description", "dueDate",
+  "estimate", "id", "identifier", "labels", "parent", "prioritySortOrder", "project",
+  "projectMilestone", "sortOrder", "startedAt", "state", "team", "title", "updatedAt", "url",
 ]
 
 [[entry]]
@@ -417,8 +417,7 @@ type = "Issue"
 status = "unsupported"
 reason = "A lifecycle timestamp the CLI does not use yet; use `linear api`."
 fields = [
-  "addedToProjectAt", "addedToTeamAt", "archivedAt", "canceledAt", "startedTriageAt",
-  "triagedAt",
+  "addedToProjectAt", "addedToTeamAt", "archivedAt", "startedTriageAt", "triagedAt",
 ]
 
 [[entry]]
@@ -474,7 +473,7 @@ type = "Issue"
 status = "unsupported"
 reason = "Not selected in the fixed fragment; use `linear api` if it is needed."
 fields = [
-  "branchName", "customerTicketCount", "description", "number", "priority", "trashed",
+  "branchName", "customerTicketCount", "number", "priority", "trashed",
 ]
 
 [[entry]]

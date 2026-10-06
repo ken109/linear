@@ -233,7 +233,7 @@ fn view(ctx: &Ctx, args: &ViewCmd) -> Result<()> {
                     ("Updated", date_time(&i.updated_at)),
                 ])
             );
-            if let Some(desc) = d.description.as_deref().filter(|s| !s.trim().is_empty()) {
+            if let Some(desc) = i.description.as_deref().filter(|s| !s.trim().is_empty()) {
                 text.push_str(&format!("\n\n{}", desc.trim_end()));
             }
             if !d.comments.is_empty() {

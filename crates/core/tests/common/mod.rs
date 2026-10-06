@@ -53,6 +53,7 @@ pub fn issue(identifier: &str) -> IssueB {
         "id": format!("i-{identifier}"),
         "identifier": identifier,
         "title": format!("Title of {identifier}"),
+        "description": null,
         "url": format!("https://linear.app/x/issue/{identifier}"),
         "team": { "id": "t-1", "key": "KK", "name": "Team" },
         "state": state("unstarted"),
@@ -68,6 +69,7 @@ pub fn issue(identifier: &str) -> IssueB {
         "updatedAt": "2026-10-19T00:00:00Z",
         "startedAt": null,
         "completedAt": null,
+        "canceledAt": null,
         "parent": null,
         "attachments": { "nodes": [] },
     }))
@@ -98,6 +100,12 @@ impl IssueB {
     }
     pub fn completed(self, ts: &str) -> Self {
         self.set("completedAt", json!(ts))
+    }
+    pub fn canceled(self, ts: &str) -> Self {
+        self.set("canceledAt", json!(ts))
+    }
+    pub fn description(self, text: &str) -> Self {
+        self.set("description", json!(text))
     }
     pub fn in_project(self, slug: &str) -> Self {
         self.set("project", project_ref(slug))

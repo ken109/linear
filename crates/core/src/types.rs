@@ -294,6 +294,7 @@ pub struct Issue {
     pub id: cynic::Id,
     pub identifier: String,
     pub title: String,
+    pub description: Option<String>,
     pub url: String,
     pub team: Team,
     pub state: WorkflowState,
@@ -313,6 +314,7 @@ pub struct Issue {
     pub updated_at: DateTime<Utc>,
     pub started_at: Option<DateTime<Utc>>,
     pub completed_at: Option<DateTime<Utc>>,
+    pub canceled_at: Option<DateTime<Utc>>,
     pub parent: Option<IssueRef>,
     #[arguments(first: 10)]
     pub attachments: AttachmentNodes,

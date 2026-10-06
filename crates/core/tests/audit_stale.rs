@@ -232,7 +232,44 @@ fn a_state_change_before_the_update_is_already_covered_by_it() {
 }
 
 #[test]
-fn a_cancellation_after_the_update_counts_through_updated_at() {
+fn a_cancellation_after_the_update_counts() {
+    let p = updated_at("2026-10-15T00:00:00Z");
+    let i = issue("KK-1")
+        .in_project("p")
+        .state("canceled")
+        .canceled("2026-10-18T00:00:00Z")
+        .updated("2026-10-18T00:00:00Z")
+        .build();
+    assert_eq!(
+        rule(&snapshot(vec![i], vec![p]), RuleId::StatusUpdateOutdated).len(),
+        1
+    );
+}
+
+#[test]
+fn a_cancellation_before_the_update_is_covered_even_if_the_issue_was_edited_since() {
+    // updatedAt moves on every edit; canceledAt says when the state really changed.
+    let p = updated_at("2026-10-15T00:00:00Z");
+    for state in ["canceled", "duplicate"] {
+        let i = issue("KK-1")
+            .in_project("p")
+            .state(state)
+            .canceled("2026-10-10T00:00:00Z")
+            .updated("2026-10-19T00:00:00Z")
+            .build();
+        assert!(
+            rule(
+                &snapshot(vec![i], vec![p.clone()]),
+                RuleId::StatusUpdateOutdated
+            )
+            .is_empty(),
+            "{state}"
+        );
+    }
+}
+
+#[test]
+fn a_cancellation_without_a_timestamp_falls_back_to_updated_at() {
     let p = updated_at("2026-10-15T00:00:00Z");
     let i = issue("KK-1")
         .in_project("p")

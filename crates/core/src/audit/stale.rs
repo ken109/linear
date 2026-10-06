@@ -56,21 +56,22 @@ type StateChange<'a> = (DateTime<Utc>, &'a str);
 
 /// The latest state change among each project's issues, by project id.
 ///
-/// Linear exposes `startedAt` and `completedAt` but the issue fragment has no
-/// `canceledAt`, so for a canceled or duplicate issue `updatedAt` stands in for
-/// it: it can only be later than the real change, never earlier.
+/// A state change is when the issue started, completed or was canceled
+/// (`canceledAt` also covers duplicates). Linear always sets `canceledAt` on a
+/// canceled issue; `updatedAt` stands in only if it is somehow missing, and can
+/// then only be later than the real change, never earlier.
 fn last_state_changes<'a>(ctx: &Ctx<'a>) -> HashMap<&'a str, StateChange<'a>> {
     let mut latest: HashMap<&str, StateChange> = HashMap::new();
     for i in &ctx.snapshot.issues {
         let Some(project) = i.project.as_ref() else {
             continue;
         };
-        let stamp_less_close = matches!(
+        let canceled = matches!(
             i.state.state_type(),
             StateType::Canceled | StateType::Duplicate
         )
-        .then_some(i.updated_at);
-        let Some(changed) = [i.started_at, i.completed_at, stamp_less_close]
+        .then(|| i.canceled_at.unwrap_or(i.updated_at));
+        let Some(changed) = [i.started_at, i.completed_at, canceled]
             .into_iter()
             .flatten()
             .max()

@@ -58,7 +58,6 @@ pub fn issue_list(vars: IssueListVars) -> Operation<IssueList, IssueListVars> {
 #[cynic(graphql_type = "Issue")]
 #[serde(rename_all = "camelCase")]
 pub struct IssueDetail {
-    pub description: Option<String>,
     pub priority: f64,
     pub priority_label: String,
     #[arguments(first: 50)]
