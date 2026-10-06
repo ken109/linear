@@ -227,7 +227,10 @@ example `linear cache refresh >/dev/null 2>&1 &` when the line says `unknown`.
 
 `linear audit` finds Linear data that has drifted. It works on every configured workspace unless
 `--workspace`, `LINEAR_WORKSPACE` or a `.linear.toml` selects one, and prints findings with the
-command that fixes each (the fix names the workspace with `-w`).
+command that fixes each (the fix names the workspace with `-w`). A fix is a command this CLI
+really has: a test parses every fix the audit can print with the CLI's own argument definition
+(`<state>` and the like stand for a value you choose; `--status <started-status>` is a project
+status of that type, by the name your workspace gives it).
 
 ```sh
 linear audit                                    # every rule, every workspace
@@ -278,6 +281,10 @@ linear issue create --title "Fix the thing" --project "My Project" \
   [--milestone M1] [--assignee me] [--label bug] [--team ENG]
 linear issue update KK-12 --state "In Progress" --due 2026-11-01 [--milestone M2] [--assignee me]
 linear issue update KK-12 --project "Other Project" [--milestone M1]   # the old milestone is cleared
+linear issue update KK-12 --body-file body.md [--template "Bug report"]   # replace the description
+linear issue update KK-12 --source https://example.com/a [--source-title ..] [--meta kind=slack]
+linear issue update KK-12 --labels bug,api                             # exactly these labels
+linear issue update KK-12 --add-labels bug --remove-labels triage      # or edit the set
 linear issue comment KK-12 --body-file comment.md
 linear issue reorder KK-3 KK-1 KK-2                                    # same project; top first
 linear issue reorder KK-3,KK-1,KK-2                                    # the same, comma-separated
@@ -296,8 +303,9 @@ nothing is sent until the first two have passed:
 2. **Validators** (the `rules` of the workspace; exit 5; all violations are reported together).
 3. **The mutation.** A write made of several requests is all or nothing: `issue create` attaches
    the source URL after creating the issue, and if the attachment keeps failing (it is tried
-   three times) the issue is deleted again. `issue reorder` puts the old values back if a
-   later write fails.
+   three times) the issue is deleted again. `issue update` writes the fields first and attaches
+   the source last, and puts the fields back if the attachment keeps failing. `issue reorder`
+   puts the old values back if a later write fails.
 
 `issue create` with a source URL that is already attached to an issue creates nothing and
 returns that issue (`"existing": true` with `--json`), so running it again is safe. (This needs
@@ -305,6 +313,35 @@ the `source-attachment` rule; without it the lookup is not made.)
 
 `issue reorder` takes at least two issues, as separate arguments, one comma-separated list, or
 a mix; naming one is a usage error (exit 2).
+
+#### `issue update`
+
+`issue update` sends only the fields that differ from what the issue has now, and never `null`
+for a field it was not asked to clear. A second identical run sends nothing and says so
+(`"changed": []` with `--json`; otherwise `changed` lists what was written: `description`,
+`state`, `project`, `milestone`, `dueDate`, `assignee`, `labels`, `source`).
+
+- `--body-file FILE|-` replaces the description (an empty file is a usage error). Trailing
+  whitespace does not count as a difference, nor does the bullet Linear rewrites (`- item` is
+  stored as `* item`); another rewrite the CLI does not know about costs one redundant write. `--template NAME` (only with `--body-file`) holds the
+  new body to that Linear template through the `template-sections` rule; without `--template` no
+  template is checked, because an issue does not record which one it came from.
+- `--source URL` attaches the URL as the issue's source, with `--source-title` and `--meta
+  KEY=VALUE` read exactly as in `issue create` (a number is sent as a number, `str:` forces text).
+  An attachment the issue already has with that URL is updated, never duplicated: Linear upserts
+  on the URL, so the stored title and subtitle are sent back unless `--source-title` replaces the
+  title, and the metadata is replaced as a whole (not merged) when `--meta` is given. A title and
+  metadata that are already what is stored send nothing. With the `source-attachment` rule the URL
+  must be http(s), `source_kinds` is checked on what is written (a new attachment needs
+  `--meta kind=...`), and a URL that **another** issue carries is refused (exit 5). The rule
+  applies to `issue update` as well as `issue create` (`rule_operations` can narrow it to
+  `issue_create`); an update that names no `--source` is never asked for one.
+- `--labels NAME,NAME` (repeatable; `--label` is the same flag, as in `issue create`) **replaces**
+  the issue's labels with exactly these. `--add-labels` and `--remove-labels` edit the set
+  instead (a label to remove that the issue does not have is ignored); they cannot be combined
+  with `--labels`. With `label-groups-exclusive`, the labels the issue would end up with are
+  checked, so adding a second label of a single-select group is refused (exit 5) unless the first
+  one is removed in the same command.
 
 #### Source metadata
 
@@ -379,7 +416,7 @@ rules = ["template-sections", "source-attachment", "label-groups-exclusive"]
 | Rule                     | What it checks                                                                                     |
 | ------------------------ | -------------------------------------------------------------------------------------------------- |
 | `template-sections`      | `--template` names a Linear template and the body fills every section (headings read from Linear) |
-| `source-attachment`      | `--source` is an http(s) URL; it is attached, and an issue that has it is returned instead         |
+| `source-attachment`      | `--source` is an http(s) URL; it is attached, and an issue that has it is returned instead (`issue update --source`: upserted on the issue, refused if another issue has it) |
 | `label-groups-exclusive` | at most one label from each single-select label group                                              |
 
 `source_kinds` (a workspace key, optional, needs `source-attachment`) makes the rule also check
