@@ -75,13 +75,70 @@ fields = [
 
 [[entry]]
 type = "Query"
+status = "implemented"
+via = ["read::issue_list", "read::issue_view"]
+commands = ["issue list", "issue view"]
+fields = [
+  "issues",
+]
+
+[[entry]]
+type = "Query"
+status = "implemented"
+via = ["read::project_list", "read::project_refs", "read::project_view", "read::milestones_of_project"]
+fields = [
+  "project",
+]
+
+[[entry]]
+type = "Query"
+status = "implemented"
+via = ["read::milestone_view"]
+fields = [
+  "projectMilestone",
+]
+
+[[entry]]
+type = "Query"
+status = "implemented"
+via = ["read::initiative_view"]
+fields = [
+  "initiative",
+]
+
+[[entry]]
+type = "Query"
+status = "implemented"
+via = ["read::labels"]
+fields = [
+  "issueLabels",
+]
+
+[[entry]]
+type = "Query"
+status = "implemented"
+via = ["read::teams"]
+fields = [
+  "teams",
+]
+
+[[entry]]
+type = "Query"
+status = "implemented"
+via = ["read::users"]
+fields = [
+  "users",
+]
+
+[[entry]]
+type = "Query"
 status = "unsupported"
 reason = "A read command is planned (milestone 2: reads); until it exists, use `linear api`."
 fields = [
-  "attachment", "attachments", "comment", "comments", "initiative", "issueLabel", "issueLabels",
-  "issueRelation", "issueRelations", "issueSearch", "issues", "project", "projectMilestone",
-  "projectMilestones", "projectStatus", "projectStatuses", "projectUpdate", "projectUpdates",
-  "searchIssues", "searchProjects", "team", "teams", "template", "user", "users",
+  "attachment", "attachments", "comment", "comments", "issueLabel",
+  "issueRelation", "issueRelations", "issueSearch", "projectMilestones", "projectStatus",
+  "projectStatuses", "projectUpdate", "projectUpdates",
+  "searchIssues", "searchProjects", "team", "template", "user",
   "workflowState", "workflowStates",
 ]
 
