@@ -211,6 +211,36 @@ with a note). Whatever the rules, an unknown name, an empty update or comment, a
 that is not an http(s) URL, a reorder across projects, and a workspace whose credentials belong to
 another workspace are always refused.
 
+### Milestones, initiatives and templates
+
+```sh
+linear milestone create --project "My Project" --name "Design review" --target-date 2026-11-01 \
+  [--description-file desc.md]
+linear milestone update "Design review" --project "My Project" \
+  [--new-name "Review"] [--target-date 2026-11-15] [--description-file desc.md]
+linear milestone delete "Review" --project "My Project"
+
+linear initiative create --name "Long effort" [--description-file desc.md]
+linear template create --name "Bug report" --body-file body.md [--description "..."] [--team ENG]
+```
+
+- A **milestone** belongs to a project, so the ownership rule for projects applies: only the
+  project's lead may create, change or delete one (exit 4). A target date is required (without
+  one a milestone does not show on the timeline). `create` with a name the project already has
+  returns that milestone (`"existing": true` with `--json`); `update` refuses a new name that
+  another milestone of the project has (exit 2) and sends only what differs from now; `delete`
+  refuses a milestone that still has issues in it (exit 1, naming them), because deleting it
+  would silently unfile them.
+- An **initiative** with the same name as an existing one is returned instead of creating
+  another. (Linear refuses to create initiatives on its free plan; the message is passed on.)
+- `template create` makes an **issue template** from a markdown body. Headings are the sections,
+  and a body without one is refused. Understood markdown: headings, paragraphs, bullet and
+  numbered lists and `**bold**`. A template with the same name returns the existing one. Edit a
+  template's sections in Linear's own UI; `linear template skeleton` reads them back.
+
+No validator rule applies to these three (the rules cover issues and projects), and initiatives
+and templates are not owned by a project, so only the checks above run.
+
 ## Output and exit codes
 
 `--json` prints machine-readable output; errors then go to stderr as
@@ -272,7 +302,8 @@ cargo test --workspace
 - `crates/cli/tests`: the binary against a mock HTTP server (`LINEAR_API_URL`) in an isolated
   config directory (`LINEAR_CONFIG_DIR`).
   `tests/issue_write.rs` answers by operation name (`write_support`), to check the order of
-  requests, rollback, idempotence and exit codes 4 and 5.
+  requests, rollback, idempotence and exit codes 4 and 5; `structure_write.rs` does the same
+  for milestones, initiatives and templates.
 - `crates/cli/tests/live*.rs` talk to a real (sandbox) workspace and are ignored by default;
   `live_write.rs` creates issues there and cancels them when it is done:
 

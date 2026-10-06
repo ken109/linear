@@ -1,10 +1,10 @@
-//! `linear template list|view|skeleton`.
+//! `linear template list|view|skeleton|create` (the write lives in `write::template`).
 //!
 //! Section definitions are read from Linear every time; nothing is copied into
 //! code or configuration.
 
 use super::format::{date_time, fields, opt_text};
-use super::Ctx;
+use super::{write, Ctx};
 use crate::error::{CliError, Result};
 use crate::output::table;
 use clap::{Args, Subcommand};
@@ -22,6 +22,8 @@ pub enum TemplateCommand {
     View(ViewCmd),
     /// Print the markdown skeleton (one `## heading` per section) of an issue template, or of all of them
     Skeleton(SkeletonCmd),
+    /// Create an issue template from a markdown body (the same name returns the existing one instead)
+    Create(write::template::CreateCmd),
 }
 
 #[derive(Debug, Args)]
@@ -48,6 +50,7 @@ pub fn run(ctx: &Ctx, cmd: &TemplateCommand) -> Result<()> {
         TemplateCommand::List(args) => list(ctx, args),
         TemplateCommand::View(args) => view(ctx, args),
         TemplateCommand::Skeleton(args) => skeleton(ctx, args),
+        TemplateCommand::Create(args) => write::template::create(ctx, args),
     }
 }
 

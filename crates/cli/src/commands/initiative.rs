@@ -1,8 +1,8 @@
-//! `linear initiative list|view`.
+//! `linear initiative list|view|create` (the write lives in `write::initiative`).
 
 use super::format::{fields, initiative_status, opt_date, person, project_status_type};
 use super::listing::{paginate, warn_truncated, ListArgs, Session};
-use super::Ctx;
+use super::{write, Ctx};
 use crate::error::Result;
 use crate::output::table;
 use clap::{Args, Subcommand};
@@ -22,6 +22,8 @@ pub enum InitiativeCommand {
     List(ListCmd),
     /// Show one initiative with its projects
     View(ViewCmd),
+    /// Create an initiative (the same name returns the existing one instead)
+    Create(write::initiative::CreateCmd),
 }
 
 /// Linear's spelling of initiative statuses, keyed by what a person types.
@@ -55,6 +57,7 @@ pub fn run(ctx: &Ctx, cmd: &InitiativeCommand) -> Result<()> {
     match cmd {
         InitiativeCommand::List(args) => list(ctx, args),
         InitiativeCommand::View(args) => view(ctx, args),
+        InitiativeCommand::Create(args) => write::initiative::create(ctx, args),
     }
 }
 

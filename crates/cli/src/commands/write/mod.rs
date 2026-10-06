@@ -22,8 +22,11 @@
 //! `issue` holds the issue commands built on this path; the project,
 //! milestone, initiative and template writes use the same pieces.
 
+pub mod initiative;
 pub mod issue;
+pub mod milestone;
 pub mod resolve;
+pub mod template;
 
 use super::listing::Session;
 use super::Ctx;

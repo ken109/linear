@@ -36,6 +36,11 @@ nodes (`Sectioned Template`).
 The live write test (`crates/cli/tests/live_write.rs`) relies on `Sectioned Template`, `Fixture Project`
 (led by the key's owner) and `Finished Project` (no lead, so writes to it are refused). It cancels the issues it creates.
 
+The live structure test (`crates/cli/tests/live_structure.rs`) uses `Fixture Project` (and `Milestone 1`, which must keep an
+issue in it: the test checks that such a milestone cannot be deleted) and `Finished Project`. It removes the milestones it
+creates. It creates the issue template `Live Created Template` once and leaves it (the CLI cannot delete a template); later runs
+find it. Initiatives cannot be created on the free plan, so the test only checks that Linear's refusal is reported.
+
 The live audit test (`crates/cli/tests/live_audit.rs`) relies on the projects, milestone and issues named
 `audit-seed ...` that `scripts/seed-sandbox-audit.py` plants (an overdue project without a lead, a completed project with
 an open issue, issues that are late, half-filled, canceled and duplicate). Do not delete them.

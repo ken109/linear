@@ -37,13 +37,13 @@ pub enum Command {
     /// Read projects
     #[command(subcommand)]
     Project(crate::commands::project::ProjectCommand),
-    /// Read project milestones
+    /// Read and write project milestones
     #[command(subcommand)]
     Milestone(crate::commands::milestone::MilestoneCommand),
-    /// Read initiatives
+    /// Read initiatives, and create one
     #[command(subcommand)]
     Initiative(crate::commands::initiative::InitiativeCommand),
-    /// Read issue templates and their sections
+    /// Read issue templates and their sections, and create one
     #[command(subcommand)]
     Template(crate::commands::template::TemplateCommand),
     /// Read labels

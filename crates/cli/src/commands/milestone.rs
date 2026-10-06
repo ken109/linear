@@ -1,8 +1,8 @@
-//! `linear milestone list|view`.
+//! `linear milestone list|view|create|update|delete` (the writes live in `write::milestone`).
 
 use super::format::{fields, milestone_status, opt_date, opt_text, percent};
 use super::listing::{resolve_project, Session};
-use super::Ctx;
+use super::{write, Ctx};
 use crate::error::Result;
 use crate::output::table;
 use clap::{Args, Subcommand};
@@ -18,6 +18,12 @@ pub enum MilestoneCommand {
     List(ListCmd),
     /// Show one milestone with its issues
     View(ViewCmd),
+    /// Add a milestone to a project you lead (a name already there returns that one)
+    Create(write::milestone::CreateCmd),
+    /// Rename a milestone, or change its target date or description
+    Update(write::milestone::UpdateCmd),
+    /// Delete a milestone that has no issues left in it
+    Delete(write::milestone::DeleteCmd),
 }
 
 #[derive(Debug, Args)]
@@ -40,6 +46,9 @@ pub fn run(ctx: &Ctx, cmd: &MilestoneCommand) -> Result<()> {
     match cmd {
         MilestoneCommand::List(args) => list(ctx, args),
         MilestoneCommand::View(args) => view(ctx, args),
+        MilestoneCommand::Create(args) => write::milestone::create(ctx, args),
+        MilestoneCommand::Update(args) => write::milestone::update(ctx, args),
+        MilestoneCommand::Delete(args) => write::milestone::delete(ctx, args),
     }
 }
 
