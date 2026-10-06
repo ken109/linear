@@ -250,3 +250,185 @@ pub fn comment_create(
 ) -> cynic::Operation<CommentCreate, CommentCreateVars> {
     CommentCreate::build(CommentCreateVars { input })
 }
+
+// ---------------------------------------------------------------- milestone
+
+#[derive(cynic::InputObject, Debug, Clone)]
+#[cynic(graphql_type = "ProjectMilestoneCreateInput")]
+#[cynic(rename_all = "camelCase")]
+pub struct MilestoneCreateInput {
+    pub project_id: String,
+    pub name: String,
+    /// Always sent: a milestone without a target date does not show on the timeline.
+    pub target_date: NaiveDate,
+    #[cynic(skip_serializing_if = "Option::is_none")]
+    pub description: Option<String>,
+}
+
+#[derive(cynic::QueryVariables, Debug, Clone)]
+pub struct MilestoneCreateVars {
+    pub input: MilestoneCreateInput,
+}
+
+#[derive(cynic::QueryFragment, Debug, Clone, PartialEq)]
+#[cynic(graphql_type = "Mutation", variables = "MilestoneCreateVars")]
+pub struct MilestoneCreate {
+    #[arguments(input: $input)]
+    pub project_milestone_create: MilestonePayload,
+}
+
+#[derive(cynic::QueryFragment, Debug, Clone, PartialEq)]
+#[cynic(graphql_type = "ProjectMilestonePayload")]
+pub struct MilestonePayload {
+    pub success: bool,
+    pub project_milestone: crate::types::Milestone,
+}
+
+pub fn milestone_create(
+    input: MilestoneCreateInput,
+) -> cynic::Operation<MilestoneCreate, MilestoneCreateVars> {
+    MilestoneCreate::build(MilestoneCreateVars { input })
+}
+
+#[derive(cynic::InputObject, Debug, Clone, Default)]
+#[cynic(graphql_type = "ProjectMilestoneUpdateInput")]
+#[cynic(rename_all = "camelCase")]
+pub struct MilestoneUpdateInput {
+    #[cynic(skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
+    #[cynic(skip_serializing_if = "Option::is_none")]
+    pub target_date: Option<NaiveDate>,
+    #[cynic(skip_serializing_if = "Option::is_none")]
+    pub description: Option<String>,
+}
+
+impl MilestoneUpdateInput {
+    /// `true` when nothing would change.
+    pub fn is_empty(&self) -> bool {
+        self.name.is_none() && self.target_date.is_none() && self.description.is_none()
+    }
+}
+
+#[derive(cynic::QueryVariables, Debug, Clone)]
+pub struct MilestoneUpdateVars {
+    pub id: String,
+    pub input: MilestoneUpdateInput,
+}
+
+#[derive(cynic::QueryFragment, Debug, Clone, PartialEq)]
+#[cynic(graphql_type = "Mutation", variables = "MilestoneUpdateVars")]
+pub struct MilestoneUpdate {
+    #[arguments(id: $id, input: $input)]
+    pub project_milestone_update: MilestonePayload,
+}
+
+pub fn milestone_update(
+    id: impl Into<String>,
+    input: MilestoneUpdateInput,
+) -> cynic::Operation<MilestoneUpdate, MilestoneUpdateVars> {
+    MilestoneUpdate::build(MilestoneUpdateVars {
+        id: id.into(),
+        input,
+    })
+}
+
+#[derive(cynic::QueryVariables, Debug, Clone)]
+pub struct MilestoneDeleteVars {
+    pub id: String,
+}
+
+#[derive(cynic::QueryFragment, Debug, Clone, PartialEq)]
+#[cynic(graphql_type = "Mutation", variables = "MilestoneDeleteVars")]
+pub struct MilestoneDelete {
+    #[arguments(id: $id)]
+    pub project_milestone_delete: DeleteResult,
+}
+
+#[derive(cynic::QueryFragment, Debug, Clone, PartialEq)]
+#[cynic(graphql_type = "DeletePayload")]
+pub struct DeleteResult {
+    pub success: bool,
+}
+
+pub fn milestone_delete(
+    id: impl Into<String>,
+) -> cynic::Operation<MilestoneDelete, MilestoneDeleteVars> {
+    MilestoneDelete::build(MilestoneDeleteVars { id: id.into() })
+}
+
+// ---------------------------------------------------------------- initiative
+
+#[derive(cynic::InputObject, Debug, Clone)]
+#[cynic(graphql_type = "InitiativeCreateInput")]
+#[cynic(rename_all = "camelCase")]
+pub struct InitiativeCreateInput {
+    pub name: String,
+    #[cynic(skip_serializing_if = "Option::is_none")]
+    pub description: Option<String>,
+}
+
+#[derive(cynic::QueryVariables, Debug, Clone)]
+pub struct InitiativeCreateVars {
+    pub input: InitiativeCreateInput,
+}
+
+#[derive(cynic::QueryFragment, Debug, Clone, PartialEq)]
+#[cynic(graphql_type = "Mutation", variables = "InitiativeCreateVars")]
+pub struct InitiativeCreate {
+    #[arguments(input: $input)]
+    pub initiative_create: InitiativePayload,
+}
+
+#[derive(cynic::QueryFragment, Debug, Clone, PartialEq)]
+pub struct InitiativePayload {
+    pub success: bool,
+    pub initiative: crate::types::Initiative,
+}
+
+pub fn initiative_create(
+    input: InitiativeCreateInput,
+) -> cynic::Operation<InitiativeCreate, InitiativeCreateVars> {
+    InitiativeCreate::build(InitiativeCreateVars { input })
+}
+
+// ---------------------------------------------------------------- template
+
+#[derive(cynic::InputObject, Debug, Clone)]
+#[cynic(graphql_type = "TemplateCreateInput")]
+#[cynic(rename_all = "camelCase")]
+pub struct TemplateCreateInput {
+    /// The kind of template: `issue`, `project` or `document`.
+    #[cynic(rename = "type")]
+    pub kind: String,
+    pub name: String,
+    #[cynic(skip_serializing_if = "Option::is_none")]
+    pub team_id: Option<String>,
+    #[cynic(skip_serializing_if = "Option::is_none")]
+    pub description: Option<String>,
+    /// For an issue template: `{ "title": "", "descriptionData": <ProseMirror doc> }`.
+    pub template_data: serde_json::Value,
+}
+
+#[derive(cynic::QueryVariables, Debug, Clone)]
+pub struct TemplateCreateVars {
+    pub input: TemplateCreateInput,
+}
+
+#[derive(cynic::QueryFragment, Debug, Clone, PartialEq)]
+#[cynic(graphql_type = "Mutation", variables = "TemplateCreateVars")]
+pub struct TemplateCreate {
+    #[arguments(input: $input)]
+    pub template_create: TemplatePayload,
+}
+
+#[derive(cynic::QueryFragment, Debug, Clone, PartialEq)]
+pub struct TemplatePayload {
+    pub success: bool,
+    pub template: crate::types::Template,
+}
+
+pub fn template_create(
+    input: TemplateCreateInput,
+) -> cynic::Operation<TemplateCreate, TemplateCreateVars> {
+    TemplateCreate::build(TemplateCreateVars { input })
+}

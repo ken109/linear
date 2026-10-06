@@ -227,14 +227,30 @@ fields = [
 
 [[entry]]
 type = "Mutation"
+status = "implemented"
+via = [
+  "inputs::milestone_create", "inputs::milestone_update", "inputs::milestone_delete",
+  "inputs::initiative_create", "inputs::template_create",
+]
+commands = [
+  "milestone create", "milestone update", "milestone delete", "initiative create",
+  "template create",
+]
+fields = [
+  "initiativeCreate", "projectMilestoneCreate", "projectMilestoneDelete",
+  "projectMilestoneUpdate", "templateCreate",
+]
+
+[[entry]]
+type = "Mutation"
 status = "unsupported"
 reason = "A write command is planned (milestone 3: writes); until it exists, `linear api` refuses mutations."
 fields = [
-  "attachmentLinkURL", "commentUpdate", "initiativeCreate",
+  "attachmentLinkURL", "commentUpdate",
   "initiativeToProjectCreate", "initiativeUpdate", "initiativeUpdateCreate", "issueAddLabel",
   "issueBatchUpdate", "issueLabelCreate", "issueRelationCreate",
-  "issueRemoveLabel", "projectAddLabel", "projectCreate", "projectMilestoneCreate",
-  "projectMilestoneUpdate", "projectRemoveLabel", "projectUpdate", "projectUpdateCreate",
+  "issueRemoveLabel", "projectAddLabel", "projectCreate",
+  "projectRemoveLabel", "projectUpdate", "projectUpdateCreate",
   "projectUpdateUpdate",
 ]
 
@@ -309,7 +325,7 @@ fields = [
 [[entry]]
 type = "Mutation"
 status = "unsupported"
-reason = "Not part of the planned write surface: the CLI creates and updates, it does not delete, archive or restore (its one delete, `issueDelete`, only rolls back an issue it just created)."
+reason = "Not part of the planned write surface: the CLI creates and updates, it does not delete, archive or restore (its deletes are `issueDelete`, which only rolls back an issue it just created, and `projectMilestoneDelete`, which refuses a milestone that still has issues)."
 fields = [
   "agentActivityDeleteQueued", "agentSkillDelete", "attachmentDelete", "commentDelete",
   "customViewDelete", "customerDelete", "customerNeedArchive", "customerNeedDelete",
@@ -327,7 +343,7 @@ fields = [
   "oauthApplicationRotateSecret", "oauthApplicationRotateWebhookSecret",
   "organizationCancelDelete", "organizationDelete", "organizationDeleteChallenge",
   "organizationDomainDelete", "organizationInviteDelete", "projectArchive", "projectDelete",
-  "projectLabelDelete", "projectLabelRestore", "projectLabelRetire", "projectMilestoneDelete",
+  "projectLabelDelete", "projectLabelRestore", "projectLabelRetire",
   "projectRelationDelete", "projectStatusArchive", "projectStatusUnarchive", "projectUnarchive",
   "projectUpdateArchive", "projectUpdateDelete", "projectUpdateUnarchive",
   "pushSubscriptionDelete", "reactionDelete", "releaseArchive", "releaseDelete",
@@ -373,7 +389,7 @@ fields = [
   "releaseUpdate", "releaseUpdateByPipeline", "releaseUpdateByPipelineByAccessKey",
   "resendOrganizationInvite", "resendOrganizationInviteByEmail", "roadmapCreate",
   "roadmapToProjectCreate", "roadmapToProjectUpdate", "roadmapUpdate", "teamCreate",
-  "teamMembershipCreate", "teamMembershipUpdate", "teamUpdate", "templateCreate",
+  "teamMembershipCreate", "teamMembershipUpdate", "teamUpdate",
   "templateUpdate", "timeScheduleCreate", "timeScheduleUpdate", "triageResponsibilityCreate",
   "triageResponsibilityUpdate", "viewPreferencesCreate", "viewPreferencesUpdate",
   "workflowStateCreate", "workflowStateUpdate",
