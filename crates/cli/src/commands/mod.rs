@@ -35,6 +35,7 @@ pub struct Ctx {
 }
 
 pub fn run(cli: &Cli, out: Output) -> Result<()> {
+    crate::http::configure(crate::http::Settings::resolve(cli.timeout)?);
     let ctx = Ctx {
         dirs: Dirs::from_env()?,
         out,

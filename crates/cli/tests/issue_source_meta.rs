@@ -98,6 +98,22 @@ fn without_meta_the_attachment_is_sent_as_before() {
 }
 
 #[test]
+fn the_workspace_source_title_is_the_default_title_of_the_attachment() {
+    let sb = workspace_with_setting(&["source-attachment"], "source_title = \"出どころ\"");
+
+    let mock = Routed::start(create_routes(vec![]));
+    let o = run(&sb, &mock, &create(&["--json"]));
+    assert_eq!(code(&o), 0, "{}", stderr(&o));
+    assert_eq!(mock.of("AttachmentCreate")[0]["input"]["title"], "出どころ");
+
+    // --source-title still wins.
+    let mock = Routed::start(create_routes(vec![]));
+    let o = run(&sb, &mock, &create(&["--source-title", "Mine", "--json"]));
+    assert_eq!(code(&o), 0, "{}", stderr(&o));
+    assert_eq!(mock.of("AttachmentCreate")[0]["input"]["title"], "Mine");
+}
+
+#[test]
 fn meta_works_without_the_rule_too() {
     let sb = workspace_with_rules(&[]);
     let mock = Routed::start(create_routes(vec![]));

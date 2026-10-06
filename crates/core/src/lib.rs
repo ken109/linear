@@ -22,6 +22,7 @@ pub mod queries;
 pub mod read;
 pub mod refresh;
 pub mod reorder;
+pub mod retry;
 pub mod rules;
 pub mod scalars;
 pub mod template;

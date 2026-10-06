@@ -257,6 +257,39 @@ fn a_new_source_without_a_title_is_called_source() {
 }
 
 #[test]
+fn the_workspace_source_title_names_a_new_attachment_but_never_renames_one() {
+    let sb = workspace_with_setting(&[], "source_title = \"出どころ\"");
+
+    // A new attachment: the workspace's title, unless --source-title says otherwise.
+    let mock = Routed::start(routes(mine(), vec![]));
+    let o = run(&sb, &mock, &update(&["--source", NEW_SOURCE]));
+    assert_eq!(code(&o), 0, "{}", stderr(&o));
+    assert_eq!(mock.of("AttachmentCreate")[0]["input"]["title"], "出どころ");
+
+    let mock = Routed::start(routes(mine(), vec![]));
+    let o = run(
+        &sb,
+        &mock,
+        &update(&["--source", NEW_SOURCE, "--source-title", "Mine"]),
+    );
+    assert_eq!(code(&o), 0, "{}", stderr(&o));
+    assert_eq!(mock.of("AttachmentCreate")[0]["input"]["title"], "Mine");
+
+    // The attachment the issue already has keeps its stored title ("Origin").
+    let mock = Routed::start(routes(
+        with_stored_metadata(mine(), json!({ "kind": "slack" })),
+        vec![],
+    ));
+    let o = run(
+        &sb,
+        &mock,
+        &update(&["--source", SOURCE, "--meta", "kind=github"]),
+    );
+    assert_eq!(code(&o), 0, "{}", stderr(&o));
+    assert_eq!(mock.of("AttachmentCreate")[0]["input"]["title"], "Origin");
+}
+
+#[test]
 fn a_source_the_issue_already_has_is_not_sent_again() {
     let sb = workspace_with_rules(&["source-attachment"]);
     let mock = Routed::start(routes(

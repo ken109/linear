@@ -154,7 +154,8 @@ Success output of the old tool is a small JSON object (`{id, url}`, `{id, identi
 ### Other differences
 
 - **Source attachment title**: without `--source-title` the old tool titles the attachment `出どころ`,
-  `linear` titles it `Source`. The URL (the idempotence key) is the same.
+  `linear` titles it `Source`. The URL (the idempotence key) is the same. A workspace can set
+  `source_title = "出どころ"` to get the old default.
 - **`--project` can be a name** in every `linear` command. The old `create-issue`, `milestones`,
   `create-milestone`, `status` pass the value straight to Linear as an id (by reading the code), so
   they need the id or slug id; the other old commands also accept a name.
@@ -213,9 +214,9 @@ done), **acceptable** (a known difference that callers can adapt to), **improvem
 | G6 | `initiative list --json` has no `description` (the old `initiatives` did); `initiative view` has it. | improvement |
 | G7 | No "closed since" filter on `issue list` (`--completed-since`), which lt-three's duplicate check used (14 days). Part of G3. | improvement |
 | G8 | Output shape of every write changed (see "Output shape"): skills and hooks that read `state`, `project`, `milestone`, `status` as strings must read `state.name`, ... Messages are English; the exit code is no longer always 1. | acceptable (one-time update of the skills) |
-| G9 | The default title of the source attachment is `Source` instead of `出どころ`. | acceptable; a `source_title` default per workspace would keep old issues and new ones alike |
+| G9 | The default title of the source attachment is `Source` instead of `出どころ`. | **closed**: `source_title = "出どころ"` in the workspace sets the default for `issue create --source` and for a new attachment of `issue update --source` (the unset default stays `Source`) |
 | G10 | `template-sections` is applied to project bodies by default (exit 5 without `--template`); the old tool only checked issues. | acceptable (`rule_operations` mirrors the old behaviour) |
-| G11 | `linear` has a fixed 30 s timeout per request and no retry. One slow `templateCreate` failed with `request to Linear failed: timeout: global`; the next try worked. Retrying reads, or `--timeout`, would help. | improvement |
+| G11 | `linear` has a fixed 30 s timeout per request and no retry. One slow `templateCreate` failed with `request to Linear failed: timeout: global`; the next try worked. Retrying reads, or `--timeout`, would help. | **closed**: reads are retried (timeout, 5xx, a rate limit that ends within 10 s; twice, with a growing wait), writes never are, and `--timeout <secs>` / `LINEAR_TIMEOUT` change the limit. The hourly rate limit still stops the command |
 | G12 | Dates are checked more strictly than the old tool (`2027-02-30` is refused instead of being stored as `2027-03-02`). | none: a fix of an old bug; noted so nobody expects the old result |
 | G13 | At creation time the position of a new issue in `prioritySortOrder` did not always match the old tool (the first run saw the old tool put the newest issue on top and `linear` leave the first one there). After `issue reorder` both orders match. Not reproduced in isolation; Linear computes it. | improvement (check) |
 | G14 | The old tool normalised `create-project --summary` and the body file as required; `linear` makes them optional. | acceptable |

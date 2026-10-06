@@ -130,6 +130,34 @@ fn an_unknown_ownership_is_a_config_error() {
     }
 }
 
+// ------------------------------------------------------------------ source title
+
+#[test]
+fn source_title_defaults_to_source_and_can_be_set_per_workspace() {
+    let c = Config::parse(
+        "[workspaces.a]\nurl_key = \"a\"\n[workspaces.b]\nurl_key = \"b\"\nsource_title = \"出どころ\"\n",
+    )
+    .unwrap();
+    assert_eq!(c.get("a").unwrap().source_title, None);
+    assert_eq!(c.get("a").unwrap().default_source_title(), "Source");
+    assert_eq!(c.get("b").unwrap().default_source_title(), "出どころ");
+
+    // Unset stays out of the file; a value round-trips.
+    let text = toml_edit::ser::to_string(&c).unwrap();
+    assert_eq!(text.matches("source_title").count(), 1, "{text}");
+    assert_eq!(Config::parse(&text).unwrap(), c);
+}
+
+#[test]
+fn a_blank_source_title_is_a_config_error() {
+    for bad in ["", "   "] {
+        let text = format!("[workspaces.a]\nurl_key = \"a\"\nsource_title = \"{bad}\"\n");
+        let err = Config::parse(&text).unwrap_err();
+        assert!(matches!(err, Error::Config(_)), "{bad:?} -> {err:?}");
+        assert!(err.to_string().contains("source_title"), "{err}");
+    }
+}
+
 // ------------------------------------------------------------------ audit settings
 
 const AUDIT_TOML: &str = r#"

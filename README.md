@@ -86,6 +86,7 @@ url_key = "my-company"   # linear.app/<url_key>
 default_team = "ENG"
 auth = "api-key"         # or "oauth" (not implemented yet)
 ownership = "strict"     # or "lenient": see "Ownership rules" below
+# source_title = "出どころ"  # title of a new source attachment without --source-title (default "Source")
 ```
 
 The workspace is chosen by, in order: `--workspace`, `LINEAR_WORKSPACE`, a `.linear.toml`
@@ -100,6 +101,19 @@ linear workspace whoami
 Credentials are stored in `~/.config/linear/credentials/<workspace>.json` (mode 0600).
 `LINEAR_API_KEY_<NAME>` (for example `LINEAR_API_KEY_MAIN`) overrides the stored key.
 Tokens are never printed.
+
+### Time limit and retries
+
+A request to Linear gives up after 30 seconds. Change it with `--timeout <secs>` (any command)
+or `LINEAR_TIMEOUT=<secs>`; the flag wins.
+
+A **read** that fails because of a timeout, a broken connection, a 5xx, or a rate limit that ends
+within 10 seconds is sent again, at most twice, after 1 s and then 2 s. `LINEAR_RETRIES=<n>` changes
+the number (`0` turns retrying off). **A write is never retried**: it may have reached Linear even
+though its response was lost, and sending it again could create a second issue. A rate limit that
+asks for a longer wait, such as the hourly request limit, is not waited out; the command stops
+with the error (exit 1, with the wait Linear asked for). Errors that a second try cannot fix
+(authentication, a bad request, a GraphQL error) are never retried.
 
 ## Reading
 

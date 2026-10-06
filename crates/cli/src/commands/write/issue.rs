@@ -30,9 +30,6 @@ use serde::Serialize;
 use std::collections::BTreeSet;
 use std::path::PathBuf;
 
-/// The title an origin attachment gets when `--source-title` is not given.
-const DEFAULT_SOURCE_TITLE: &str = "Source";
-
 // ---------------------------------------------------------------- create
 
 #[derive(Debug, Args)]
@@ -55,7 +52,7 @@ pub struct CreateCmd {
     /// carries it is returned instead of creating another
     #[arg(long, value_name = "URL")]
     pub source: Option<String>,
-    /// Title of the source attachment
+    /// Title of the source attachment (default: the workspace's `source_title`, or `Source`)
     #[arg(long, value_name = "TITLE", requires = "source")]
     pub source_title: Option<String>,
     /// Metadata of the source attachment, KEY=VALUE (repeatable). A value that
@@ -232,7 +229,7 @@ pub fn create(ctx: &Ctx, cmd: &CreateCmd) -> Result<()> {
                 title: cmd
                     .source_title
                     .clone()
-                    .unwrap_or_else(|| DEFAULT_SOURCE_TITLE.to_owned()),
+                    .unwrap_or_else(|| ws.source_title.clone()),
                 subtitle: None,
                 metadata: metadata.clone(),
             };
@@ -369,7 +366,8 @@ pub struct UpdateCmd {
     /// the `source-attachment` rule, a URL that another issue carries is refused
     #[arg(long, value_name = "URL")]
     pub source: Option<String>,
-    /// Title of the source attachment (default: the stored title, or `Source`)
+    /// Title of the source attachment (default: the stored title; for a new
+    /// attachment, the workspace's `source_title`, or `Source`)
     #[arg(long, value_name = "TITLE", requires = "source")]
     pub source_title: Option<String>,
     /// Metadata of the source attachment, KEY=VALUE (repeatable), read as in
@@ -621,7 +619,13 @@ pub fn update(ctx: &Ctx, cmd: &UpdateCmd) -> Result<()> {
         }
     }
     let attachment = match source {
-        Some(url) => source_step(issue, url, cmd.source_title.as_deref(), metadata.as_ref()),
+        Some(url) => source_step(
+            issue,
+            url,
+            cmd.source_title.as_deref(),
+            &ws.source_title,
+            metadata.as_ref(),
+        ),
         None => None,
     };
     if attachment.is_some() {
@@ -704,17 +708,19 @@ fn labels_after(ws: &WriteSession, issue: &Issue, cmd: &UpdateCmd) -> Result<Vec
 /// when it already does. Linear upserts on the URL and replaces what the
 /// attachment stores, so an attachment the issue has already is sent with its
 /// stored title, subtitle and metadata wherever the caller did not give one.
+/// A new attachment is titled `title`, else the workspace's `default_title`.
 fn source_step(
     issue: &Issue,
     url: &str,
     title: Option<&str>,
+    default_title: &str,
     metadata: Option<&AttachmentMetadata>,
 ) -> Option<AttachmentCreateInput> {
     let Some(stored) = issue.attachments.iter().find(|a| a.url == url) else {
         return Some(AttachmentCreateInput {
             issue_id: issue.id.inner().to_owned(),
             url: url.to_owned(),
-            title: title.unwrap_or(DEFAULT_SOURCE_TITLE).to_owned(),
+            title: title.unwrap_or(default_title).to_owned(),
             subtitle: None,
             metadata: metadata.cloned(),
         });

@@ -126,14 +126,20 @@ impl Sandbox {
     }
 }
 
-/// Like `workspace_with_rules`, with `ownership = "lenient"` (a team that works on each other's issues).
-pub fn lenient_workspace_with_rules(rules: &[&str]) -> Sandbox {
+/// Like `workspace_with_rules`, with one more line (`key = value`) in the workspace's table.
+pub fn workspace_with_setting(rules: &[&str], line: &str) -> Sandbox {
     let sb = workspace_with_rules(rules);
     let path = sb.config_dir().join("workspaces.toml");
     let mut text = std::fs::read_to_string(&path).unwrap();
-    text.push_str("ownership = \"lenient\"\n");
+    text.push_str(line);
+    text.push('\n');
     std::fs::write(&path, text).unwrap();
     sb
+}
+
+/// Like `workspace_with_rules`, with `ownership = "lenient"` (a team that works on each other's issues).
+pub fn lenient_workspace_with_rules(rules: &[&str]) -> Sandbox {
+    workspace_with_setting(rules, "ownership = \"lenient\"")
 }
 
 /// Like `workspace_with_rules`, with `source_kinds` set for the `source-attachment` rule.

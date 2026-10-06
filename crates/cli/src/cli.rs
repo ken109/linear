@@ -22,6 +22,11 @@ pub struct Cli {
     #[arg(short, long, global = true)]
     pub quiet: bool,
 
+    /// Give up on a request to Linear after this many seconds (default 30; LINEAR_TIMEOUT).
+    /// A read that fails on a timeout, a 5xx or a short rate limit is retried twice; a write never is
+    #[arg(long, global = true, value_name = "SECS")]
+    pub timeout: Option<u64>,
+
     #[command(subcommand)]
     pub command: Command,
 }

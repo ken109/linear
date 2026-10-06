@@ -99,6 +99,12 @@ pub struct WorkspaceConfig {
     /// whose source attachments have none. Unset: the kind is not checked.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub source_kinds: Vec<String>,
+    /// The title of a source attachment when `--source-title` is not given
+    /// (`issue create --source`, and `issue update --source` for a URL the issue
+    /// does not carry yet). Unset: `Source`. An attachment that already exists
+    /// keeps its stored title.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub source_title: Option<String>,
     /// Allow `linear api --mutation` (ownership rules and validators do not apply to it).
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub allow_raw_mutation: bool,
@@ -136,7 +142,19 @@ pub struct Config {
     pub workspaces: BTreeMap<String, WorkspaceConfig>,
 }
 
+/// The title of a source attachment when neither `--source-title` nor the
+/// workspace's `source_title` says otherwise.
+pub const DEFAULT_SOURCE_TITLE: &str = "Source";
+
 impl WorkspaceConfig {
+    /// The title a new source attachment gets without `--source-title`.
+    pub fn default_source_title(&self) -> &str {
+        self.source_title
+            .as_deref()
+            .map(str::trim)
+            .unwrap_or(DEFAULT_SOURCE_TITLE)
+    }
+
     /// A threshold of zero days would flag everything at once.
     fn validate_audit(&self, workspace: &str) -> Result<()> {
         for (key, value) in [
@@ -150,6 +168,16 @@ impl WorkspaceConfig {
             }
         }
         Ok(())
+    }
+
+    /// A blank default title would attach every source untitled.
+    fn validate_source_title(&self, workspace: &str) -> Result<()> {
+        match &self.source_title {
+            Some(t) if t.trim().is_empty() => Err(Error::Config(format!(
+                "workspace {workspace:?}: source_title must not be empty"
+            ))),
+            _ => Ok(()),
+        }
     }
 
     /// `source_kinds` belongs to `source-attachment`: it needs the rule, and
@@ -232,6 +260,7 @@ impl Config {
             ws.validate_rules(name)?;
             ws.validate_audit(name)?;
             ws.validate_source_kinds(name)?;
+            ws.validate_source_title(name)?;
         }
         if let Some(default) = &self.default {
             if !self.workspaces.contains_key(default) {

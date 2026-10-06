@@ -67,6 +67,8 @@ pub struct WriteSession {
     pub rules: RuleSet,
     /// The workspace's default team key, if configured.
     pub default_team: Option<String>,
+    /// The title of a new source attachment when `--source-title` is not given.
+    pub source_title: String,
     /// "Me" in this workspace.
     pub viewer: Viewer,
     /// How strictly the ownership rules apply in this workspace.
@@ -93,6 +95,7 @@ impl Ctx {
             ownership: config.ownership,
             rules: RuleSet::from_workspace(&config),
             default_team: config.default_team.clone(),
+            source_title: config.default_source_title().to_owned(),
             workspace,
             client,
             out: self.out,
