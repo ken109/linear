@@ -3,6 +3,7 @@
 mod cli;
 mod commands;
 mod error;
+mod http;
 mod output;
 mod store;
 

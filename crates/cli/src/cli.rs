@@ -1,6 +1,6 @@
 //! Command-line definition.
 
-use clap::{Parser, Subcommand};
+use clap::{Args, Parser, Subcommand, ValueEnum};
 
 #[derive(Debug, Parser)]
 #[command(
@@ -37,4 +37,43 @@ pub enum Command {
 pub enum WorkspaceCommand {
     /// List configured workspaces
     List,
+    /// Add a workspace to the configuration
+    Add(AddArgs),
+    /// Store credentials for a workspace and verify them
+    Login(LoginArgs),
+    /// Show who the stored credentials authenticate as
+    Whoami,
+}
+
+#[derive(Debug, Args)]
+pub struct AddArgs {
+    /// Name used to refer to the workspace (lowercase letters, digits, '-' and '_')
+    pub name: String,
+    /// The workspace's URL key (the `<key>` in linear.app/<key>)
+    #[arg(long, value_name = "KEY")]
+    pub url_key: String,
+    /// Default team key
+    #[arg(long, value_name = "KEY")]
+    pub team: Option<String>,
+    /// How to authenticate
+    #[arg(long, value_enum, default_value_t = AuthArg::ApiKey)]
+    pub auth: AuthArg,
+    /// Make this the default workspace
+    #[arg(long)]
+    pub default: bool,
+}
+
+#[derive(Debug, Args)]
+pub struct LoginArgs {
+    /// Workspace to log in to (defaults to the resolved workspace)
+    pub name: Option<String>,
+    /// Read the API key from standard input instead of prompting
+    #[arg(long)]
+    pub with_token: bool,
+}
+
+#[derive(Debug, Clone, Copy, ValueEnum)]
+pub enum AuthArg {
+    ApiKey,
+    Oauth,
 }
