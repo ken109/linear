@@ -2,6 +2,7 @@
 
 mod api;
 pub mod audit;
+pub mod brief;
 pub mod cache;
 pub mod cached;
 mod format;
@@ -53,6 +54,7 @@ pub fn run(cli: &Cli, out: Output) -> Result<()> {
         Command::Audit(args) => audit::run(&ctx, args),
         Command::Cache(cmd) => cache::run(&ctx, cmd),
         Command::Status(args) => status::run(&ctx, args),
+        Command::Brief(args) => brief::run(&ctx, args),
     }
 }
 

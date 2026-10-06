@@ -75,6 +75,15 @@ pub enum Command {
     /// --json every workspace has `state` (fresh, expired, missing or unusable). Keeping the
     /// cache fresh is the caller's job: run `linear cache refresh` in the background.
     Status(crate::commands::status::StatusArgs),
+    /// Where each unfinished project stands, as markdown: health, latest status update, stale mark
+    ///
+    /// Asks Linear for the projects that are not finished and shows those that are in progress
+    /// or have a status update: the health and the first lines of the latest update, how far
+    /// the milestones are, and a mark when there is no update or it is 14 days old or more
+    /// (`--stale-days`, or `audit.status_update_days` of the workspace). Newest update first.
+    /// --json prints the same facts as data. `--session` is for a SessionStart hook: it prints
+    /// nothing in CI, prints nothing and exits 0 on any failure, and gives up after 4 seconds.
+    Brief(crate::commands::brief::BriefArgs),
     /// Send a raw GraphQL document and print the response data (queries; mutations only with --mutation)
     Api(ApiArgs),
 }
