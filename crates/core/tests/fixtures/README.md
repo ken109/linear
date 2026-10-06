@@ -36,6 +36,10 @@ nodes (`Sectioned Template`).
 The live write test (`crates/cli/tests/live_write.rs`) relies on `Sectioned Template`, `Fixture Project`
 (led by the key's owner) and `Finished Project` (no lead, so writes to it are refused). It cancels the issues it creates.
 
+The live attachment metadata test (`crates/cli/tests/live_attachment_meta.rs`) uses `Fixture Project` only. It creates one issue
+per run with a unique source URL (and metadata on its attachment) and cancels it at the end, so repeated runs leave only canceled
+issues behind; it needs no other seed data.
+
 The live structure test (`crates/cli/tests/live_structure.rs`) uses `Fixture Project` (and `Milestone 1`, which must keep an
 issue in it: the test checks that such a milestone cannot be deleted) and `Finished Project`. It removes the milestones it
 creates. It creates the issue template `Live Created Template` once and leaves it (the CLI cannot delete a template); later runs
@@ -48,6 +52,10 @@ an open issue, issues that are late, half-filled, canceled and duplicate). Do no
 The `description` and `canceledAt` of the issues in `issue.json`, `issue_view.json`, `issue_list.json`,
 `assigned_issues.json` and `issue_update.json` were added by hand (the captures predate selecting them; the
 `description` is the one the live `Write the fixture issue` has).
+
+The `metadata` of the attachments in `issue.json`, `issue_view.json`, `issue_list.json`, `assigned_issues.json`,
+`issue_update.json` and `issue_write_view.json`, and the `title`, `subtitle` and `metadata` of `attachments_for_url.json`, were
+added by hand (the captures predate selecting them); `metadata` is the empty object, as Linear returns it for a plain attachment.
 
 The `sortOrder` and `prioritySortOrder` of the issues in `issue.json`, `issue_view.json`, `issue_list.json`,
 `assigned_issues.json` and `issue_update.json` were added by hand (the captures predate selecting them).

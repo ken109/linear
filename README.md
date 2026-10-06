@@ -205,11 +205,13 @@ and the issues named with `--issues` even if they are old and closed.
 ```sh
 linear issue create --title "Fix the thing" --project "My Project" \
   --template "Bug report" --body-file body.md --source https://example.com/a \
+  [--source-title "Where it came from"] [--meta kind=slack --meta ticket=42] \
   [--milestone M1] [--assignee me] [--label bug] [--team ENG]
 linear issue update KK-12 --state "In Progress" --due 2026-11-01 [--milestone M2] [--assignee me]
 linear issue update KK-12 --project "Other Project" [--milestone M1]   # the old milestone is cleared
 linear issue comment KK-12 --body-file comment.md
 linear issue reorder KK-3 KK-1 KK-2                                    # same project; top first
+linear issue reorder KK-3,KK-1,KK-2                                    # the same, comma-separated
 ```
 
 `--body-file -` reads standard input. Names (states, projects, milestones, labels, users, teams)
@@ -229,7 +231,32 @@ nothing is sent until the first two have passed:
    later write fails.
 
 `issue create` with a source URL that is already attached to an issue creates nothing and
-returns that issue (`"existing": true` with `--json`), so running it again is safe.
+returns that issue (`"existing": true` with `--json`), so running it again is safe. (This needs
+the `source-attachment` rule; without it the lookup is not made.)
+
+`issue reorder` takes at least two issues, as separate arguments, one comma-separated list, or
+a mix; naming one is a usage error (exit 2).
+
+#### Source metadata
+
+`--meta KEY=VALUE` (repeatable, only with `--source`) puts metadata on the source attachment,
+the flat object Linear lets an attachment carry. Values are strings or numbers, nothing nested:
+
+- A value that reads as a number (`42`, `-1`, `3.5`, `1e3`) is sent as a **number**. Write
+  `--meta build=str:123` to send the text `"123"` (`str:` is removed; `str:str:1` is the text
+  `str:1`). Things that only look like numbers stay text: `007`, `+1`, `.5`, `NaN`, and
+  integers too large to hold exactly.
+- A key must not be empty or repeated; a pair without `=` is a usage error. The metadata is
+  checked before anything is sent.
+- `issue view --json` (and `issue list --json`) include each attachment's `metadata`, `subtitle`
+  and `sourceType`. Attachments made by integrations may nest their metadata; it is shown as is.
+
+Running `issue create` again with the same `--source` and `--meta` that differs from what the
+attachment stores does not create a second issue: it returns the existing one and **replaces**
+the attachment's metadata (Linear upserts attachments on their URL, and the stored object is
+replaced, not merged), keeping its title unless `--source-title` is given. The output says
+`"metadataUpdated": true`. Metadata that is already what is stored (numbers compare by value)
+sends nothing, and without `--meta` nothing is read or written.
 
 `issue reorder` rewrites both `sortOrder` (manual order) and `prioritySortOrder` (Linear's
 default view); both are shown by `issue list --json`. The issues you name trade the values they
@@ -277,6 +304,7 @@ Choose the rules a workspace enforces in `workspaces.toml`:
 [workspaces.main]
 rules = ["template-sections", "source-attachment", "label-groups-exclusive"]
 # rule_operations = { "template-sections" = ["issue_create"] }   # narrow a rule to some operations
+# source_kinds = ["life-decision", "life-note", "slack", "github"] # see below
 ```
 
 | Rule                     | What it checks                                                                                     |
@@ -284,6 +312,12 @@ rules = ["template-sections", "source-attachment", "label-groups-exclusive"]
 | `template-sections`      | `--template` names a Linear template and the body fills every section (headings read from Linear) |
 | `source-attachment`      | `--source` is an http(s) URL; it is attached, and an issue that has it is returned instead         |
 | `label-groups-exclusive` | at most one label from each single-select label group                                              |
+
+`source_kinds` (a workspace key, optional, needs `source-attachment`) makes the rule also check
+the kind of the source: `issue create` must pass `--meta kind=<one of the list>`, otherwise it
+is refused (exit 5), and `audit` reports an issue that has no http(s) attachment whose
+`metadata.kind` is in the list, naming the issue. Unset, metadata is not looked at. An empty
+list or an empty kind is a configuration error.
 
 Without a rule, its flag is optional (`--template` with no `template-sections` rule is ignored,
 with a note). Whatever the rules, an unknown name, an empty update or comment, a `--source`
@@ -406,7 +440,7 @@ cargo test --workspace
   requests, rollback, idempotence and exit codes 4 and 5; `structure_write.rs` does the same
   for milestones, initiatives and templates, and `api_mutation.rs` for `linear api --mutation`.
 - `crates/cli/tests/live*.rs` talk to a real (sandbox) workspace and are ignored by default;
-  `live_write.rs` creates issues there and cancels them when it is done:
+  `live_write.rs` and `live_attachment_meta.rs` create issues there and cancel them when they are done:
 
   ```sh
   LINEAR_API_KEY_SANDBOX=... cargo test -p linear --test live_write -- --ignored
