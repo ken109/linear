@@ -82,8 +82,24 @@ pub fn selected<'a>(ctx: &Ctx, config: &'a Config) -> Result<Vec<Target<'a>>> {
         .collect())
 }
 
+/// Run `work` for every target at once and collect the results in order, so
+/// that one slow workspace does not hold up the others.
+pub fn in_parallel<T: Send>(targets: &[Target], work: impl Fn(&Target) -> T + Sync) -> Vec<T> {
+    std::thread::scope(|scope| {
+        let work = &work;
+        let handles: Vec<_> = targets
+            .iter()
+            .map(|t| scope.spawn(move || work(t)))
+            .collect();
+        handles
+            .into_iter()
+            .map(|h| h.join().unwrap_or_else(|e| std::panic::resume_unwind(e)))
+            .collect()
+    })
+}
+
 /// Did the person choose a workspace (as opposed to leaving it to defaults)?
-fn is_selected(ctx: &Ctx) -> Result<bool> {
+pub(super) fn is_selected(ctx: &Ctx) -> Result<bool> {
     let set = |s: Option<&str>| s.is_some_and(|s| !s.trim().is_empty());
     let env = std::env::var("LINEAR_WORKSPACE").ok();
     let repo = store::find_repo_file(&std::env::current_dir()?);
@@ -128,24 +144,9 @@ fn refresh(ctx: &Ctx) -> Result<()> {
     let dir = CacheDir::from_env()?;
     let now = Utc::now();
 
-    let rows: Vec<RefreshRow> = std::thread::scope(|scope| {
-        let handles: Vec<_> = targets
-            .iter()
-            .map(|t| {
-                let session = ctx.session_for(&t.name, t.config);
-                let dir = &dir;
-                scope.spawn(move || refresh_workspace(dir, session, &t.name, t.config, now))
-            })
-            .collect();
-        handles
-            .into_iter()
-            .zip(&targets)
-            .map(|(h, t)| {
-                h.join().unwrap_or_else(|_| {
-                    failed_row(&t.name, "the refresh stopped unexpectedly".to_owned())
-                })
-            })
-            .collect()
+    let rows: Vec<RefreshRow> = in_parallel(&targets, |t| {
+        let session = ctx.session_for(&t.name, t.config);
+        refresh_workspace(&dir, session, &t.name, t.config, now)
     });
 
     let unreachable: Vec<String> = rows

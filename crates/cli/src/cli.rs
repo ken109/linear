@@ -55,6 +55,14 @@ pub enum Command {
     /// Read users
     #[command(subcommand)]
     User(crate::commands::user::UserCommand),
+    /// Find Linear data that has drifted: stale work, outdated status updates, inconsistent states
+    ///
+    /// Without --workspace (or LINEAR_WORKSPACE, or a .linear.toml) every configured
+    /// workspace is audited. A finding is `actionable` when you own its target (you lead
+    /// the project, or the issue is assigned to you) and informational otherwise. The exit
+    /// code is 0 whatever is found; `--fail-on actionable` makes actionable findings exit
+    /// with code 6.
+    Audit(crate::commands::audit::AuditArgs),
     /// Manage the cache that hooks and the statusline read
     #[command(subcommand)]
     Cache(crate::commands::cache::CacheCommand),

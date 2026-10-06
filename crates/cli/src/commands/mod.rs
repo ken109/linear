@@ -1,7 +1,7 @@
 //! Command implementations.
 
 mod api;
-mod audit;
+pub mod audit;
 pub mod cache;
 mod format;
 pub mod initiative;
@@ -48,6 +48,7 @@ pub fn run(cli: &Cli, out: Output) -> Result<()> {
         Command::Label(cmd) => label::run(&ctx, cmd),
         Command::Team(cmd) => team::run(&ctx, cmd),
         Command::User(cmd) => user::run(&ctx, cmd),
+        Command::Audit(args) => audit::run(&ctx, args),
         Command::Cache(cmd) => cache::run(&ctx, cmd),
     }
 }
