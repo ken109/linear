@@ -1,0 +1,39 @@
+{
+  "data": {
+    "initiative": {
+      "id": "00000000-0000-4000-8000-000000000101",
+      "slugId": "dddddddddddd",
+      "name": "Example Initiative",
+      "url": "https://linear.app/example/initiative/example-initiative-dddddddddddd",
+      "status": "Active",
+      "targetDate": "2026-12-31",
+      "owner": {
+        "id": "00000000-0000-4000-8000-000000000001",
+        "name": "Alice Example",
+        "displayName": "alice",
+        "email": "alice@example.com",
+        "active": true,
+        "isMe": true
+      }
+    },
+    "detail": {
+      "description": "Everything about the example.",
+      "projects": {
+        "nodes": [
+          {
+            "id": "00000000-0000-4000-8000-000000000006",
+            "slugId": "aaaaaaaaaaaa",
+            "name": "Fixture Project",
+            "url": "https://linear.app/example/project/fixture-project-aaaaaaaaaaaa",
+            "status": {
+              "id": "00000000-0000-4000-8000-000000000012",
+              "name": "In Progress",
+              "type": "started"
+            },
+            "targetDate": "2026-12-31"
+          }
+        ]
+      }
+    }
+  }
+}

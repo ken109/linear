@@ -1,0 +1,40 @@
+{
+  "data": {
+    "project": {
+      "projectMilestones": {
+        "nodes": [
+          {
+            "id": "00000000-0000-4000-8000-000000000030",
+            "name": "Milestone 2",
+            "description": null,
+            "targetDate": "2026-12-15",
+            "status": "unstarted",
+            "sortOrder": -50,
+            "progress": 0,
+            "project": {
+              "id": "00000000-0000-4000-8000-000000000006",
+              "slugId": "aaaaaaaaaaaa",
+              "name": "Fixture Project",
+              "url": "https://linear.app/example/project/fixture-project-aaaaaaaaaaaa"
+            }
+          },
+          {
+            "id": "00000000-0000-4000-8000-000000000007",
+            "name": "Milestone 1",
+            "description": "First milestone",
+            "targetDate": "2026-11-15",
+            "status": "next",
+            "sortOrder": -88,
+            "progress": 25,
+            "project": {
+              "id": "00000000-0000-4000-8000-000000000006",
+              "slugId": "aaaaaaaaaaaa",
+              "name": "Fixture Project",
+              "url": "https://linear.app/example/project/fixture-project-aaaaaaaaaaaa"
+            }
+          }
+        ]
+      }
+    }
+  }
+}

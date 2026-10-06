@@ -1,0 +1,28 @@
+{
+  "data": {
+    "users": {
+      "nodes": [
+        {
+          "id": "00000000-0000-4000-8000-000000000040",
+          "name": "Linear",
+          "displayName": "linear",
+          "email": "linear@example.com",
+          "active": true,
+          "isMe": false
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "name": "Alice Example",
+          "displayName": "alice",
+          "email": "alice@example.com",
+          "active": true,
+          "isMe": true
+        }
+      ],
+      "pageInfo": {
+        "hasNextPage": false,
+        "endCursor": null
+      }
+    }
+  }
+}

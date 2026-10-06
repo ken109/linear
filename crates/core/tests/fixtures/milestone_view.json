@@ -1,0 +1,56 @@
+{
+  "data": {
+    "projectMilestone": {
+      "id": "00000000-0000-4000-8000-000000000007",
+      "name": "Milestone 1",
+      "description": "First milestone",
+      "targetDate": "2026-11-15",
+      "status": "next",
+      "sortOrder": -88,
+      "progress": 25,
+      "project": {
+        "id": "00000000-0000-4000-8000-000000000006",
+        "slugId": "aaaaaaaaaaaa",
+        "name": "Fixture Project",
+        "url": "https://linear.app/example/project/fixture-project-aaaaaaaaaaaa"
+      }
+    },
+    "detail": {
+      "issues": {
+        "nodes": [
+          {
+            "id": "00000000-0000-4000-8000-000000000003",
+            "identifier": "EX-23",
+            "title": "Write the fixture issue",
+            "url": "https://linear.app/example/issue/EX-23/write-the-fixture-issue",
+            "state": {
+              "id": "00000000-0000-4000-8000-000000000005",
+              "name": "In Progress",
+              "type": "started"
+            },
+            "assignee": {
+              "id": "00000000-0000-4000-8000-000000000001",
+              "name": "Alice Example",
+              "displayName": "alice",
+              "email": "alice@example.com",
+              "active": true,
+              "isMe": true
+            }
+          },
+          {
+            "id": "00000000-0000-4000-8000-000000000031",
+            "identifier": "EX-24",
+            "title": "An unassigned issue in the milestone",
+            "url": "https://linear.app/example/issue/EX-24/an-unassigned-issue",
+            "state": {
+              "id": "00000000-0000-4000-8000-000000000032",
+              "name": "Backlog",
+              "type": "backlog"
+            },
+            "assignee": null
+          }
+        ]
+      }
+    }
+  }
+}

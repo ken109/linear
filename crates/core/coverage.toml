@@ -35,7 +35,8 @@
 [[entry]]
 type = "Query"
 status = "implemented"
-via = ["queries::initiatives"]
+via = ["queries::initiatives", "read::initiative_list"]
+commands = ["initiative list"]
 fields = [
   "initiatives",
 ]
@@ -69,6 +70,7 @@ fields = [
 type = "Query"
 status = "implemented"
 via = ["queries::templates"]
+commands = ["template list", "template view", "template skeleton"]
 fields = [
   "templates",
 ]
@@ -86,7 +88,7 @@ fields = [
 type = "Query"
 status = "implemented"
 via = ["read::project_list", "read::project_refs", "read::project_view", "read::milestones_of_project"]
-commands = ["project list", "project view"]
+commands = ["project list", "project view", "milestone list"]
 fields = [
   "project",
 ]
@@ -95,6 +97,7 @@ fields = [
 type = "Query"
 status = "implemented"
 via = ["read::milestone_view"]
+commands = ["milestone view"]
 fields = [
   "projectMilestone",
 ]
@@ -103,6 +106,7 @@ fields = [
 type = "Query"
 status = "implemented"
 via = ["read::initiative_view"]
+commands = ["initiative view"]
 fields = [
   "initiative",
 ]
@@ -111,6 +115,7 @@ fields = [
 type = "Query"
 status = "implemented"
 via = ["read::labels"]
+commands = ["label list", "label view"]
 fields = [
   "issueLabels",
 ]
@@ -119,6 +124,7 @@ fields = [
 type = "Query"
 status = "implemented"
 via = ["read::teams"]
+commands = ["team list", "team view"]
 fields = [
   "teams",
 ]
@@ -127,6 +133,7 @@ fields = [
 type = "Query"
 status = "implemented"
 via = ["read::users"]
+commands = ["user list", "user view"]
 fields = [
   "users",
 ]

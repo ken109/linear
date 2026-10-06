@@ -1,0 +1,41 @@
+{
+  "data": {
+    "templates": [
+      {
+        "id": "00000000-0000-4000-8000-000000000016",
+        "name": "Fixture Template",
+        "description": "Template for fixtures",
+        "type": "issue",
+        "team": {
+          "id": "00000000-0000-4000-8000-000000000004",
+          "key": "EX",
+          "name": "Example"
+        },
+        "templateData": "{\"title\":\"\",\"descriptionData\":{\"type\":\"doc\",\"content\":[{\"type\":\"paragraph\",\"content\":[{\"type\":\"text\",\"text\":\"## Goal\"}]}]}}",
+        "updatedAt": "2026-10-06T13:35:53.246Z"
+      },
+      {
+        "id": "00000000-0000-4000-8000-000000000050",
+        "name": "Sectioned Template",
+        "description": "An issue template with real heading nodes",
+        "type": "issue",
+        "team": {
+          "id": "00000000-0000-4000-8000-000000000004",
+          "key": "EX",
+          "name": "Example"
+        },
+        "templateData": "{\"title\":\"\",\"descriptionData\":{\"type\":\"doc\",\"content\":[{\"type\":\"heading\",\"attrs\":{\"level\":2},\"content\":[{\"type\":\"text\",\"text\":\"Background\"}]},{\"type\":\"paragraph\",\"content\":[{\"type\":\"text\",\"text\":\"Why this matters.\"}]},{\"type\":\"heading\",\"attrs\":{\"level\":2},\"content\":[{\"type\":\"text\",\"text\":\"Acceptance criteria\"}]},{\"type\":\"paragraph\",\"content\":[{\"type\":\"text\",\"text\":\"What done looks like.\"}]},{\"type\":\"heading\",\"attrs\":{\"level\":2},\"content\":[{\"type\":\"text\",\"text\":\"Out of scope\"}]}]}}",
+        "updatedAt": "2026-10-06T13:35:53.246Z"
+      },
+      {
+        "id": "00000000-0000-4000-8000-000000000051",
+        "name": "A project template",
+        "description": null,
+        "type": "project",
+        "team": null,
+        "templateData": "{}",
+        "updatedAt": "2026-10-06T13:35:53.246Z"
+      }
+    ]
+  }
+}
