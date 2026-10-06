@@ -1,11 +1,11 @@
-//! `linear project list|view`.
+//! `linear project list|view|create|update|reorder|status-update` (the writes live in `write::project`).
 
 use super::format::{
     date_time, fields, first_line, health, indent, milestone_status, opt_date, percent, person,
     project_status_type,
 };
 use super::listing::{paginate, resolve_project, warn_truncated, ListArgs};
-use super::Ctx;
+use super::{write, Ctx};
 use crate::error::Result;
 use crate::output::table;
 use clap::{Args, Subcommand};
@@ -23,6 +23,14 @@ pub enum ProjectCommand {
     List(ListCmd),
     /// Show one project: milestones, issue counts and status updates
     View(ViewCmd),
+    /// Create a project (same name, unfinished: returns the existing one instead)
+    Create(write::project::CreateCmd),
+    /// Change a project's name, summary, body, status, target date, initiative or lead
+    Update(write::project::UpdateCmd),
+    /// Put projects in a given order
+    Reorder(write::project::ReorderCmd),
+    /// Write a status update (health and body) on a project
+    StatusUpdate(write::project::StatusUpdateCmd),
 }
 
 const STATUS_TYPES: [&str; 6] = [
@@ -65,6 +73,10 @@ pub fn run(ctx: &Ctx, cmd: &ProjectCommand) -> Result<()> {
     match cmd {
         ProjectCommand::List(args) => list(ctx, args),
         ProjectCommand::View(args) => view(ctx, args),
+        ProjectCommand::Create(args) => write::project::create(ctx, args),
+        ProjectCommand::Update(args) => write::project::update(ctx, args),
+        ProjectCommand::Reorder(args) => write::project::reorder(ctx, args),
+        ProjectCommand::StatusUpdate(args) => write::project::status_update(ctx, args),
     }
 }
 
@@ -72,14 +84,14 @@ pub fn run(ctx: &Ctx, cmd: &ProjectCommand) -> Result<()> {
 /// issue counts by state type.
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
-struct ProjectOut<'a> {
+pub(crate) struct ProjectOut<'a> {
     workspace: &'a str,
     #[serde(flatten)]
     project: &'a Project,
     issue_counts: IssueCounts,
 }
 
-fn out<'a>(workspace: &'a str, project: &'a Project) -> ProjectOut<'a> {
+pub(crate) fn out<'a>(workspace: &'a str, project: &'a Project) -> ProjectOut<'a> {
     ProjectOut {
         workspace,
         project,

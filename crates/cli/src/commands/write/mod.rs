@@ -25,6 +25,7 @@
 pub mod initiative;
 pub mod issue;
 pub mod milestone;
+pub mod project;
 pub mod resolve;
 pub mod template;
 

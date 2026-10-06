@@ -190,6 +190,39 @@ default view); both are shown by `issue list --json`. The issues you name trade 
 already hold, so issues in between keep their place. Linear may adjust `prioritySortOrder` to
 its own liking within a priority, so the exact numbers are not guaranteed, only the order.
 
+### Projects
+
+```sh
+linear project create --name "Ship it" [--summary "One line"] [--body-file body.md] \
+  [--template "Project"] [--target-date 2026-12-31] [--initiative "Roadmap"] [--lead me] [--team ENG]
+linear project update "Ship it" [--name ..] [--summary ..] [--body-file body.md] [--template ..] \
+  [--status "In Progress"] [--target-date 2027-01-31] [--initiative "Roadmap"] [--lead me]
+linear project status-update "Ship it" --health onTrack|atRisk|offTrack --body-file update.md
+linear project reorder "Ship it" "Other" "Third"                       # top first
+```
+
+A project may be created or written only when you lead it: `create` with another `--lead`,
+and `update`, `status-update` and `reorder` on a project somebody else leads (or nobody does),
+are refused with exit 4 before anything is sent. `update --lead` hands a project you lead to
+someone else; it cannot take one over.
+
+- `create` returns an unfinished project (not completed or canceled) with the same name instead of
+  creating another (`"existing": true`; its lead is left alone). It leads the new project with you
+  unless `--lead` says otherwise. `--initiative` puts it under an initiative after creating it; if
+  that keeps failing (three tries) the new project is deleted again.
+- `update` sends only the fields that differ from what the project has now, and never `null`. A
+  second identical run changes nothing (`"changed": []`). `--initiative` only adds a link (it
+  never removes the project from another initiative). `--name` is refused when another
+  unfinished project has that name. If a later step fails, the fields already written are put
+  back. Status names come from the workspace (`In Progress`, `Completed`, ...), ignoring case.
+- `status-update` writes a status update (Linear's `ProjectUpdate`): a health and a body. The body
+  must not be empty.
+- `reorder` works like `issue reorder` on the projects' `sortOrder` and `prioritySortOrder`.
+
+To require a section such as `## Definition of done` in every project body, give a Linear
+*project* template that heading, enable the `template-sections` rule and pass `--template`
+(see below); no heading is hard-coded in the CLI.
+
 ### Validator rules
 
 Choose the rules a workspace enforces in `workspaces.toml`:

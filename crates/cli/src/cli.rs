@@ -34,7 +34,7 @@ pub enum Command {
     /// Read and write issues
     #[command(subcommand)]
     Issue(crate::commands::issue::IssueCommand),
-    /// Read projects
+    /// Read and write projects
     #[command(subcommand)]
     Project(crate::commands::project::ProjectCommand),
     /// Read and write project milestones
