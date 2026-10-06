@@ -784,7 +784,7 @@ type = "Initiative"
 status = "implemented"
 via = ["types::Initiative"]
 fields = [
-  "id", "name", "owner", "slugId", "status", "targetDate", "url",
+  "description", "id", "name", "owner", "slugId", "status", "targetDate", "url",
 ]
 
 [[entry]]
@@ -835,7 +835,7 @@ type = "Initiative"
 status = "unsupported"
 reason = "Not selected in the fixed fragment; use `linear api` if it is needed."
 fields = [
-  "content", "description", "frequencyResolution", "health", "identifier", "priority",
+  "content", "frequencyResolution", "health", "identifier", "priority",
   "targetDateResolution", "trashed", "updateReminderFrequency", "updateReminderFrequencyInWeeks",
   "updateRemindersDay", "updateRemindersHour", "visibility",
 ]

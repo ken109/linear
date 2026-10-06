@@ -443,7 +443,7 @@ fn initiatives(names: &[&str]) -> Reply {
         .map(|(n, name)| {
             json!({
                 "id": format!("00000000-0000-4000-8000-0000000001{n:02}"),
-                "slugId": format!("slug{n}"), "name": name,
+                "slugId": format!("slug{n}"), "name": name, "description": null,
                 "url": format!("https://linear.app/example/initiative/{name}"),
                 "status": "Active", "targetDate": null, "owner": null
             })
@@ -458,7 +458,7 @@ fn initiative_created(name: &str) -> Reply {
     data(
         json!({ "initiativeCreate": { "success": true, "initiative": {
             "id": "00000000-0000-4000-8000-0000000001ff", "slugId": "newslug", "name": name,
-            "url": "https://linear.app/example/initiative/new", "status": "Planned",
+            "description": "A long effort.", "url": "https://linear.app/example/initiative/new", "status": "Planned",
             "targetDate": null, "owner": null
         }}}),
     )
@@ -490,6 +490,7 @@ fn an_initiative_is_created_with_its_description() {
     let v = stdout_json(&o);
     assert_eq!(v["existing"], false);
     assert_eq!(v["slugId"], "newslug");
+    assert_eq!(v["description"], "A long effort.");
     assert_eq!(
         mock.of("InitiativeCreate")[0]["input"],
         json!({ "name": "human-sim", "description": "A long effort." })

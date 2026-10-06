@@ -3,7 +3,6 @@
   "expected": {
     "data": {
       "detail": {
-        "description": "Everything about the example.",
         "projects": {
           "nodes": [
             {
@@ -22,6 +21,7 @@
         }
       },
       "initiative": {
+        "description": "Everything about the example.",
         "id": "00000000-0000-4000-8000-000000000101",
         "name": "Example Initiative",
         "owner": {

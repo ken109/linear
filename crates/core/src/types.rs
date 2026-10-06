@@ -558,6 +558,7 @@ pub struct Initiative {
     pub id: cynic::Id,
     pub slug_id: String,
     pub name: String,
+    pub description: Option<String>,
     pub url: String,
     pub status: InitiativeStatus,
     pub target_date: Option<NaiveDate>,

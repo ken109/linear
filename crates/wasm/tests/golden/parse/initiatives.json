@@ -5,6 +5,7 @@
       "initiatives": {
         "nodes": [
           {
+            "description": "What the example initiative is for.",
             "id": "00000000-0000-4000-8000-000000000101",
             "name": "Example Initiative",
             "owner": {
@@ -21,6 +22,7 @@
             "url": "https://linear.app/example/initiative/example-initiative-dddddddddddd"
           },
           {
+            "description": null,
             "id": "00000000-0000-4000-8000-000000000102",
             "name": "Initiative with a status Linear adds later",
             "owner": null,

@@ -165,6 +165,53 @@ fn initiative_list_shows_status_owner_and_target_and_keeps_unknown_statuses() {
 }
 
 #[test]
+fn initiative_list_json_includes_the_description() {
+    let sb = workspace();
+    let mock = Mock::start(vec![ok(&fixture("initiatives"))]);
+    let o = linear(&sb, &mock, &["initiative", "list", "--json"]);
+    assert_eq!(code(&o), 0, "{}", stderr(&o));
+    let v = stdout_json(&o);
+    assert_eq!(v[0]["description"], "What the example initiative is for.");
+    assert_eq!(
+        v[1]["description"],
+        Value::Null,
+        "an empty one is null, not missing"
+    );
+    // It is asked for in the list query itself, not by a request per initiative.
+    assert!(request(&mock, 0)["query"]
+        .as_str()
+        .unwrap()
+        .contains("description"));
+    assert_eq!(mock.requests().len(), 1);
+}
+
+#[test]
+fn initiative_view_json_has_the_description_once() {
+    let sb = workspace();
+    let mock = Mock::start(vec![
+        ok(&fixture("initiatives")),
+        ok(&fixture("initiative_view")),
+    ]);
+    let o = linear(
+        &sb,
+        &mock,
+        &["initiative", "view", "dddddddddddd", "--json"],
+    );
+    assert_eq!(code(&o), 0, "{}", stderr(&o));
+    // A key given twice would be two values in the JSON text: count the text, not the parsed value.
+    assert_eq!(
+        stdout(&o).matches("\"description\"").count(),
+        1,
+        "{}",
+        stdout(&o)
+    );
+    assert_eq!(
+        stdout_json(&o)["description"],
+        "Everything about the example."
+    );
+}
+
+#[test]
 fn initiative_view_resolves_by_name_and_lists_projects() {
     let sb = workspace();
     let mock = Mock::start(vec![

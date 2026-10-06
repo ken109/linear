@@ -452,6 +452,12 @@
     },
     "Initiative": {
       "properties": {
+        "description": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
         "id": {
           "type": "string"
         },
@@ -489,6 +495,7 @@
         "id",
         "slugId",
         "name",
+        "description",
         "url",
         "status",
         "targetDate",
@@ -517,18 +524,11 @@
     "InitiativeDetail": {
       "description": "What an initiative `view` shows beyond the initiative's fixed fragment.",
       "properties": {
-        "description": {
-          "type": [
-            "string",
-            "null"
-          ]
-        },
         "projects": {
           "$ref": "#/$defs/ProjectBriefNodes"
         }
       },
       "required": [
-        "description",
         "projects"
       ],
       "type": "object"

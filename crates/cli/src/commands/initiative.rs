@@ -166,7 +166,7 @@ fn view(ctx: &Ctx, args: &ViewCmd) -> Result<()> {
                     ("Target", opt_date(&i.target_date)),
                 ])
             );
-            if let Some(desc) = d.description.as_deref().filter(|s| !s.trim().is_empty()) {
+            if let Some(desc) = i.description.as_deref().filter(|s| !s.trim().is_empty()) {
                 text.push_str(&format!("\n\n{}", desc.trim_end()));
             }
             text.push_str(&format!("\n\nProjects ({})", d.projects.len()));

@@ -168,7 +168,7 @@ linear project view my-project-1a2b3c4d5e6f                 # id, slug, URL or n
 linear milestone list --project "My Project"
 linear milestone view "M1" --project "My Project"
 
-linear initiative list --status active
+linear initiative list --status active                       # --json includes each description
 linear template list
 linear template skeleton "Bug report"                       # the sections, read from Linear
 linear label list                                           # groups first, each followed by its labels

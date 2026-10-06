@@ -4,6 +4,7 @@
       "id": "00000000-0000-4000-8000-000000000101",
       "slugId": "dddddddddddd",
       "name": "Example Initiative",
+      "description": "Everything about the example.",
       "url": "https://linear.app/example/initiative/example-initiative-dddddddddddd",
       "status": "Active",
       "targetDate": "2026-12-31",
@@ -17,7 +18,6 @@
       }
     },
     "detail": {
-      "description": "Everything about the example.",
       "projects": {
         "nodes": [
           {

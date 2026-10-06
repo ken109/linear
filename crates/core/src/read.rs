@@ -424,7 +424,6 @@ pub fn initiative_list(vars: InitiativeListVars) -> Operation<InitiativeList, In
 #[derive(cynic::QueryFragment, Debug, Clone, PartialEq, Serialize, JsonSchema)]
 #[cynic(graphql_type = "Initiative")]
 pub struct InitiativeDetail {
-    pub description: Option<String>,
     #[arguments(first: 50)]
     pub projects: ProjectBriefNodes,
 }
