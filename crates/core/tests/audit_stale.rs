@@ -160,7 +160,7 @@ fn an_update_as_old_as_the_limit_is_outdated() {
     );
     assert_eq!(
         f.fix,
-        "linear project status-update p --body <text> -w ken109"
+        "linear project status-update p --health <onTrack|atRisk|offTrack> --body-file <file> -w ken109"
     );
 }
 

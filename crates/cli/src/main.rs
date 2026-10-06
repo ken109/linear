@@ -1,5 +1,7 @@
 //! The `linear` command.
 
+#[cfg(test)]
+mod audit_fixes;
 mod cache;
 mod cli;
 mod commands;

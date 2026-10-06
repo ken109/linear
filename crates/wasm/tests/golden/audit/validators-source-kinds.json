@@ -5,7 +5,7 @@
       "findings": [
         {
           "actionable": true,
-          "fix": "linear issue update KK-21 --source <url> -w ken109",
+          "fix": "linear issue update KK-21 --source <url> --meta kind=<kind> -w ken109",
           "message": "KK-21 has no source attachment with a metadata.kind of: slack, life-decision",
           "rule": "source-attachment",
           "severity": "warn",
@@ -20,7 +20,7 @@
         },
         {
           "actionable": true,
-          "fix": "linear issue update KK-22 --source <url> -w ken109",
+          "fix": "linear issue update KK-22 --source <url> --meta kind=<kind> -w ken109",
           "message": "KK-22 has no source attachment with a metadata.kind of: slack, life-decision",
           "rule": "source-attachment",
           "severity": "warn",
@@ -35,7 +35,7 @@
         },
         {
           "actionable": true,
-          "fix": "linear issue update KK-23 --source <url> -w ken109",
+          "fix": "linear issue update KK-23 --source <url> --meta kind=<kind> -w ken109",
           "message": "KK-23 has no http(s) source attachment",
           "rule": "source-attachment",
           "severity": "warn",

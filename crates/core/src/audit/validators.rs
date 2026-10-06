@@ -44,11 +44,23 @@ fn finding(ctx: &Ctx, i: &Issue, rule: Rule, message: String) -> Finding {
     let (id, fix) = match rule {
         Rule::TemplateSections => (
             RuleId::TemplateSections,
-            format!("linear issue update {} --body-file <file>", i.identifier),
+            format!(
+                "linear issue update {} --body-file <file> --template <template>",
+                i.identifier
+            ),
         ),
         Rule::SourceAttachment => (
             RuleId::SourceAttachment,
-            format!("linear issue update {} --source <url>", i.identifier),
+            format!(
+                "linear issue update {} --source <url>{}",
+                i.identifier,
+                // With `source_kinds` the attachment must also say what kind of source it is.
+                if ctx.config.source_kinds.is_empty() {
+                    ""
+                } else {
+                    " --meta kind=<kind>"
+                }
+            ),
         ),
         _ => (
             RuleId::LabelGroupsExclusive,

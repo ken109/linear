@@ -5,7 +5,7 @@
       "findings": [
         {
           "actionable": true,
-          "fix": "linear project update done --status started -w ken109",
+          "fix": "linear project update done --status <started-status> -w ken109",
           "message": "project is Status completed but has 1 open issue(s)",
           "rule": "project-state-vs-issues",
           "severity": "warn",
@@ -20,7 +20,7 @@
         },
         {
           "actionable": false,
-          "fix": "linear project update early --status started -w ken109",
+          "fix": "linear project update early --status <started-status> -w ken109",
           "message": "project is Status planned but 1 issue(s) are already in progress",
           "rule": "project-state-vs-issues",
           "severity": "warn",
@@ -50,7 +50,7 @@
         },
         {
           "actionable": true,
-          "fix": "linear milestone update m-M1 --target-date <date> -w ken109",
+          "fix": "linear milestone update m-M1 --project late --target-date <date> -w ken109",
           "message": "milestone M1 of Project late was due 2026-10-01 (19 days ago)",
           "rule": "overdue",
           "severity": "warn",
@@ -140,7 +140,7 @@
         },
         {
           "actionable": true,
-          "fix": "linear project status-update outdated --body <text> -w ken109",
+          "fix": "linear project status-update outdated --health <onTrack|atRisk|offTrack> --body-file <file> -w ken109",
           "message": "project Project outdated is In Progress: its latest status update is 49 days old (limit 14)",
           "rule": "status-update-outdated",
           "severity": "warn",

@@ -192,7 +192,7 @@ fn the_finding_names_the_rule_and_a_fix_for_the_workspace() {
     assert_eq!(f.rule.as_str(), "template-sections");
     assert_eq!(
         f.fix,
-        "linear issue update KK-1 --body-file <file> -w ken109"
+        "linear issue update KK-1 --body-file <file> --template <template> -w ken109"
     );
 }
 

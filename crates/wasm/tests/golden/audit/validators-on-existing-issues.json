@@ -5,7 +5,7 @@
       "findings": [
         {
           "actionable": true,
-          "fix": "linear issue update KK-12 --body-file <file> -w ken109",
+          "fix": "linear issue update KK-12 --body-file <file> --template <template> -w ken109",
           "message": "KK-12 does not fill the template \"Task\": section \"Goal\" is empty; section \"Done when\" is missing",
           "rule": "template-sections",
           "severity": "warn",
@@ -20,7 +20,7 @@
         },
         {
           "actionable": false,
-          "fix": "linear issue update KK-14 --body-file <file> -w ken109",
+          "fix": "linear issue update KK-14 --body-file <file> --template <template> -w ken109",
           "message": "KK-14 follows none of the issue templates (Task)",
           "rule": "template-sections",
           "severity": "warn",

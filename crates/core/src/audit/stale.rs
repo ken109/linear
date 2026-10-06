@@ -137,6 +137,9 @@ fn status_update_outdated(
             p.status.name,
             reasons.join("; ")
         ),
-        format!("linear project status-update {} --body <text>", p.slug_id),
+        format!(
+            "linear project status-update {} --health <onTrack|atRisk|offTrack> --body-file <file>",
+            p.slug_id
+        ),
     ));
 }

@@ -101,7 +101,7 @@ fn started_project_with_every_issue_closed_is_flagged() {
     );
     assert_eq!(
         f.fix,
-        "linear project update finished --status completed -w ken109"
+        "linear project update finished --status <completed-status> -w ken109"
     );
 }
 
@@ -251,6 +251,11 @@ fn an_overdue_milestone_belongs_to_the_project_lead() {
     assert_eq!(f.target.kind, TargetKind::Milestone);
     assert!(f.actionable);
     assert_eq!(f.target.url, "https://linear.app/x/project/p");
+    // `milestone update` needs the project it belongs to.
+    assert_eq!(
+        f.fix,
+        "linear milestone update m-M1 --project p --target-date <date> -w ken109"
+    );
 }
 
 // -------------------------------------------------- issue-without-milestone

@@ -51,21 +51,21 @@ fn project_state_vs_issues(ctx: &Ctx, p: &Project, out: &mut Vec<Finding>) {
     let (message, new_status) = match p.status.type_ {
         ProjectStatusType::Completed | ProjectStatusType::Canceled if open > 0 => (
             format!("project is {status} but has {open} open issue(s)"),
-            "started",
+            "<started-status>",
         ),
         ProjectStatusType::Backlog | ProjectStatusType::Planned if c.started > 0 => (
             format!(
                 "project is {status} but {} issue(s) are already in progress",
                 c.started
             ),
-            "started",
+            "<started-status>",
         ),
         ProjectStatusType::Started if c.complete && c.total() > 0 && open == 0 => (
             format!(
                 "project is {status} but all {} issue(s) are closed",
                 c.total()
             ),
-            "completed",
+            "<completed-status>",
         ),
         _ => return,
     };
@@ -147,8 +147,9 @@ fn milestones_overdue(ctx: &Ctx, p: &Project, out: &mut Vec<Finding>) {
                 plural(late)
             ),
             format!(
-                "linear milestone update {} --target-date <date>",
-                m.id.inner()
+                "linear milestone update {} --project {} --target-date <date>",
+                m.id.inner(),
+                p.slug_id
             ),
         ));
     }
