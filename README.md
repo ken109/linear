@@ -159,6 +159,8 @@ with the error (exit 1, with the wait Linear asked for). Errors that a second tr
 linear issue list --assignee me --state-type started        # my issues in progress
 linear issue list --source-url https://example.com/a        # find an issue by where it came from
 linear issue list --project "My Project" --milestone M1 --open --label bug
+linear issue list --open --completed-since 14d --all        # open issues, plus the ones closed in the last 14 days
+linear issue list --project "My Project" --open --order manual --all   # the screen order of the project
 linear issue view KK-12
 
 linear project list --open --lead me
@@ -179,6 +181,17 @@ linear cycle 2026-10-05                                     # the cycle that hol
 Listings return at most 50 results; `--limit <N>` changes that and `--all` follows every page.
 When a listing was cut short, a note goes to stderr (also with `--json` and `--quiet`).
 Nothing is filtered unless asked for: use `--open` to leave out completed and canceled work.
+`--completed-since <Nd|YYYY-MM-DD>` keeps the issues that were completed or canceled at or after
+that time: `14d` is 14 days (of 24 hours) back from now, a date means 00:00 UTC that day. Like every
+filter it narrows the others, with one exception that is the point of it: next to `--open` the two
+are alternatives, so `--open --completed-since 14d` is the open issues **and** the ones closed in
+the last 14 days (what a duplicate check needs); on its own it lists just the closed ones;
+`--state-type completed --completed-since 14d` is the completed ones only. A bad value is a usage
+error (exit 2) before anything is sent.
+`--order manual` sorts by `sortOrder`, the order `issue reorder` writes and a project's screen shows
+(top first); the default is the order Linear returns. Linear cannot sort by it, so every matching
+page is fetched first and `--limit` then keeps the first of the sorted list. The numbers only
+compare within one project, so use it with `--project`.
 `--json` prints Linear's own shape plus a `workspace` field; `--quiet` prints one key per line
 (issue identifier, project or initiative slug, milestone or template name, team key, user email).
 
@@ -278,7 +291,7 @@ Only what the snapshot holds can be read, so these commands qualify and no other
 - `issue list`: the issues assigned to you that are In Progress (state type `started`). Filters
   that would select something else are a usage error (exit 2): `--assignee` other than `me`,
   `--state-type` other than `started`, `--state`, `--open`, `--team`, `--project`, `--milestone`,
-  `--label`, `--source-url`. `--limit` and `--all` work.
+  `--label`, `--source-url`, `--completed-since`. `--limit`, `--all` and `--order` work.
 - `issue view`: one of those issues, by identifier or id. The priority label and the comments are
   not in the snapshot, so they are absent (not empty). An issue outside the snapshot exits 1.
 - `project list`: the projects those issues belong to (not every project you lead). No filters:

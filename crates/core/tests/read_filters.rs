@@ -1,6 +1,6 @@
 //! Filters built from what a person types, as they appear on the wire.
 
-use linear_core::filters::{InitiativeQuery, IssueQuery, ProjectQuery};
+use linear_core::filters::{closed_since, InitiativeQuery, IssueQuery, ProjectQuery};
 use linear_core::read::{self, InitiativeListVars, IssueListVars, ProjectListVars};
 use linear_core::types::PageVars;
 use linear_core::wire::build_request;
@@ -190,4 +190,101 @@ fn the_audit_filter_is_open_issues_or_recently_updated_ones() {
             {"updatedAt": {"gte": "2026-10-06T00:00:00Z"}},
         ]})
     );
+}
+
+// ---------------------------------------------------------------- closed since
+
+fn since() -> chrono::DateTime<chrono::Utc> {
+    "2026-09-23T12:00:00Z".parse().unwrap()
+}
+
+fn utc(s: &str) -> chrono::DateTime<chrono::Utc> {
+    s.parse().unwrap()
+}
+
+#[test]
+fn closed_since_alone_is_completed_or_canceled_at_or_after_the_time() {
+    let q = IssueQuery {
+        closed_since: Some(since()),
+        ..IssueQuery::default()
+    };
+    assert_eq!(
+        issue_filter_json(&q),
+        json!({"and": [{"or": [
+            {"completedAt": {"gte": "2026-09-23T12:00:00Z"}},
+            {"canceledAt": {"gte": "2026-09-23T12:00:00Z"}},
+        ]}]})
+    );
+}
+
+#[test]
+fn open_with_closed_since_is_the_open_issues_plus_the_recently_closed_ones() {
+    let q = IssueQuery {
+        open: true,
+        closed_since: Some(since()),
+        ..IssueQuery::default()
+    };
+    // One list of alternatives; the open clause is not also ANDed in as a plain state filter.
+    assert_eq!(
+        issue_filter_json(&q),
+        json!({"and": [{"or": [
+            {"state": {"type": {"nin": ["completed", "canceled"]}}},
+            {"completedAt": {"gte": "2026-09-23T12:00:00Z"}},
+            {"canceledAt": {"gte": "2026-09-23T12:00:00Z"}},
+        ]}]})
+    );
+}
+
+#[test]
+fn closed_since_narrows_like_any_other_filter_and_keeps_label_and_state_alternatives() {
+    let q = IssueQuery {
+        state_types: vec!["completed".into()],
+        labels: vec!["a".into(), "b".into()],
+        state_names: vec!["Done".into()],
+        closed_since: Some(since()),
+        ..IssueQuery::default()
+    };
+    let f = issue_filter_json(&q);
+    assert_eq!(f["state"], json!({"type": {"in": ["completed"]}}));
+    assert_eq!(
+        f["or"],
+        json!([{"state": {"name": {"eqIgnoreCase": "Done"}}}])
+    );
+    // The second label and the closed-since alternatives are all ANDed.
+    assert_eq!(f["and"].as_array().unwrap().len(), 2, "{f}");
+    assert_eq!(f["and"][0]["labels"]["some"]["name"]["eqIgnoreCase"], "b");
+    assert!(f["and"][1]["or"][0]["completedAt"].is_object(), "{f}");
+}
+
+#[test]
+fn closed_since_reads_days_and_dates() {
+    let now = utc("2026-10-07T03:30:00Z");
+    assert_eq!(closed_since("14d", now), Ok(utc("2026-09-23T03:30:00Z")));
+    assert_eq!(closed_since(" 1D ", now), Ok(utc("2026-10-06T03:30:00Z")));
+    assert_eq!(
+        closed_since("2026-10-01", now),
+        Ok(utc("2026-10-01T00:00:00Z"))
+    );
+}
+
+#[test]
+fn closed_since_refuses_what_is_not_a_day_count_or_a_real_date() {
+    let now = utc("2026-10-07T03:30:00Z");
+    for bad in [
+        "",
+        "d",
+        "0d",
+        "-3d",
+        "1.5d",
+        "14",
+        "14days",
+        "99999999d",
+        "2026-02-30",
+        "2026-13-01",
+        "yesterday",
+        "2026-10-01T00:00:00Z",
+    ] {
+        let e = closed_since(bad, now).expect_err(bad);
+        assert!(e.contains("expected"), "{bad:?}: {e}");
+    }
 }

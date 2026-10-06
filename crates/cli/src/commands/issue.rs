@@ -6,8 +6,9 @@ use super::listing::{paginate, resolve_project, warn_truncated, ListArgs};
 use super::{write, Ctx};
 use crate::error::{CliError, Result};
 use crate::output::table;
-use clap::{Args, Subcommand};
-use linear_core::filters::IssueQuery;
+use chrono::Utc;
+use clap::{Args, Subcommand, ValueEnum};
+use linear_core::filters::{closed_since, IssueQuery};
 use linear_core::matching::label_path;
 use linear_core::read::{
     self, IssueDetail, IssueList, IssueListVars, IssueView, ISSUE_LIST_PAGE_SIZE,
@@ -58,6 +59,18 @@ pub struct ListCmd {
     /// Only issues that are not completed or canceled
     #[arg(long, conflicts_with = "state_type")]
     pub open: bool,
+    /// Only issues completed or canceled at or after this time: `14d` (14 days back from now)
+    /// or a date (YYYY-MM-DD, from 00:00 UTC). On its own it lists just those; next to --open it
+    /// lists the open issues and the ones closed since (what a duplicate check wants); with
+    /// --state-type, --state and the other filters it narrows them, like every filter
+    #[arg(long, value_name = "SINCE")]
+    pub completed_since: Option<String>,
+    /// The order of the list: `default` is the order Linear returns; `manual` is `sortOrder`,
+    /// the screen order that `issue reorder` writes, top first. It only means something within
+    /// one project, so use it with --project. Linear cannot sort by it, so every page is
+    /// fetched (and, with a limit, the first of the sorted list are kept)
+    #[arg(long, value_enum, default_value_t = Order::Default)]
+    pub order: Order,
     /// Team key
     #[arg(long, value_name = "KEY")]
     pub team: Option<String>,
@@ -77,6 +90,14 @@ pub struct ListCmd {
     pub page: ListArgs,
     #[command(flatten)]
     pub cache: CachedArgs,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
+pub enum Order {
+    /// The order Linear returns
+    Default,
+    /// `sortOrder`, ascending: the screen order of the project
+    Manual,
 }
 
 #[derive(Debug, Args)]
@@ -149,6 +170,9 @@ fn check_cached_filters(args: &ListCmd) -> Result<()> {
     if args.source_url.is_some() {
         flags.push("--source-url".to_owned());
     }
+    if args.completed_since.is_some() {
+        flags.push("--completed-since".to_owned());
+    }
     cached::refuse_outside_cache("the issues assigned to you that are In Progress", &flags)
 }
 
@@ -159,6 +183,7 @@ fn fetch_list(ctx: &Ctx, args: &ListCmd) -> Result<(String, Vec<Issue>)> {
         let hit = cached::read(ctx, &args.cache)?;
         cached::announce(ctx, &hit);
         let mut items = hit.mine.issues;
+        sort_manual(args.order, &mut items);
         if let Some(limit) = args.page.limit() {
             if items.len() > limit {
                 items.truncate(limit);
@@ -167,6 +192,13 @@ fn fetch_list(ctx: &Ctx, args: &ListCmd) -> Result<(String, Vec<Issue>)> {
         }
         return Ok((hit.workspace, items));
     }
+
+    // Judged before anything is sent: a bad time is a usage error.
+    let closed_since = args
+        .completed_since
+        .as_deref()
+        .map(|spec| closed_since(spec, Utc::now()).map_err(CliError::usage))
+        .transpose()?;
 
     let session = ctx.session()?;
     let project_id = match &args.project {
@@ -183,18 +215,38 @@ fn fetch_list(ctx: &Ctx, args: &ListCmd) -> Result<(String, Vec<Issue>)> {
         milestone: args.milestone.clone(),
         labels: args.label.clone(),
         source_url: args.source_url.clone(),
+        closed_since,
     }
     .filter();
 
-    let listing = paginate(ISSUE_LIST_PAGE_SIZE, args.page.limit(), |page| {
+    // Linear cannot sort by `sortOrder`, so a manual order needs every page before it can
+    // be cut to the limit.
+    let manual = args.order == Order::Manual;
+    let fetch_limit = if manual { None } else { args.page.limit() };
+    let listing = paginate(ISSUE_LIST_PAGE_SIZE, fetch_limit, |page| {
         let vars = IssueListVars::new(page, filter.clone());
         let data: IssueList = session.client.execute(&read::issue_list(vars))?;
         Ok(data.issues)
     })?;
-    if listing.truncated {
-        warn_truncated(listing.items.len());
+    let mut items = listing.items;
+    sort_manual(args.order, &mut items);
+    let mut truncated = listing.truncated;
+    if let Some(limit) = args.page.limit().filter(|l| manual && items.len() > *l) {
+        items.truncate(limit);
+        truncated = true;
     }
-    Ok((session.workspace, listing.items))
+    if truncated {
+        warn_truncated(items.len());
+    }
+    Ok((session.workspace, items))
+}
+
+/// `--order manual`: by `sortOrder`, ascending (the sort is stable, so equal values keep
+/// Linear's order).
+fn sort_manual(order: Order, items: &mut [Issue]) {
+    if order == Order::Manual {
+        items.sort_by(|a, b| a.sort_order.total_cmp(&b.sort_order));
+    }
 }
 
 fn list(ctx: &Ctx, args: &ListCmd) -> Result<()> {

@@ -274,3 +274,233 @@ fn without_credentials_the_command_fails_with_the_auth_exit_code() {
     assert!(stderr(&o).contains("workspace login"), "{}", stderr(&o));
     assert_eq!(mock.requests().len(), 0);
 }
+
+// ------------------------------------------------------------------ --completed-since
+
+#[test]
+fn completed_since_days_lists_the_issues_closed_in_that_window() {
+    let sb = workspace();
+    let mock = Mock::start(vec![ok(&fixture("issue_list"))]);
+    let o = linear(&sb, &mock, &["issue", "list", "--completed-since", "14d"]);
+    assert_eq!(code(&o), 0, "{}", stderr(&o));
+
+    let filter = request(&mock, 0)["variables"]["filter"].clone();
+    let alternatives = &filter["and"][0]["or"];
+    assert_eq!(alternatives.as_array().unwrap().len(), 2, "{filter}");
+    let from = |i: usize, field: &str| {
+        chrono::DateTime::parse_from_rfc3339(alternatives[i][field]["gte"].as_str().unwrap())
+            .unwrap()
+            .with_timezone(&chrono::Utc)
+    };
+    let expected = chrono::Utc::now() - chrono::Duration::days(14);
+    for (i, field) in [(0, "completedAt"), (1, "canceledAt")] {
+        let off = (from(i, field) - expected).num_seconds().abs();
+        assert!(off < 120, "{field}: {off}s from 14 days ago");
+    }
+    // On its own it adds no state filter: closed issues are the whole point.
+    assert!(filter.get("state").is_none(), "{filter}");
+}
+
+#[test]
+fn completed_since_a_date_starts_at_midnight_utc() {
+    let sb = workspace();
+    let mock = Mock::start(vec![ok(&fixture("issue_list"))]);
+    let o = linear(
+        &sb,
+        &mock,
+        &[
+            "issue",
+            "list",
+            "--completed-since",
+            "2026-10-01",
+            "--quiet",
+        ],
+    );
+    assert_eq!(code(&o), 0, "{}", stderr(&o));
+    assert_eq!(
+        request(&mock, 0)["variables"]["filter"],
+        json!({"and": [{"or": [
+            {"completedAt": {"gte": "2026-10-01T00:00:00Z"}},
+            {"canceledAt": {"gte": "2026-10-01T00:00:00Z"}},
+        ]}]})
+    );
+}
+
+#[test]
+fn open_with_completed_since_is_the_open_issues_plus_the_recently_closed_ones() {
+    let sb = workspace();
+    let mock = Mock::start(vec![ok(&fixture("issue_list"))]);
+    let o = linear(
+        &sb,
+        &mock,
+        &[
+            "issue",
+            "list",
+            "--open",
+            "--completed-since",
+            "2026-10-01",
+            "--quiet",
+        ],
+    );
+    assert_eq!(code(&o), 0, "{}", stderr(&o));
+    assert_eq!(
+        request(&mock, 0)["variables"]["filter"],
+        json!({"and": [{"or": [
+            {"state": {"type": {"nin": ["completed", "canceled"]}}},
+            {"completedAt": {"gte": "2026-10-01T00:00:00Z"}},
+            {"canceledAt": {"gte": "2026-10-01T00:00:00Z"}},
+        ]}]})
+    );
+}
+
+#[test]
+fn completed_since_narrows_with_the_other_filters() {
+    let sb = workspace();
+    let mock = Mock::start(vec![ok(&fixture("issue_list"))]);
+    let o = linear(
+        &sb,
+        &mock,
+        &[
+            "issue",
+            "list",
+            "--state-type",
+            "completed",
+            "--assignee",
+            "me",
+            "--completed-since",
+            "2026-10-01",
+            "--quiet",
+        ],
+    );
+    assert_eq!(code(&o), 0, "{}", stderr(&o));
+    let filter = &request(&mock, 0)["variables"]["filter"];
+    assert_eq!(filter["state"], json!({"type": {"in": ["completed"]}}));
+    assert_eq!(filter["assignee"], json!({"isMe": {"eq": true}}));
+    assert_eq!(filter["and"][0]["or"].as_array().unwrap().len(), 2);
+}
+
+#[test]
+fn a_bad_completed_since_is_a_usage_error_before_any_request() {
+    let sb = workspace();
+    for bad in ["0d", "14", "soon", "2026-02-30"] {
+        let mock = Mock::start(vec![ok(&fixture("issue_list"))]);
+        let o = linear(&sb, &mock, &["issue", "list", "--completed-since", bad]);
+        assert_eq!(code(&o), 2, "{bad}: {}", stderr(&o));
+        assert!(
+            stderr(&o).contains("expected a number of days such as 14d"),
+            "{bad}: {}",
+            stderr(&o)
+        );
+        assert_eq!(mock.requests().len(), 0, "{bad}: a request was sent");
+    }
+}
+
+#[test]
+fn completed_since_cannot_be_read_from_the_cache() {
+    let sb = workspace();
+    let o = sb.run(
+        &["issue", "list", "--cached", "--completed-since", "14d"],
+        None,
+        &[],
+    );
+    assert_eq!(code(&o), 2, "{}", stderr(&o));
+    assert!(stderr(&o).contains("--completed-since"), "{}", stderr(&o));
+}
+
+// ------------------------------------------------------------------ --order
+
+/// A page of the listed issues: each `(identifier, sortOrder)` becomes the fixture issue with those.
+fn page_of(rows: &[(&str, f64)], has_next: bool, cursor: &str) -> String {
+    let mut v: Value = serde_json::from_str(&fixture("issue_list")).unwrap();
+    let template = v["data"]["issues"]["nodes"][0].clone();
+    let nodes: Vec<Value> = rows
+        .iter()
+        .map(|(id, sort)| {
+            let mut n = template.clone();
+            n["identifier"] = json!(id);
+            n["id"] = json!(format!("id-{id}"));
+            n["sortOrder"] = json!(sort);
+            n
+        })
+        .collect();
+    v["data"]["issues"]["nodes"] = json!(nodes);
+    v["data"]["issues"]["pageInfo"] = json!({"hasNextPage": has_next, "endCursor": cursor});
+    v.to_string()
+}
+
+#[test]
+fn the_default_order_is_the_one_linear_returns() {
+    let sb = workspace();
+    let mock = Mock::start(vec![ok(&page_of(
+        &[("EX-1", 30.0), ("EX-2", -5.0), ("EX-3", 10.0)],
+        false,
+        "c",
+    ))]);
+    let o = linear(&sb, &mock, &["issue", "list", "--quiet"]);
+    assert_eq!(code(&o), 0, "{}", stderr(&o));
+    assert_eq!(stdout(&o), "EX-1\nEX-2\nEX-3\n");
+}
+
+#[test]
+fn manual_order_sorts_by_sort_order_across_pages() {
+    let sb = workspace();
+    let mock = Mock::start(vec![
+        ok(&page_of(&[("EX-1", 30.0), ("EX-2", -5.0)], true, "c1")),
+        ok(&page_of(&[("EX-3", -1003.5), ("EX-4", 10.0)], false, "c2")),
+    ]);
+    let o = linear(
+        &sb,
+        &mock,
+        &["issue", "list", "--order", "manual", "--quiet"],
+    );
+    assert_eq!(code(&o), 0, "{}", stderr(&o));
+    // Ascending, top first, whichever page an issue came from.
+    assert_eq!(stdout(&o), "EX-3\nEX-2\nEX-4\nEX-1\n");
+    assert_eq!(mock.requests().len(), 2, "both pages are fetched");
+    assert_eq!(stderr(&o), "");
+}
+
+#[test]
+fn manual_order_fetches_everything_before_it_applies_the_limit() {
+    let sb = workspace();
+    let mock = Mock::start(vec![
+        ok(&page_of(&[("EX-1", 30.0), ("EX-2", -5.0)], true, "c1")),
+        ok(&page_of(&[("EX-3", -1003.5), ("EX-4", 10.0)], false, "c2")),
+    ]);
+    let o = linear(
+        &sb,
+        &mock,
+        &[
+            "issue", "list", "--order", "manual", "--limit", "2", "--quiet",
+        ],
+    );
+    assert_eq!(code(&o), 0, "{}", stderr(&o));
+    // The first two of the sorted list, not of the first page.
+    assert_eq!(stdout(&o), "EX-3\nEX-2\n");
+    assert_eq!(mock.requests().len(), 2);
+    assert!(stderr(&o).contains("more exist"), "{}", stderr(&o));
+}
+
+#[test]
+fn manual_order_keeps_linears_order_between_equal_values() {
+    let sb = workspace();
+    let mock = Mock::start(vec![ok(&page_of(
+        &[("EX-1", 1.0), ("EX-2", 1.0), ("EX-3", 0.0)],
+        false,
+        "c",
+    ))]);
+    let o = linear(
+        &sb,
+        &mock,
+        &["issue", "list", "--order", "manual", "--quiet"],
+    );
+    assert_eq!(stdout(&o), "EX-3\nEX-1\nEX-2\n");
+}
+
+#[test]
+fn an_unknown_order_is_a_usage_error() {
+    let sb = workspace();
+    let o = sb.run(&["issue", "list", "--order", "priority"], None, &[]);
+    assert_eq!(code(&o), 2);
+    assert!(stderr(&o).contains("manual"), "{}", stderr(&o));
+}

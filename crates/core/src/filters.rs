@@ -11,7 +11,7 @@
 
 use crate::scalars::DateTimeOrDuration;
 use crate::schema;
-use chrono::{DateTime, Utc};
+use chrono::{DateTime, Duration, NaiveDate, Utc};
 
 // ---------------------------------------------------------------- comparators
 
@@ -20,6 +20,15 @@ use chrono::{DateTime, Utc};
 #[cynic(graphql_type = "DateComparator")]
 pub struct DateComparator {
     /// At or after this time.
+    #[cynic(skip_serializing_if = "Option::is_none")]
+    pub gte: Option<DateTimeOrDuration>,
+}
+
+/// The same comparator on a nullable timestamp (a distinct type in the schema).
+#[derive(cynic::InputObject, Debug, Clone, Default, PartialEq)]
+#[cynic(graphql_type = "NullableDateComparator")]
+pub struct NullableDateComparator {
+    /// At or after this time. A null value never matches.
     #[cynic(skip_serializing_if = "Option::is_none")]
     pub gte: Option<DateTimeOrDuration>,
 }
@@ -237,6 +246,10 @@ pub struct IssueFilter {
     pub labels: Option<LabelCollectionFilter>,
     #[cynic(skip_serializing_if = "Option::is_none")]
     pub updated_at: Option<DateComparator>,
+    #[cynic(skip_serializing_if = "Option::is_none")]
+    pub completed_at: Option<NullableDateComparator>,
+    #[cynic(skip_serializing_if = "Option::is_none")]
+    pub canceled_at: Option<NullableDateComparator>,
 }
 
 /// State types that mean the work is finished.
@@ -288,6 +301,10 @@ pub struct IssueQuery {
     pub labels: Vec<String>,
     /// An exact attachment URL.
     pub source_url: Option<String>,
+    /// Issues that were completed or canceled at or after this time. Next to
+    /// `open` it adds them to the open ones (the open issues, plus the ones
+    /// closed since); on its own, or with a state, it narrows to them.
+    pub closed_since: Option<DateTime<Utc>>,
 }
 
 impl IssueQuery {
@@ -298,9 +315,13 @@ impl IssueQuery {
             ..IssueFilter::default()
         };
 
+        // Open issues plus the ones closed since: one alternative list, so
+        // the open clause must not also be ANDed in as a plain state filter.
+        let open_or_recent =
+            self.open && self.state_types.is_empty() && self.closed_since.is_some();
         let state_type = if !self.state_types.is_empty() {
             Some(StringComparator::any_of(self.state_types.iter().cloned()))
-        } else if self.open {
+        } else if self.open && !open_or_recent {
             Some(StringComparator::none_of(CLOSED_STATE_TYPES))
         } else {
             None
@@ -338,12 +359,48 @@ impl IssueQuery {
         if let Some(first) = labels.next() {
             f.labels = Some(label_named(first));
         }
-        let more: Vec<IssueFilter> = labels
+        let mut more: Vec<IssueFilter> = labels
             .map(|l| IssueFilter {
                 labels: Some(label_named(l)),
                 ..IssueFilter::default()
             })
             .collect();
+
+        // Closed since: completed or canceled at or after the time (a state
+        // change always sets one of the two timestamps).
+        if let Some(since) = self.closed_since {
+            let after = || {
+                Some(NullableDateComparator {
+                    gte: Some(DateTimeOrDuration(since)),
+                })
+            };
+            let mut alternatives = vec![
+                IssueFilter {
+                    completed_at: after(),
+                    ..IssueFilter::default()
+                },
+                IssueFilter {
+                    canceled_at: after(),
+                    ..IssueFilter::default()
+                },
+            ];
+            if open_or_recent {
+                alternatives.insert(
+                    0,
+                    IssueFilter {
+                        state: Some(StateFilter {
+                            type_: Some(StringComparator::none_of(CLOSED_STATE_TYPES)),
+                            name: None,
+                        }),
+                        ..IssueFilter::default()
+                    },
+                );
+            }
+            more.push(IssueFilter {
+                or: Some(alternatives),
+                ..IssueFilter::default()
+            });
+        }
         if !more.is_empty() {
             f.and = Some(more);
         }
@@ -366,6 +423,29 @@ impl IssueQuery {
 
         (f != IssueFilter::default()).then_some(f)
     }
+}
+
+/// The moment `--completed-since` counts from: `Nd` is `N` days (of 24 hours)
+/// before `now`; `YYYY-MM-DD` is the start of that day in UTC.
+pub fn closed_since(spec: &str, now: DateTime<Utc>) -> Result<DateTime<Utc>, String> {
+    const EXPECTED: &str = "expected a number of days such as 14d, or a date such as 2026-10-01";
+    let spec = spec.trim();
+    if let Some(days) = spec.strip_suffix(['d', 'D']) {
+        let days: u32 = days
+            .parse()
+            .map_err(|_| format!("{spec:?} is not a number of days; {EXPECTED}"))?;
+        // About 100 years; also keeps the arithmetic far from overflow.
+        if days == 0 || days > 36_500 {
+            return Err(format!(
+                "{spec:?} is out of range (1d to 36500d); {EXPECTED}"
+            ));
+        }
+        return Ok(now - Duration::days(i64::from(days)));
+    }
+    let day: NaiveDate = spec
+        .parse()
+        .map_err(|e| format!("{spec:?} is not a date ({e}); {EXPECTED}"))?;
+    Ok(day.and_time(chrono::NaiveTime::MIN).and_utc())
 }
 
 fn label_named(name: &str) -> LabelCollectionFilter {
