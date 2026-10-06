@@ -14,6 +14,7 @@ pub mod filters;
 pub mod guard;
 pub mod inputs;
 pub mod matching;
+pub mod project_write;
 pub mod queries;
 pub mod read;
 pub mod refresh;

@@ -71,7 +71,8 @@ fields = [
 [[entry]]
 type = "Query"
 status = "implemented"
-via = ["queries::projects"]
+via = ["queries::projects", "project_write::unfinished_named"]
+commands = ["project create", "project update"]
 fields = [
   "projects",
 ]
@@ -97,10 +98,25 @@ fields = [
 [[entry]]
 type = "Query"
 status = "implemented"
-via = ["read::project_list", "read::project_refs", "read::project_view", "read::milestones_of_project"]
-commands = ["project list", "project view", "milestone list"]
+via = [
+  "read::project_list", "read::project_refs", "read::project_view", "read::milestones_of_project",
+  "read::project_ownership", "project_write::project_order",
+]
+commands = [
+  "project list", "project view", "milestone list", "project update", "project reorder",
+  "project status-update",
+]
 fields = [
   "project",
+]
+
+[[entry]]
+type = "Query"
+status = "implemented"
+via = ["project_write::project_statuses"]
+commands = ["project update"]
+fields = [
+  "projectStatuses",
 ]
 
 [[entry]]
@@ -155,7 +171,7 @@ reason = "A read command is planned (milestone 2: reads); until it exists, use `
 fields = [
   "attachment", "attachments", "comment", "comments", "issueLabel",
   "issueRelation", "issueRelations", "issueSearch", "projectMilestones", "projectStatus",
-  "projectStatuses", "projectUpdate", "projectUpdates",
+  "projectUpdate", "projectUpdates",
   "searchIssues", "searchProjects", "team", "template", "user",
   "workflowState", "workflowStates",
 ]
@@ -243,14 +259,28 @@ fields = [
 
 [[entry]]
 type = "Mutation"
+status = "implemented"
+via = [
+  "project_write::project_create", "project_write::project_update",
+  "project_write::project_delete", "project_write::project_update_create",
+  "project_write::initiative_to_project_create",
+]
+commands = ["project create", "project update", "project reorder", "project status-update"]
+fields = [
+  "initiativeToProjectCreate", "projectCreate", "projectDelete", "projectUpdate",
+  "projectUpdateCreate",
+]
+
+[[entry]]
+type = "Mutation"
 status = "unsupported"
 reason = "A write command is planned (milestone 3: writes). Until it exists, only `linear api --mutation` (with `allow_raw_mutation = true`) can send it, and no ownership rule or validator applies."
 fields = [
   "attachmentLinkURL", "commentUpdate",
-  "initiativeToProjectCreate", "initiativeUpdate", "initiativeUpdateCreate", "issueAddLabel",
+  "initiativeUpdate", "initiativeUpdateCreate", "issueAddLabel",
   "issueBatchUpdate", "issueLabelCreate", "issueRelationCreate",
-  "issueRemoveLabel", "projectAddLabel", "projectCreate",
-  "projectRemoveLabel", "projectUpdate", "projectUpdateCreate",
+  "issueRemoveLabel", "projectAddLabel",
+  "projectRemoveLabel",
   "projectUpdateUpdate",
 ]
 
@@ -325,7 +355,7 @@ fields = [
 [[entry]]
 type = "Mutation"
 status = "unsupported"
-reason = "Not part of the planned write surface: the CLI creates and updates, it does not delete, archive or restore (its deletes are `issueDelete`, which only rolls back an issue it just created, and `projectMilestoneDelete`, which refuses a milestone that still has issues)."
+reason = "Not part of the planned write surface: the CLI creates and updates, it does not delete, archive or restore (its deletes are `issueDelete` and `projectDelete`, which only roll back an issue or project it just created, and `projectMilestoneDelete`, which refuses a milestone that still has issues)."
 fields = [
   "agentActivityDeleteQueued", "agentSkillDelete", "attachmentDelete", "commentDelete",
   "customViewDelete", "customerDelete", "customerNeedArchive", "customerNeedDelete",
@@ -342,7 +372,7 @@ fields = [
   "notificationSubscriptionDelete", "notificationUnarchive", "oauthApplicationArchive",
   "oauthApplicationRotateSecret", "oauthApplicationRotateWebhookSecret",
   "organizationCancelDelete", "organizationDelete", "organizationDeleteChallenge",
-  "organizationDomainDelete", "organizationInviteDelete", "projectArchive", "projectDelete",
+  "organizationDomainDelete", "organizationInviteDelete", "projectArchive",
   "projectLabelDelete", "projectLabelRestore", "projectLabelRetire",
   "projectRelationDelete", "projectStatusArchive", "projectStatusUnarchive", "projectUnarchive",
   "projectUpdateArchive", "projectUpdateDelete", "projectUpdateUnarchive",
