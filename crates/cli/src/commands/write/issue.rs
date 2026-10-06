@@ -14,9 +14,10 @@ use linear_core::inputs::{
     IssueCreateInput, IssueDelete, IssueUpdate, IssueUpdateInput, Patch,
 };
 use linear_core::matching::match_state;
+use linear_core::metadata::AttachmentMetadata;
 use linear_core::read::{self, IssueWriteView};
 use linear_core::reorder::{self, OrderRow};
-use linear_core::rules::source_attachment;
+use linear_core::rules::source_attachment::{self, metadata_needs_update};
 use linear_core::rules::{Draft, Operation, Outcome};
 use linear_core::types::Issue;
 use serde::Serialize;
@@ -50,6 +51,13 @@ pub struct CreateCmd {
     /// Title of the source attachment
     #[arg(long, value_name = "TITLE", requires = "source")]
     pub source_title: Option<String>,
+    /// Metadata of the source attachment, KEY=VALUE (repeatable). A value that
+    /// reads as a number (42, 3.5, 1e3) is sent as a number; write KEY=str:123 to
+    /// send the text "123". Values are flat: strings and numbers only. If an issue
+    /// with the same source already exists and the metadata differs, the stored
+    /// metadata is replaced (`metadataUpdated`); identical metadata sends nothing
+    #[arg(long = "meta", value_name = "KEY=VALUE", requires = "source")]
+    pub meta: Vec<String>,
     /// Milestone of the project, by name
     #[arg(long, value_name = "NAME")]
     pub milestone: Option<String>,
@@ -78,12 +86,22 @@ struct Created<'a> {
     /// `true` when an issue with the same source already existed and nothing was created.
     existing: bool,
     source_url: Option<&'a str>,
+    /// `true` when the issue already existed and `--meta` replaced the metadata of its source attachment.
+    metadata_updated: bool,
 }
 
 pub fn create(ctx: &Ctx, cmd: &CreateCmd) -> Result<()> {
     // Everything that can be judged from the arguments alone comes first.
     let body = cmd.body_file.as_deref().map(read_text).transpose()?;
     let source = cmd.source.as_deref().map(str::trim);
+    let metadata = if cmd.meta.is_empty() {
+        None
+    } else {
+        Some(
+            AttachmentMetadata::from_pairs(&cmd.meta)
+                .map_err(|e| CliError::usage(e.to_string()))?,
+        )
+    };
 
     let ws = ctx.write_session()?;
 
@@ -143,14 +161,29 @@ pub fn create(ctx: &Ctx, cmd: &CreateCmd) -> Result<()> {
     if let Some(s) = source {
         draft = draft.source(s);
     }
+    if let Some(m) = &metadata {
+        draft = draft.source_metadata(m.clone());
+    }
     if let Outcome::AlreadyExists(existing) = ws.validate(&draft)? {
+        // The source is already attached: nothing is created, but metadata
+        // that differs from what is stored is written onto that attachment.
+        let metadata_updated = match (source, &metadata) {
+            (Some(url), Some(wanted)) => refresh_source_metadata(
+                &ws,
+                existing.id.inner(),
+                url,
+                cmd.source_title.as_deref(),
+                wanted,
+            )?,
+            _ => false,
+        };
         emit_created(
             ctx,
             &ws,
             existing.id.inner(),
             &existing.identifier,
             &existing.url,
-            true,
+            Some(Reuse { metadata_updated }),
             source,
         );
         return Ok(());
@@ -194,7 +227,7 @@ pub fn create(ctx: &Ctx, cmd: &CreateCmd) -> Result<()> {
                     .clone()
                     .unwrap_or_else(|| DEFAULT_SOURCE_TITLE.to_owned()),
                 subtitle: None,
-                metadata: None,
+                metadata: metadata.clone(),
             };
             let r: AttachmentCreate = ws.client.execute(&inputs::attachment_create(input))?;
             if r.attachment_create.success {
@@ -214,10 +247,51 @@ pub fn create(ctx: &Ctx, cmd: &CreateCmd) -> Result<()> {
         issue.id.inner(),
         &issue.identifier,
         &issue.url,
-        false,
+        None,
         source,
     );
     Ok(())
+}
+
+/// What happened to an issue that already carried the source.
+struct Reuse {
+    metadata_updated: bool,
+}
+
+/// Write `wanted` onto the attachment that holds `url`, if it differs from
+/// what that attachment stores. Linear upserts on the URL, so this is the same
+/// `attachmentCreate` that attaches the source in the first place, sent with
+/// the stored title (and subtitle) so only the metadata changes. Identical
+/// metadata sends nothing. Returns whether anything was written.
+fn refresh_source_metadata(
+    ws: &WriteSession,
+    issue_id: &str,
+    url: &str,
+    title: Option<&str>,
+    wanted: &AttachmentMetadata,
+) -> Result<bool> {
+    let data: read::AttachmentsForUrlQuery = ws.client.execute(&read::attachments_for_url(url))?;
+    let Some(stored) = data.attachments_for_url.nodes.into_iter().next() else {
+        return Ok(false);
+    };
+    if !metadata_needs_update(Some(wanted), &stored.metadata) {
+        return Ok(false);
+    }
+    let input = AttachmentCreateInput {
+        issue_id: issue_id.to_owned(),
+        url: url.to_owned(),
+        title: title.map_or(stored.title, str::to_owned),
+        subtitle: stored.subtitle,
+        metadata: Some(wanted.clone()),
+    };
+    let r: AttachmentCreate = ws.client.execute(&inputs::attachment_create(input))?;
+    if r.attachment_create.success {
+        Ok(true)
+    } else {
+        Err(CliError::general(
+            "Linear could not update the metadata of the source attachment",
+        ))
+    }
 }
 
 fn emit_created(
@@ -226,9 +300,11 @@ fn emit_created(
     id: &str,
     identifier: &str,
     url: &str,
-    existing: bool,
+    reuse: Option<Reuse>,
     source: Option<&str>,
 ) {
+    let existing = reuse.is_some();
+    let metadata_updated = reuse.is_some_and(|r| r.metadata_updated);
     let value = Created {
         workspace: &ws.workspace,
         id,
@@ -236,14 +312,15 @@ fn emit_created(
         url,
         existing,
         source_url: source,
+        metadata_updated,
     };
     ctx.out.emit(
         &value,
         || {
-            let how = if existing {
-                "already exists, nothing created"
-            } else {
-                "created"
+            let how = match (existing, metadata_updated) {
+                (false, _) => "created",
+                (true, false) => "already exists, nothing created",
+                (true, true) => "already exists, nothing created; source metadata updated",
             };
             format!("{identifier}  {url}  ({how})")
         },
