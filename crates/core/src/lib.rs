@@ -6,6 +6,7 @@
 
 pub mod auth;
 pub mod config;
+pub mod document;
 pub mod error;
 pub mod inputs;
 pub mod queries;
