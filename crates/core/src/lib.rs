@@ -4,6 +4,7 @@
 //! network. Callers fetch and persist; this crate builds requests, interprets
 //! responses and decides. Anything time-dependent takes `now` as an argument.
 
+pub mod error;
 pub mod inputs;
 pub mod queries;
 pub mod scalars;
@@ -17,6 +18,7 @@ pub mod schema {}
 
 mod nodes;
 
+pub use error::{Error, ErrorCode, Result};
 pub use workspace::InWorkspace;
 
 /// The default Linear GraphQL endpoint.
