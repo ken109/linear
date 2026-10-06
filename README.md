@@ -28,6 +28,62 @@ cargo build --workspace
 cargo test --workspace
 ```
 
+## Configuration
+
+```toml
+# ~/.config/linear/workspaces.toml
+default = "main"
+
+[workspaces.main]
+url_key = "my-company"   # linear.app/<url_key>
+default_team = "ENG"
+auth = "api-key"         # or "oauth" (not implemented yet)
+```
+
+The workspace is chosen by, in order: `--workspace`, `LINEAR_WORKSPACE`, a `.linear.toml`
+(`workspace = "main"`) found in the current or a parent directory, then `default`.
+
+```sh
+linear workspace add main --url-key my-company --team ENG
+printf %s "$LINEAR_API_KEY" | linear workspace login main --with-token   # or run it on a terminal to be prompted
+linear workspace whoami
+```
+
+Credentials are stored in `~/.config/linear/credentials/<workspace>.json` (mode 0600).
+`LINEAR_API_KEY_<NAME>` (for example `LINEAR_API_KEY_MAIN`) overrides the stored key.
+Tokens are never printed.
+
+## Output and exit codes
+
+`--json` prints machine-readable output; errors then go to stderr as
+`{"error":{"code","message"}}`. `--quiet` prints only the essential value(s).
+
+| Code | Meaning                                  |
+| ---- | ---------------------------------------- |
+| 0    | success                                  |
+| 1    | general error                            |
+| 2    | usage error                              |
+| 3    | authentication error                     |
+| 4    | write refused by the ownership rules     |
+| 5    | write refused by a validator             |
+| 6    | `audit --fail-on` found actionable items |
+
+## Testing
+
+```sh
+cargo test --workspace
+```
+
+- `crates/core/tests`: fragment parsing and response handling against anonymized real
+  responses (`tests/fixtures`), with a fixed `now`.
+- `crates/cli/tests`: the binary against a mock HTTP server (`LINEAR_API_URL`) in an isolated
+  config directory (`LINEAR_CONFIG_DIR`).
+- `crates/cli/tests/live.rs` talks to a real workspace and is ignored by default:
+
+  ```sh
+  LINEAR_API_KEY_SANDBOX=... cargo test -p linear --test live -- --ignored
+  ```
+
 ## License
 
 MIT
