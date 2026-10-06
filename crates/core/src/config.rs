@@ -5,6 +5,7 @@
 
 use crate::error::{Error, Result};
 use crate::rules::Operation;
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::fmt;
@@ -30,7 +31,9 @@ impl fmt::Display for AuthMethod {
 }
 
 /// A validator rule that can be enabled per workspace.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize, JsonSchema,
+)]
 #[serde(rename_all = "kebab-case")]
 pub enum Rule {
     TemplateSections,

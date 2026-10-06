@@ -13,6 +13,7 @@ cynic.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 chrono.workspace = true
+schemars.workspace = true
 thiserror = "2"
 toml_edit = { version = "0.22", default-features = false, features = ["parse", "display", "serde"] }
 

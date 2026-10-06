@@ -1,10 +1,13 @@
 //! The shape of an audit result.
 
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 /// Which rule produced a finding. The declaration order is the order findings
 /// are reported in.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize, JsonSchema,
+)]
 #[serde(rename_all = "kebab-case")]
 pub enum RuleId {
     /// A project's status disagrees with the states of its issues.
@@ -48,7 +51,9 @@ impl RuleId {
 }
 
 /// How much a finding matters.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize, JsonSchema,
+)]
 #[serde(rename_all = "lowercase")]
 pub enum Severity {
     /// Linear's data is wrong or out of date.
@@ -57,7 +62,9 @@ pub enum Severity {
     Info,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize, JsonSchema,
+)]
 #[serde(rename_all = "lowercase")]
 pub enum TargetKind {
     Project,
@@ -66,7 +73,7 @@ pub enum TargetKind {
 }
 
 /// The thing a finding is about.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 pub struct Target {
     pub kind: TargetKind,
     /// Linear's id; with the workspace it identifies the target.
@@ -80,7 +87,7 @@ pub struct Target {
 }
 
 /// One problem the audit found.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 pub struct Finding {
     pub rule: RuleId,
     pub severity: Severity,
@@ -117,7 +124,7 @@ impl Finding {
 }
 
 /// The result of one audit of one workspace.
-#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize, JsonSchema)]
 pub struct AuditReport {
     /// Sorted by rule, then target kind, then target identifier.
     pub findings: Vec<Finding>,

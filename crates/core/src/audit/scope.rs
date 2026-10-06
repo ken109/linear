@@ -3,11 +3,12 @@
 use super::{issue_target, Ctx, Finding, RuleId, Severity, Snapshot};
 use crate::error::{Error, Result};
 use chrono::{DateTime, SecondsFormat, Utc};
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 
 /// What an audit is narrowed to (`audit --issues KK-1,KK-2 --since <time>`).
-#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(default)]
 pub struct AuditOptions {
     /// Issue identifiers, matched without regard to case.

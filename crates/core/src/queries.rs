@@ -8,12 +8,15 @@ use crate::nodes::nodes_container;
 use crate::schema;
 use crate::types::*;
 use cynic::{Operation, QueryBuilder};
+use schemars::JsonSchema;
+use serde::Serialize;
 
 // ---------------------------------------------------------------- whoami
 
 /// The authenticated user and the workspace the credential belongs to.
-#[derive(cynic::QueryFragment, Debug, Clone, PartialEq)]
+#[derive(cynic::QueryFragment, Debug, Clone, PartialEq, Serialize, JsonSchema)]
 #[cynic(graphql_type = "Query")]
+#[serde(rename_all = "camelCase")]
 pub struct Whoami {
     pub viewer: User,
     pub organization: Organization,
@@ -25,14 +28,16 @@ pub fn whoami() -> Operation<Whoami, ()> {
 
 // ---------------------------------------------------------------- issues
 
-#[derive(cynic::QueryFragment, Debug, Clone, PartialEq)]
+#[derive(cynic::QueryFragment, Debug, Clone, PartialEq, Serialize, JsonSchema)]
 #[cynic(graphql_type = "Query", variables = "PageVars")]
+#[serde(rename_all = "camelCase")]
 pub struct AssignedStartedIssues {
     pub viewer: ViewerAssignedStarted,
 }
 
-#[derive(cynic::QueryFragment, Debug, Clone, PartialEq)]
+#[derive(cynic::QueryFragment, Debug, Clone, PartialEq, Serialize, JsonSchema)]
 #[cynic(graphql_type = "User", variables = "PageVars")]
+#[serde(rename_all = "camelCase")]
 pub struct ViewerAssignedStarted {
     #[arguments(first: $first, after: $after, filter: {state: {type: {eq: "started"}}})]
     pub assigned_issues: IssueConnection,
@@ -51,8 +56,9 @@ pub struct IssueVars {
     pub id: String,
 }
 
-#[derive(cynic::QueryFragment, Debug, Clone, PartialEq)]
+#[derive(cynic::QueryFragment, Debug, Clone, PartialEq, Serialize, JsonSchema)]
 #[cynic(graphql_type = "Query", variables = "IssueVars")]
+#[serde(rename_all = "camelCase")]
 pub struct IssueById {
     #[arguments(id: $id)]
     pub issue: Issue,
@@ -64,8 +70,9 @@ pub fn issue(id: impl Into<String>) -> Operation<IssueById, IssueVars> {
 
 // ---------------------------------------------------------------- projects
 
-#[derive(cynic::QueryFragment, Debug, Clone, PartialEq)]
+#[derive(cynic::QueryFragment, Debug, Clone, PartialEq, Serialize, JsonSchema)]
 #[cynic(graphql_type = "Query", variables = "PageVars")]
+#[serde(rename_all = "camelCase")]
 pub struct Projects {
     #[arguments(first: $first, after: $after)]
     pub projects: ProjectConnection,
@@ -81,15 +88,17 @@ pub fn projects(vars: PageVars) -> Operation<Projects, PageVars> {
 
 // ---------------------------------------------------------------- comments
 
-#[derive(cynic::QueryFragment, Debug, Clone, PartialEq)]
+#[derive(cynic::QueryFragment, Debug, Clone, PartialEq, Serialize, JsonSchema)]
 #[cynic(graphql_type = "Query", variables = "IssueVars")]
+#[serde(rename_all = "camelCase")]
 pub struct IssueCommentsQuery {
     #[arguments(id: $id)]
     pub issue: IssueWithComments,
 }
 
-#[derive(cynic::QueryFragment, Debug, Clone, PartialEq)]
+#[derive(cynic::QueryFragment, Debug, Clone, PartialEq, Serialize, JsonSchema)]
 #[cynic(graphql_type = "Issue")]
+#[serde(rename_all = "camelCase")]
 pub struct IssueWithComments {
     #[arguments(first: 50)]
     pub comments: CommentNodes,
@@ -103,8 +112,9 @@ pub fn issue_comments(id: impl Into<String>) -> Operation<IssueCommentsQuery, Is
 
 // ---------------------------------------------------------------- templates
 
-#[derive(cynic::QueryFragment, Debug, Clone, PartialEq)]
+#[derive(cynic::QueryFragment, Debug, Clone, PartialEq, Serialize, JsonSchema)]
 #[cynic(graphql_type = "Query")]
+#[serde(rename_all = "camelCase")]
 pub struct Templates {
     pub templates: Vec<Template>,
 }
@@ -115,8 +125,9 @@ pub fn templates() -> Operation<Templates, ()> {
 
 // ---------------------------------------------------------------- initiatives
 
-#[derive(cynic::QueryFragment, Debug, Clone, PartialEq)]
+#[derive(cynic::QueryFragment, Debug, Clone, PartialEq, Serialize, JsonSchema)]
 #[cynic(graphql_type = "Query", variables = "PageVars")]
+#[serde(rename_all = "camelCase")]
 pub struct Initiatives {
     #[arguments(first: $first, after: $after)]
     pub initiatives: InitiativeConnection,

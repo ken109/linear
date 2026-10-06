@@ -12,12 +12,14 @@
 use crate::nodes::{nodes_container, paged_container};
 use crate::schema;
 use chrono::{DateTime, NaiveDate, Utc};
+use schemars::{json_schema, JsonSchema, Schema, SchemaGenerator};
 use serde::Serialize;
+use std::borrow::Cow;
 
 // ---------------------------------------------------------------- shared
 
 /// Relay page info.
-#[derive(cynic::QueryFragment, Debug, Clone, PartialEq, Serialize)]
+#[derive(cynic::QueryFragment, Debug, Clone, PartialEq, Serialize, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct PageInfo {
     pub has_next_page: bool,
@@ -29,6 +31,28 @@ pub struct PageInfo {
 pub struct PageVars {
     pub first: i32,
     pub after: Option<String>,
+}
+
+/// JSON Schema for an enum that has a `fallback` variant.
+///
+/// A value Linear adds later is still a string, so the schema is a plain
+/// string; the values known today are listed under `x-known-values` for
+/// generators that want to offer them (`tests/types.rs` checks the list
+/// against the enum).
+macro_rules! open_enum_schema {
+    ($ty:ty, $name:literal, [$($value:literal),+ $(,)?]) => {
+        impl JsonSchema for $ty {
+            fn schema_name() -> Cow<'static, str> {
+                $name.into()
+            }
+            fn json_schema(_: &mut SchemaGenerator) -> Schema {
+                json_schema!({
+                    "type": "string",
+                    "x-known-values": [$($value),+],
+                })
+            }
+        }
+    };
 }
 
 // ---------------------------------------------------------------- enums
@@ -49,6 +73,19 @@ pub enum ProjectStatusType {
     Other(String),
 }
 
+open_enum_schema!(
+    ProjectStatusType,
+    "ProjectStatusType",
+    [
+        "backlog",
+        "planned",
+        "started",
+        "paused",
+        "completed",
+        "canceled"
+    ]
+);
+
 #[derive(cynic::Enum, Debug, Clone, PartialEq, Eq)]
 #[cynic(rename_all = "camelCase")]
 pub enum ProjectUpdateHealthType {
@@ -58,6 +95,12 @@ pub enum ProjectUpdateHealthType {
     #[cynic(fallback)]
     Other(String),
 }
+
+open_enum_schema!(
+    ProjectUpdateHealthType,
+    "ProjectUpdateHealthType",
+    ["onTrack", "atRisk", "offTrack"]
+);
 
 #[derive(cynic::Enum, Debug, Clone, PartialEq, Eq)]
 #[cynic(rename_all = "camelCase")]
@@ -69,6 +112,12 @@ pub enum ProjectMilestoneStatus {
     #[cynic(fallback)]
     Other(String),
 }
+
+open_enum_schema!(
+    ProjectMilestoneStatus,
+    "ProjectMilestoneStatus",
+    ["done", "next", "overdue", "unstarted"]
+);
 
 /// Linear spells these values with a leading capital.
 #[derive(cynic::Enum, Debug, Clone, PartialEq, Eq)]
@@ -83,6 +132,12 @@ pub enum InitiativeStatus {
     Other(String),
 }
 
+open_enum_schema!(
+    InitiativeStatus,
+    "InitiativeStatus",
+    ["Active", "Canceled", "Completed", "Planned", "Proposed"]
+);
+
 #[derive(cynic::Enum, Debug, Clone, PartialEq, Eq)]
 #[cynic(rename_all = "camelCase")]
 pub enum LabelGroupType {
@@ -92,20 +147,28 @@ pub enum LabelGroupType {
     Other(String),
 }
 
+open_enum_schema!(
+    LabelGroupType,
+    "LabelGroupType",
+    ["multiSelect", "singleSelect"]
+);
+
 // ---------------------------------------------------------------- refs
 
 /// A team.
-#[derive(cynic::QueryFragment, Debug, Clone, PartialEq, Serialize)]
+#[derive(cynic::QueryFragment, Debug, Clone, PartialEq, Serialize, JsonSchema)]
 pub struct Team {
+    #[schemars(with = "String")]
     pub id: cynic::Id,
     pub key: String,
     pub name: String,
 }
 
 /// A person.
-#[derive(cynic::QueryFragment, Debug, Clone, PartialEq, Serialize)]
+#[derive(cynic::QueryFragment, Debug, Clone, PartialEq, Serialize, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct User {
+    #[schemars(with = "String")]
     pub id: cynic::Id,
     pub name: String,
     pub display_name: String,
@@ -116,12 +179,14 @@ pub struct User {
 
 /// A workflow state. Decide on [`WorkflowState::state_type`], never on the
 /// name: names are per-team and renamable, types are not.
-#[derive(cynic::QueryFragment, Debug, Clone, PartialEq, Serialize)]
+#[derive(cynic::QueryFragment, Debug, Clone, PartialEq, Serialize, JsonSchema)]
 pub struct WorkflowState {
+    #[schemars(with = "String")]
     pub id: cynic::Id,
     pub name: String,
     #[cynic(rename = "type")]
     #[serde(rename = "type")]
+    #[schemars(with = "StateType")]
     pub type_: String,
 }
 
@@ -137,6 +202,20 @@ pub enum StateType {
     Duplicate,
     Other(String),
 }
+
+open_enum_schema!(
+    StateType,
+    "StateType",
+    [
+        "triage",
+        "backlog",
+        "unstarted",
+        "started",
+        "completed",
+        "canceled",
+        "duplicate"
+    ]
+);
 
 impl StateType {
     pub fn parse(s: &str) -> Self {
@@ -165,10 +244,11 @@ impl WorkflowState {
 }
 
 /// A reference to a project from another entity.
-#[derive(cynic::QueryFragment, Debug, Clone, PartialEq, Serialize)]
+#[derive(cynic::QueryFragment, Debug, Clone, PartialEq, Serialize, JsonSchema)]
 #[cynic(graphql_type = "Project")]
 #[serde(rename_all = "camelCase")]
 pub struct ProjectRef {
+    #[schemars(with = "String")]
     pub id: cynic::Id,
     pub slug_id: String,
     pub name: String,
@@ -176,34 +256,37 @@ pub struct ProjectRef {
 }
 
 /// A reference to an issue from another entity.
-#[derive(cynic::QueryFragment, Debug, Clone, PartialEq, Serialize)]
+#[derive(cynic::QueryFragment, Debug, Clone, PartialEq, Serialize, JsonSchema)]
 #[cynic(graphql_type = "Issue")]
 pub struct IssueRef {
+    #[schemars(with = "String")]
     pub id: cynic::Id,
     pub identifier: String,
     pub url: String,
 }
 
 /// A reference to an initiative from a project.
-#[derive(cynic::QueryFragment, Debug, Clone, PartialEq, Serialize)]
+#[derive(cynic::QueryFragment, Debug, Clone, PartialEq, Serialize, JsonSchema)]
 #[cynic(graphql_type = "Initiative")]
 pub struct InitiativeRef {
+    #[schemars(with = "String")]
     pub id: cynic::Id,
     pub name: String,
     pub url: String,
 }
 
 /// The state of an issue, selected only to count issues per state type.
-#[derive(cynic::QueryFragment, Debug, Clone, PartialEq, Serialize)]
+#[derive(cynic::QueryFragment, Debug, Clone, PartialEq, Serialize, JsonSchema)]
 #[cynic(graphql_type = "Issue")]
 pub struct IssueStateRef {
     pub state: WorkflowState,
 }
 
 /// A project's status (the project-level analogue of a workflow state).
-#[derive(cynic::QueryFragment, Debug, Clone, PartialEq, Serialize)]
+#[derive(cynic::QueryFragment, Debug, Clone, PartialEq, Serialize, JsonSchema)]
 #[cynic(graphql_type = "ProjectStatus")]
 pub struct ProjectStatus {
+    #[schemars(with = "String")]
     pub id: cynic::Id,
     pub name: String,
     #[cynic(rename = "type")]
@@ -214,19 +297,21 @@ pub struct ProjectStatus {
 // ---------------------------------------------------------------- label
 
 /// The group a label belongs to.
-#[derive(cynic::QueryFragment, Debug, Clone, PartialEq, Serialize)]
+#[derive(cynic::QueryFragment, Debug, Clone, PartialEq, Serialize, JsonSchema)]
 #[cynic(graphql_type = "IssueLabel")]
 #[serde(rename_all = "camelCase")]
 pub struct LabelGroup {
+    #[schemars(with = "String")]
     pub id: cynic::Id,
     pub name: String,
     pub group_type: Option<LabelGroupType>,
 }
 
-#[derive(cynic::QueryFragment, Debug, Clone, PartialEq, Serialize)]
+#[derive(cynic::QueryFragment, Debug, Clone, PartialEq, Serialize, JsonSchema)]
 #[cynic(graphql_type = "IssueLabel")]
 #[serde(rename_all = "camelCase")]
 pub struct Label {
+    #[schemars(with = "String")]
     pub id: cynic::Id,
     pub name: String,
     pub color: String,
@@ -238,9 +323,10 @@ nodes_container!(LabelNodes, "IssueLabelConnection", Label);
 
 // ---------------------------------------------------------------- attachment
 
-#[derive(cynic::QueryFragment, Debug, Clone, PartialEq, Serialize)]
+#[derive(cynic::QueryFragment, Debug, Clone, PartialEq, Serialize, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct Attachment {
+    #[schemars(with = "String")]
     pub id: cynic::Id,
     pub title: String,
     pub subtitle: Option<String>,
@@ -253,10 +339,11 @@ nodes_container!(AttachmentNodes, "AttachmentConnection", Attachment);
 
 // ---------------------------------------------------------------- milestone
 
-#[derive(cynic::QueryFragment, Debug, Clone, PartialEq, Serialize)]
+#[derive(cynic::QueryFragment, Debug, Clone, PartialEq, Serialize, JsonSchema)]
 #[cynic(graphql_type = "ProjectMilestone")]
 #[serde(rename_all = "camelCase")]
 pub struct Milestone {
+    #[schemars(with = "String")]
     pub id: cynic::Id,
     pub name: String,
     pub description: Option<String>,
@@ -272,10 +359,11 @@ nodes_container!(MilestoneNodes, "ProjectMilestoneConnection", Milestone);
 // ---------------------------------------------------------------- status update
 
 /// A project status update (Linear's `ProjectUpdate`).
-#[derive(cynic::QueryFragment, Debug, Clone, PartialEq, Serialize)]
+#[derive(cynic::QueryFragment, Debug, Clone, PartialEq, Serialize, JsonSchema)]
 #[cynic(graphql_type = "ProjectUpdate")]
 #[serde(rename_all = "camelCase")]
 pub struct StatusUpdate {
+    #[schemars(with = "String")]
     pub id: cynic::Id,
     pub url: String,
     pub body: String,
@@ -288,9 +376,10 @@ pub struct StatusUpdate {
 
 // ---------------------------------------------------------------- issue
 
-#[derive(cynic::QueryFragment, Debug, Clone, PartialEq, Serialize)]
+#[derive(cynic::QueryFragment, Debug, Clone, PartialEq, Serialize, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct Issue {
+    #[schemars(with = "String")]
     pub id: cynic::Id,
     pub identifier: String,
     pub title: String,
@@ -334,9 +423,10 @@ paged_container!(IssueConnection, "IssueConnection", Issue);
 
 // ---------------------------------------------------------------- comment
 
-#[derive(cynic::QueryFragment, Debug, Clone, PartialEq, Serialize)]
+#[derive(cynic::QueryFragment, Debug, Clone, PartialEq, Serialize, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct Comment {
+    #[schemars(with = "String")]
     pub id: cynic::Id,
     pub url: String,
     pub body: String,
@@ -350,9 +440,10 @@ pub struct Comment {
 
 paged_container!(IssueStateConnection, "IssueConnection", IssueStateRef);
 
-#[derive(cynic::QueryFragment, Debug, Clone, PartialEq, Serialize)]
+#[derive(cynic::QueryFragment, Debug, Clone, PartialEq, Serialize, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct Project {
+    #[schemars(with = "String")]
     pub id: cynic::Id,
     pub slug_id: String,
     pub name: String,
@@ -427,9 +518,10 @@ paged_container!(ProjectConnection, "ProjectConnection", Project);
 
 // ---------------------------------------------------------------- initiative
 
-#[derive(cynic::QueryFragment, Debug, Clone, PartialEq, Serialize)]
+#[derive(cynic::QueryFragment, Debug, Clone, PartialEq, Serialize, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct Initiative {
+    #[schemars(with = "String")]
     pub id: cynic::Id,
     pub slug_id: String,
     pub name: String,
@@ -443,9 +535,10 @@ paged_container!(InitiativeConnection, "InitiativeConnection", Initiative);
 
 // ---------------------------------------------------------------- template
 
-#[derive(cynic::QueryFragment, Debug, Clone, PartialEq, Serialize)]
+#[derive(cynic::QueryFragment, Debug, Clone, PartialEq, Serialize, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct Template {
+    #[schemars(with = "String")]
     pub id: cynic::Id,
     pub name: String,
     pub description: Option<String>,
@@ -473,9 +566,10 @@ impl Template {
 // ---------------------------------------------------------------- organization
 
 /// The workspace itself, as Linear names it.
-#[derive(cynic::QueryFragment, Debug, Clone, PartialEq, Serialize)]
+#[derive(cynic::QueryFragment, Debug, Clone, PartialEq, Serialize, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct Organization {
+    #[schemars(with = "String")]
     pub id: cynic::Id,
     pub name: String,
     pub url_key: String,

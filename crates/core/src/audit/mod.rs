@@ -17,6 +17,7 @@ use crate::error::Result;
 use crate::rules::RuleSet;
 use crate::types::{Issue, Project, ProjectStatusType, Template};
 use chrono::{DateTime, NaiveDate, Utc};
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
@@ -28,7 +29,7 @@ pub use scope::AuditOptions;
 ///
 /// `issues` should hold the open issues worth auditing plus any issue whose
 /// state changed recently; the rules only see what is here.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
 pub struct Snapshot {
     pub workspace: String,
     pub issues: Vec<Issue>,
@@ -40,7 +41,7 @@ pub struct Snapshot {
 }
 
 /// Audit settings, per workspace.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(default, deny_unknown_fields)]
 pub struct AuditConfig {
     /// `stale-in-progress`: an In Progress issue with no update for this many

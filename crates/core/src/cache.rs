@@ -20,16 +20,18 @@
 use crate::audit::{diff, Finding};
 use crate::types::{Issue, Project, User};
 use chrono::{DateTime, Utc};
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-/// The version of the entry's shape.
-pub const SCHEMA_VERSION: u32 = 1;
+/// The version of the entry's shape: the crate-wide [`crate::SCHEMA_VERSION`],
+/// since an entry holds issues, projects and findings.
+pub use crate::SCHEMA_VERSION;
 
 /// How long an entry stays trustworthy, in seconds.
 pub const DEFAULT_TTL_SECS: u64 = 300;
 
 /// How the last refresh went.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "lowercase")]
 pub enum RefreshStatus {
     Ok,
@@ -37,14 +39,14 @@ pub enum RefreshStatus {
 }
 
 /// Why the last refresh failed, and when.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 pub struct Failure {
     pub at: DateTime<Utc>,
     pub message: String,
 }
 
 /// What the viewer looks at in one workspace, as of one successful fetch.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
 pub struct Mine {
     /// The authenticated user ("me") in this workspace.
     pub viewer: User,
@@ -69,7 +71,7 @@ pub struct Fetched {
 }
 
 /// The cache entry of one workspace.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
 pub struct WorkspaceCache {
     pub schema_version: u32,
     pub workspace: String,
@@ -86,7 +88,7 @@ pub struct WorkspaceCache {
 }
 
 /// Whether an entry may be trusted.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, JsonSchema)]
 #[serde(tag = "state", rename_all = "lowercase")]
 pub enum Freshness {
     /// Fetched within the TTL.

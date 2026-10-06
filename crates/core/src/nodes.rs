@@ -8,7 +8,7 @@
 macro_rules! nodes_container {
     ($(#[$meta:meta])* $name:ident, $graphql:literal, $item:ty) => {
         $(#[$meta])*
-        #[derive(cynic::QueryFragment, Debug, Clone, PartialEq, serde::Serialize)]
+        #[derive(cynic::QueryFragment, Debug, Clone, PartialEq, serde::Serialize, schemars::JsonSchema)]
         #[cynic(graphql_type = $graphql)]
         pub struct $name {
             pub nodes: Vec<$item>,
@@ -41,7 +41,7 @@ macro_rules! nodes_container {
 macro_rules! paged_container {
     ($(#[$meta:meta])* $name:ident, $graphql:literal, $item:ty) => {
         $(#[$meta])*
-        #[derive(cynic::QueryFragment, Debug, Clone, PartialEq, serde::Serialize)]
+        #[derive(cynic::QueryFragment, Debug, Clone, PartialEq, serde::Serialize, schemars::JsonSchema)]
         #[cynic(graphql_type = $graphql)]
         #[serde(rename_all = "camelCase")]
         pub struct $name {

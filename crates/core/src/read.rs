@@ -12,6 +12,7 @@ use crate::schema;
 use crate::types::*;
 use chrono::NaiveDate;
 use cynic::{Operation, QueryBuilder};
+use schemars::JsonSchema;
 use serde::Serialize;
 
 /// Variables of a query that takes a single id (or identifier, or slug).
@@ -54,7 +55,7 @@ pub fn issue_list(vars: IssueListVars) -> Operation<IssueList, IssueListVars> {
 }
 
 /// What a `view` shows beyond the issue's fixed fragment.
-#[derive(cynic::QueryFragment, Debug, Clone, PartialEq, Serialize)]
+#[derive(cynic::QueryFragment, Debug, Clone, PartialEq, Serialize, JsonSchema)]
 #[cynic(graphql_type = "Issue")]
 #[serde(rename_all = "camelCase")]
 pub struct IssueDetail {
@@ -64,8 +65,9 @@ pub struct IssueDetail {
     pub comments: CommentNodes,
 }
 
-#[derive(cynic::QueryFragment, Debug, Clone, PartialEq)]
+#[derive(cynic::QueryFragment, Debug, Clone, PartialEq, Serialize, JsonSchema)]
 #[cynic(graphql_type = "Query", variables = "IdVars")]
+#[serde(rename_all = "camelCase")]
 pub struct IssueView {
     #[arguments(id: $id)]
     pub issue: Issue,
@@ -80,10 +82,11 @@ pub fn issue_view(id: impl Into<String>) -> Operation<IssueView, IdVars> {
 }
 
 /// An issue reduced to what a list inside another entity needs.
-#[derive(cynic::QueryFragment, Debug, Clone, PartialEq, Serialize)]
+#[derive(cynic::QueryFragment, Debug, Clone, PartialEq, Serialize, JsonSchema)]
 #[cynic(graphql_type = "Issue")]
 #[serde(rename_all = "camelCase")]
 pub struct IssueBrief {
+    #[schemars(with = "String")]
     pub id: cynic::Id,
     pub identifier: String,
     pub title: String,
@@ -254,7 +257,7 @@ nodes_container!(StatusUpdateNodes, "ProjectUpdateConnection", StatusUpdate);
 pub const PROJECT_VIEW_UPDATES: usize = 5;
 
 /// What a project `view` shows beyond the project's fixed fragment.
-#[derive(cynic::QueryFragment, Debug, Clone, PartialEq, Serialize)]
+#[derive(cynic::QueryFragment, Debug, Clone, PartialEq, Serialize, JsonSchema)]
 #[cynic(graphql_type = "Project")]
 #[serde(rename_all = "camelCase")]
 pub struct ProjectDetail {
@@ -264,8 +267,9 @@ pub struct ProjectDetail {
     pub project_updates: StatusUpdateNodes,
 }
 
-#[derive(cynic::QueryFragment, Debug, Clone, PartialEq)]
+#[derive(cynic::QueryFragment, Debug, Clone, PartialEq, Serialize, JsonSchema)]
 #[cynic(graphql_type = "Query", variables = "IdVars")]
+#[serde(rename_all = "camelCase")]
 pub struct ProjectView {
     #[arguments(id: $id)]
     pub project: Project,
@@ -279,10 +283,11 @@ pub fn project_view(id: impl Into<String>) -> Operation<ProjectView, IdVars> {
 }
 
 /// A project reduced to what a list inside another entity needs.
-#[derive(cynic::QueryFragment, Debug, Clone, PartialEq, Serialize)]
+#[derive(cynic::QueryFragment, Debug, Clone, PartialEq, Serialize, JsonSchema)]
 #[cynic(graphql_type = "Project")]
 #[serde(rename_all = "camelCase")]
 pub struct ProjectBrief {
+    #[schemars(with = "String")]
     pub id: cynic::Id,
     pub slug_id: String,
     pub name: String,
@@ -295,15 +300,17 @@ nodes_container!(ProjectBriefNodes, "ProjectConnection", ProjectBrief);
 
 // ---------------------------------------------------------------- milestones
 
-#[derive(cynic::QueryFragment, Debug, Clone, PartialEq)]
+#[derive(cynic::QueryFragment, Debug, Clone, PartialEq, Serialize, JsonSchema)]
 #[cynic(graphql_type = "Project")]
+#[serde(rename_all = "camelCase")]
 pub struct ProjectMilestones {
     #[arguments(first: 100)]
     pub project_milestones: MilestoneNodes,
 }
 
-#[derive(cynic::QueryFragment, Debug, Clone, PartialEq)]
+#[derive(cynic::QueryFragment, Debug, Clone, PartialEq, Serialize, JsonSchema)]
 #[cynic(graphql_type = "Query", variables = "IdVars")]
+#[serde(rename_all = "camelCase")]
 pub struct MilestonesOfProject {
     #[arguments(id: $id)]
     pub project: ProjectMilestones,
@@ -319,15 +326,16 @@ pub fn milestones_of_project(
 }
 
 /// What a milestone `view` shows beyond the milestone's fixed fragment.
-#[derive(cynic::QueryFragment, Debug, Clone, PartialEq, Serialize)]
+#[derive(cynic::QueryFragment, Debug, Clone, PartialEq, Serialize, JsonSchema)]
 #[cynic(graphql_type = "ProjectMilestone")]
 pub struct MilestoneDetail {
     #[arguments(first: 100)]
     pub issues: IssueBriefNodes,
 }
 
-#[derive(cynic::QueryFragment, Debug, Clone, PartialEq)]
+#[derive(cynic::QueryFragment, Debug, Clone, PartialEq, Serialize, JsonSchema)]
 #[cynic(graphql_type = "Query", variables = "IdVars")]
+#[serde(rename_all = "camelCase")]
 pub struct MilestoneView {
     #[arguments(id: $id)]
     pub project_milestone: Milestone,
@@ -373,7 +381,7 @@ pub fn initiative_list(vars: InitiativeListVars) -> Operation<InitiativeList, In
 }
 
 /// What an initiative `view` shows beyond the initiative's fixed fragment.
-#[derive(cynic::QueryFragment, Debug, Clone, PartialEq, Serialize)]
+#[derive(cynic::QueryFragment, Debug, Clone, PartialEq, Serialize, JsonSchema)]
 #[cynic(graphql_type = "Initiative")]
 pub struct InitiativeDetail {
     pub description: Option<String>,
@@ -381,8 +389,9 @@ pub struct InitiativeDetail {
     pub projects: ProjectBriefNodes,
 }
 
-#[derive(cynic::QueryFragment, Debug, Clone, PartialEq)]
+#[derive(cynic::QueryFragment, Debug, Clone, PartialEq, Serialize, JsonSchema)]
 #[cynic(graphql_type = "Query", variables = "IdVars")]
+#[serde(rename_all = "camelCase")]
 pub struct InitiativeView {
     #[arguments(id: $id)]
     pub initiative: Initiative,
@@ -399,8 +408,9 @@ pub fn initiative_view(id: impl Into<String>) -> Operation<InitiativeView, IdVar
 
 paged_container!(LabelConnection, "IssueLabelConnection", Label);
 
-#[derive(cynic::QueryFragment, Debug, Clone, PartialEq)]
+#[derive(cynic::QueryFragment, Debug, Clone, PartialEq, Serialize, JsonSchema)]
 #[cynic(graphql_type = "Query", variables = "PageVars")]
+#[serde(rename_all = "camelCase")]
 pub struct Labels {
     #[arguments(first: $first, after: $after)]
     pub issue_labels: LabelConnection,
@@ -414,8 +424,9 @@ pub fn labels(vars: PageVars) -> Operation<Labels, PageVars> {
 
 paged_container!(TeamConnection, "TeamConnection", Team);
 
-#[derive(cynic::QueryFragment, Debug, Clone, PartialEq)]
+#[derive(cynic::QueryFragment, Debug, Clone, PartialEq, Serialize, JsonSchema)]
 #[cynic(graphql_type = "Query", variables = "PageVars")]
+#[serde(rename_all = "camelCase")]
 pub struct Teams {
     #[arguments(first: $first, after: $after)]
     pub teams: TeamConnection,
@@ -447,8 +458,9 @@ impl UserListVars {
     }
 }
 
-#[derive(cynic::QueryFragment, Debug, Clone, PartialEq)]
+#[derive(cynic::QueryFragment, Debug, Clone, PartialEq, Serialize, JsonSchema)]
 #[cynic(graphql_type = "Query", variables = "UserListVars")]
+#[serde(rename_all = "camelCase")]
 pub struct Users {
     #[arguments(first: $first, after: $after, includeDisabled: $include_disabled)]
     pub users: UserConnection,
