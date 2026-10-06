@@ -1,0 +1,16 @@
+{
+  "description": "A snapshot without its fields is a usage error, not a panic.",
+  "expected": {
+    "error": {
+      "code": "usage",
+      "message": "invalid snapshot: missing field `workspace` at line 1 column 2"
+    },
+    "ok": false
+  },
+  "input": {
+    "config": null,
+    "now": "2026-10-20T12:00:00Z",
+    "options": null,
+    "snapshot": {}
+  }
+}

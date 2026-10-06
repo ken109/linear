@@ -1,0 +1,23 @@
+{
+  "description": "A cache written with another schema version counts as missing.",
+  "expected": {
+    "data": {
+      "freshness": {
+        "state": "missing"
+      },
+      "reason": "schema-changed",
+      "refresh": true
+    },
+    "ok": true
+  },
+  "input": {
+    "event": {
+      "kind": "read"
+    },
+    "meta": {
+      "fetchedAt": "2026-10-20T11:59:50Z",
+      "schemaVersion": 99
+    },
+    "now": "2026-10-20T12:00:00Z"
+  }
+}

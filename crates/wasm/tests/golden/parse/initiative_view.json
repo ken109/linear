@@ -1,0 +1,49 @@
+{
+  "description": "The anonymized response `initiative_view`, read as `initiative_view`.",
+  "expected": {
+    "data": {
+      "detail": {
+        "description": "Everything about the example.",
+        "projects": {
+          "nodes": [
+            {
+              "id": "00000000-0000-4000-8000-000000000006",
+              "name": "Fixture Project",
+              "slugId": "aaaaaaaaaaaa",
+              "status": {
+                "id": "00000000-0000-4000-8000-000000000012",
+                "name": "In Progress",
+                "type": "started"
+              },
+              "targetDate": "2026-12-31",
+              "url": "https://linear.app/example/project/fixture-project-aaaaaaaaaaaa"
+            }
+          ]
+        }
+      },
+      "initiative": {
+        "id": "00000000-0000-4000-8000-000000000101",
+        "name": "Example Initiative",
+        "owner": {
+          "active": true,
+          "displayName": "alice",
+          "email": "alice@example.com",
+          "id": "00000000-0000-4000-8000-000000000001",
+          "isMe": true,
+          "name": "Alice Example"
+        },
+        "slugId": "dddddddddddd",
+        "status": "Active",
+        "targetDate": "2026-12-31",
+        "url": "https://linear.app/example/initiative/example-initiative-dddddddddddd"
+      }
+    },
+    "ok": true
+  },
+  "input": {
+    "fixture": "initiative_view",
+    "now": "2026-10-20T12:00:00Z",
+    "operation": "initiative_view",
+    "status": 200
+  }
+}

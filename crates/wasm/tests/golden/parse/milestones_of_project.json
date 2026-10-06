@@ -1,0 +1,50 @@
+{
+  "description": "The anonymized response `milestones`, read as `milestones_of_project`.",
+  "expected": {
+    "data": {
+      "project": {
+        "projectMilestones": {
+          "nodes": [
+            {
+              "description": null,
+              "id": "00000000-0000-4000-8000-000000000030",
+              "name": "Milestone 2",
+              "progress": 0.0,
+              "project": {
+                "id": "00000000-0000-4000-8000-000000000006",
+                "name": "Fixture Project",
+                "slugId": "aaaaaaaaaaaa",
+                "url": "https://linear.app/example/project/fixture-project-aaaaaaaaaaaa"
+              },
+              "sortOrder": -50.0,
+              "status": "unstarted",
+              "targetDate": "2026-12-15"
+            },
+            {
+              "description": "First milestone",
+              "id": "00000000-0000-4000-8000-000000000007",
+              "name": "Milestone 1",
+              "progress": 25.0,
+              "project": {
+                "id": "00000000-0000-4000-8000-000000000006",
+                "name": "Fixture Project",
+                "slugId": "aaaaaaaaaaaa",
+                "url": "https://linear.app/example/project/fixture-project-aaaaaaaaaaaa"
+              },
+              "sortOrder": -88.0,
+              "status": "next",
+              "targetDate": "2026-11-15"
+            }
+          ]
+        }
+      }
+    },
+    "ok": true
+  },
+  "input": {
+    "fixture": "milestones",
+    "now": "2026-10-20T12:00:00Z",
+    "operation": "milestones_of_project",
+    "status": 200
+  }
+}

@@ -1,0 +1,24 @@
+{
+  "description": "A cron tick finds it fresh.",
+  "expected": {
+    "data": {
+      "freshness": {
+        "age_secs": 120,
+        "state": "fresh"
+      },
+      "reason": "fresh",
+      "refresh": false
+    },
+    "ok": true
+  },
+  "input": {
+    "event": {
+      "kind": "cron"
+    },
+    "meta": {
+      "fetchedAt": "2026-10-20T11:58:00Z",
+      "schemaVersion": 1
+    },
+    "now": "2026-10-20T12:00:00Z"
+  }
+}

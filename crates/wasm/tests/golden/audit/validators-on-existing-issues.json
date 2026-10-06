@@ -1,0 +1,387 @@
+{
+  "description": "source-attachment, label-groups-exclusive and template-sections applied to existing issues.",
+  "expected": {
+    "data": {
+      "findings": [
+        {
+          "actionable": true,
+          "fix": "linear issue update KK-12 --body-file <file> -w ken109",
+          "message": "KK-12 does not fill the template \"Task\": section \"Goal\" is empty; section \"Done when\" is missing",
+          "rule": "template-sections",
+          "severity": "warn",
+          "target": {
+            "id": "i-KK-12",
+            "identifier": "KK-12",
+            "kind": "issue",
+            "title": "Title of KK-12",
+            "url": "https://linear.app/x/issue/KK-12"
+          },
+          "workspace": "ken109"
+        },
+        {
+          "actionable": false,
+          "fix": "linear issue update KK-14 --body-file <file> -w ken109",
+          "message": "KK-14 follows none of the issue templates (Task)",
+          "rule": "template-sections",
+          "severity": "warn",
+          "target": {
+            "id": "i-KK-14",
+            "identifier": "KK-14",
+            "kind": "issue",
+            "title": "Title of KK-14",
+            "url": "https://linear.app/x/issue/KK-14"
+          },
+          "workspace": "ken109"
+        },
+        {
+          "actionable": true,
+          "fix": "linear issue update KK-10 --source <url> -w ken109",
+          "message": "KK-10 has no http(s) source attachment",
+          "rule": "source-attachment",
+          "severity": "warn",
+          "target": {
+            "id": "i-KK-10",
+            "identifier": "KK-10",
+            "kind": "issue",
+            "title": "Title of KK-10",
+            "url": "https://linear.app/x/issue/KK-10"
+          },
+          "workspace": "ken109"
+        },
+        {
+          "actionable": true,
+          "fix": "linear issue update KK-11 --labels <labels> -w ken109",
+          "message": "only one label of the group \"Type\" can be set (got Bug, Feature)",
+          "rule": "label-groups-exclusive",
+          "severity": "warn",
+          "target": {
+            "id": "i-KK-11",
+            "identifier": "KK-11",
+            "kind": "issue",
+            "title": "Title of KK-11",
+            "url": "https://linear.app/x/issue/KK-11"
+          },
+          "workspace": "ken109"
+        }
+      ],
+      "unresolved_issues": []
+    },
+    "ok": true
+  },
+  "input": {
+    "config": {
+      "stale_days": 7,
+      "status_update_days": 14,
+      "validators": [
+        "source-attachment",
+        "label-groups-exclusive",
+        "template-sections"
+      ]
+    },
+    "now": "2026-10-20T12:00:00Z",
+    "options": null,
+    "snapshot": {
+      "issues": [
+        {
+          "assignee": {
+            "active": true,
+            "displayName": "me",
+            "email": "u-me@example.com",
+            "id": "u-me",
+            "isMe": true,
+            "name": "Me"
+          },
+          "attachments": {
+            "nodes": []
+          },
+          "canceledAt": null,
+          "completedAt": null,
+          "createdAt": "2026-09-01T00:00:00Z",
+          "description": "## Goal\nShip it.\n\n## Done when\nIt is shipped.\n",
+          "dueDate": null,
+          "estimate": null,
+          "id": "i-KK-10",
+          "identifier": "KK-10",
+          "labels": {
+            "nodes": []
+          },
+          "parent": null,
+          "prioritySortOrder": 0.0,
+          "project": null,
+          "projectMilestone": null,
+          "sortOrder": 0.0,
+          "startedAt": null,
+          "state": {
+            "id": "s-unstarted",
+            "name": "State unstarted",
+            "type": "unstarted"
+          },
+          "team": {
+            "id": "t-1",
+            "key": "KK",
+            "name": "Team"
+          },
+          "title": "Title of KK-10",
+          "updatedAt": "2026-10-19T00:00:00Z",
+          "url": "https://linear.app/x/issue/KK-10"
+        },
+        {
+          "assignee": {
+            "active": true,
+            "displayName": "me",
+            "email": "u-me@example.com",
+            "id": "u-me",
+            "isMe": true,
+            "name": "Me"
+          },
+          "attachments": {
+            "nodes": [
+              {
+                "createdAt": "2026-09-01T00:00:00Z",
+                "id": "a-1",
+                "sourceType": null,
+                "subtitle": null,
+                "title": "Source",
+                "url": "https://example.com/a"
+              }
+            ]
+          },
+          "canceledAt": null,
+          "completedAt": null,
+          "createdAt": "2026-09-01T00:00:00Z",
+          "description": "## Goal\nShip it.\n\n## Done when\nIt is shipped.\n",
+          "dueDate": null,
+          "estimate": null,
+          "id": "i-KK-11",
+          "identifier": "KK-11",
+          "labels": {
+            "nodes": [
+              {
+                "color": "#000000",
+                "id": "l-Bug",
+                "isGroup": false,
+                "name": "Bug",
+                "parent": {
+                  "groupType": "singleSelect",
+                  "id": "lg-Type",
+                  "name": "Type"
+                }
+              },
+              {
+                "color": "#000000",
+                "id": "l-Feature",
+                "isGroup": false,
+                "name": "Feature",
+                "parent": {
+                  "groupType": "singleSelect",
+                  "id": "lg-Type",
+                  "name": "Type"
+                }
+              }
+            ]
+          },
+          "parent": null,
+          "prioritySortOrder": 0.0,
+          "project": null,
+          "projectMilestone": null,
+          "sortOrder": 0.0,
+          "startedAt": null,
+          "state": {
+            "id": "s-unstarted",
+            "name": "State unstarted",
+            "type": "unstarted"
+          },
+          "team": {
+            "id": "t-1",
+            "key": "KK",
+            "name": "Team"
+          },
+          "title": "Title of KK-11",
+          "updatedAt": "2026-10-19T00:00:00Z",
+          "url": "https://linear.app/x/issue/KK-11"
+        },
+        {
+          "assignee": {
+            "active": true,
+            "displayName": "me",
+            "email": "u-me@example.com",
+            "id": "u-me",
+            "isMe": true,
+            "name": "Me"
+          },
+          "attachments": {
+            "nodes": [
+              {
+                "createdAt": "2026-09-01T00:00:00Z",
+                "id": "a-1",
+                "sourceType": null,
+                "subtitle": null,
+                "title": "Source",
+                "url": "https://example.com/b"
+              }
+            ]
+          },
+          "canceledAt": null,
+          "completedAt": null,
+          "createdAt": "2026-09-01T00:00:00Z",
+          "description": "## Goal\n\n## Notes\nSomething.\n",
+          "dueDate": null,
+          "estimate": null,
+          "id": "i-KK-12",
+          "identifier": "KK-12",
+          "labels": {
+            "nodes": []
+          },
+          "parent": null,
+          "prioritySortOrder": 0.0,
+          "project": null,
+          "projectMilestone": null,
+          "sortOrder": 0.0,
+          "startedAt": null,
+          "state": {
+            "id": "s-unstarted",
+            "name": "State unstarted",
+            "type": "unstarted"
+          },
+          "team": {
+            "id": "t-1",
+            "key": "KK",
+            "name": "Team"
+          },
+          "title": "Title of KK-12",
+          "updatedAt": "2026-10-19T00:00:00Z",
+          "url": "https://linear.app/x/issue/KK-12"
+        },
+        {
+          "assignee": {
+            "active": true,
+            "displayName": "me",
+            "email": "u-me@example.com",
+            "id": "u-me",
+            "isMe": true,
+            "name": "Me"
+          },
+          "attachments": {
+            "nodes": [
+              {
+                "createdAt": "2026-09-01T00:00:00Z",
+                "id": "a-1",
+                "sourceType": null,
+                "subtitle": null,
+                "title": "Source",
+                "url": "https://example.com/c"
+              }
+            ]
+          },
+          "canceledAt": null,
+          "completedAt": null,
+          "createdAt": "2026-09-01T00:00:00Z",
+          "description": "## Goal\nShip it.\n\n## Done when\nIt is shipped.\n",
+          "dueDate": null,
+          "estimate": null,
+          "id": "i-KK-13",
+          "identifier": "KK-13",
+          "labels": {
+            "nodes": [
+              {
+                "color": "#000000",
+                "id": "l-Bug",
+                "isGroup": false,
+                "name": "Bug",
+                "parent": {
+                  "groupType": "singleSelect",
+                  "id": "lg-Type",
+                  "name": "Type"
+                }
+              }
+            ]
+          },
+          "parent": null,
+          "prioritySortOrder": 0.0,
+          "project": null,
+          "projectMilestone": null,
+          "sortOrder": 0.0,
+          "startedAt": null,
+          "state": {
+            "id": "s-unstarted",
+            "name": "State unstarted",
+            "type": "unstarted"
+          },
+          "team": {
+            "id": "t-1",
+            "key": "KK",
+            "name": "Team"
+          },
+          "title": "Title of KK-13",
+          "updatedAt": "2026-10-19T00:00:00Z",
+          "url": "https://linear.app/x/issue/KK-13"
+        },
+        {
+          "assignee": {
+            "active": true,
+            "displayName": "other",
+            "email": "u-other@example.com",
+            "id": "u-other",
+            "isMe": false,
+            "name": "Other"
+          },
+          "attachments": {
+            "nodes": [
+              {
+                "createdAt": "2026-09-01T00:00:00Z",
+                "id": "a-1",
+                "sourceType": null,
+                "subtitle": null,
+                "title": "Source",
+                "url": "https://example.com/d"
+              }
+            ]
+          },
+          "canceledAt": null,
+          "completedAt": null,
+          "createdAt": "2026-09-01T00:00:00Z",
+          "description": null,
+          "dueDate": null,
+          "estimate": null,
+          "id": "i-KK-14",
+          "identifier": "KK-14",
+          "labels": {
+            "nodes": []
+          },
+          "parent": null,
+          "prioritySortOrder": 0.0,
+          "project": null,
+          "projectMilestone": null,
+          "sortOrder": 0.0,
+          "startedAt": null,
+          "state": {
+            "id": "s-unstarted",
+            "name": "State unstarted",
+            "type": "unstarted"
+          },
+          "team": {
+            "id": "t-1",
+            "key": "KK",
+            "name": "Team"
+          },
+          "title": "Title of KK-14",
+          "updatedAt": "2026-10-19T00:00:00Z",
+          "url": "https://linear.app/x/issue/KK-14"
+        }
+      ],
+      "projects": [],
+      "templates": [
+        {
+          "description": null,
+          "id": "tpl-Task",
+          "name": "Task",
+          "team": null,
+          "templateData": "{\"title\":\"\",\"descriptionData\":{\"type\":\"doc\",\"content\":[{\"type\":\"heading\",\"attrs\":{\"level\":2},\"content\":[{\"type\":\"text\",\"text\":\"Goal\"}]},{\"type\":\"heading\",\"attrs\":{\"level\":2},\"content\":[{\"type\":\"text\",\"text\":\"Done when\"}]}]}}",
+          "type": "issue",
+          "updatedAt": "2026-10-06T00:00:00Z"
+        }
+      ],
+      "workspace": "ken109"
+    }
+  }
+}

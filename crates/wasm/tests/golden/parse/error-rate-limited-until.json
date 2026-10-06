@@ -1,0 +1,19 @@
+{
+  "description": "The wait comes from the reset timestamp (30 s after now).",
+  "expected": {
+    "error": {
+      "code": "error",
+      "message": "rate limited by Linear (retry in 30s)",
+      "retryAfterSecs": 30
+    },
+    "ok": false
+  },
+  "input": {
+    "body": "{}",
+    "fixture": null,
+    "now": "2026-10-20T12:00:00Z",
+    "operation": "whoami",
+    "rateLimitResetMs": 1792497630000,
+    "status": 429
+  }
+}

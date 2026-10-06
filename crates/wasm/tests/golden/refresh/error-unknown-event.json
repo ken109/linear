@@ -1,0 +1,17 @@
+{
+  "description": "An event kind that does not exist is a usage error.",
+  "expected": {
+    "error": {
+      "code": "usage",
+      "message": "invalid event: unknown variant `nope`, expected one of `read`, `cron`, `webhook`, `manual` at line 1 column 14"
+    },
+    "ok": false
+  },
+  "input": {
+    "event": {
+      "kind": "nope"
+    },
+    "meta": null,
+    "now": "2026-10-20T12:00:00Z"
+  }
+}

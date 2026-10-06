@@ -1,0 +1,25 @@
+{
+  "description": "A short TTL set by the caller.",
+  "expected": {
+    "data": {
+      "freshness": {
+        "age_secs": 60,
+        "state": "expired"
+      },
+      "reason": "ttl-expired",
+      "refresh": true
+    },
+    "ok": true
+  },
+  "input": {
+    "event": {
+      "kind": "read"
+    },
+    "meta": {
+      "fetchedAt": "2026-10-20T11:59:00Z",
+      "schemaVersion": 1,
+      "ttlSecs": 30
+    },
+    "now": "2026-10-20T12:00:00Z"
+  }
+}

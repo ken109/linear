@@ -1,0 +1,27 @@
+{
+  "description": "The anonymized response `teams`, read as `teams`.",
+  "expected": {
+    "data": {
+      "teams": {
+        "nodes": [
+          {
+            "id": "00000000-0000-4000-8000-000000000004",
+            "key": "EX",
+            "name": "Example"
+          }
+        ],
+        "pageInfo": {
+          "endCursor": null,
+          "hasNextPage": false
+        }
+      }
+    },
+    "ok": true
+  },
+  "input": {
+    "fixture": "teams",
+    "now": "2026-10-20T12:00:00Z",
+    "operation": "teams",
+    "status": 200
+  }
+}

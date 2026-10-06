@@ -1,0 +1,16 @@
+{
+  "description": "A rejected key.",
+  "expected": {
+    "error": {
+      "code": "auth",
+      "message": "authentication failed: Authentication required, not authenticated: You need to authenticate to access this operation."
+    },
+    "ok": false
+  },
+  "input": {
+    "fixture": "error_unauthenticated",
+    "now": "2026-10-20T12:00:00Z",
+    "operation": "whoami",
+    "status": 401
+  }
+}

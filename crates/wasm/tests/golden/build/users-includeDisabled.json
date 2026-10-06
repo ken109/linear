@@ -1,0 +1,24 @@
+{
+  "description": "Users including disabled ones.",
+  "expected": {
+    "data": {
+      "body": {
+        "operationName": "Users",
+        "query": "query Users($first: Int!, $after: String, $includeDisabled: Boolean) {",
+        "variables": {
+          "after": null,
+          "first": 100,
+          "includeDisabled": true
+        }
+      },
+      "url": "https://api.linear.app/graphql"
+    },
+    "ok": true
+  },
+  "input": {
+    "operation": "users",
+    "params": {
+      "includeDisabled": true
+    }
+  }
+}

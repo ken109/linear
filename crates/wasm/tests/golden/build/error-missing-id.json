@@ -1,0 +1,14 @@
+{
+  "description": "An id is required.",
+  "expected": {
+    "error": {
+      "code": "usage",
+      "message": "invalid parameters: missing field `id` at line 1 column 2"
+    },
+    "ok": false
+  },
+  "input": {
+    "operation": "issue",
+    "params": {}
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "description": "The first page at the size that stays under the complexity limit.",
+  "expected": {
+    "data": {
+      "body": {
+        "operationName": "Projects",
+        "query": "query Projects($first: Int!, $after: String) {",
+        "variables": {
+          "after": null,
+          "first": 10
+        }
+      },
+      "url": "https://api.linear.app/graphql"
+    },
+    "ok": true
+  },
+  "input": {
+    "operation": "projects",
+    "params": null
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "description": "The digest in upper case is the same digest.",
+  "expected": {
+    "data": {
+      "event": {
+        "action": "update",
+        "organizationId": "org-1",
+        "type": "Issue",
+        "webhookTimestamp": 1792497600000
+      },
+      "status": "valid"
+    },
+    "ok": true
+  },
+  "input": {
+    "body": "{\"action\":\"update\",\"type\":\"Issue\",\"organizationId\":\"org-1\",\"webhookTimestamp\":1792497600000}",
+    "now": "2026-10-20T12:00:00Z",
+    "secret": "lin_wh_goldensecret",
+    "signature": "2009A050D6FA651208AC3186B8E379366E4832954438C6FF6F3976CB63EEBA6C"
+  }
+}

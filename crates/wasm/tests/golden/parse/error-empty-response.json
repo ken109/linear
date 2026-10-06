@@ -1,0 +1,17 @@
+{
+  "description": "Neither data nor errors.",
+  "expected": {
+    "error": {
+      "code": "error",
+      "message": "the response was empty"
+    },
+    "ok": false
+  },
+  "input": {
+    "body": "{}",
+    "fixture": null,
+    "now": "2026-10-20T12:00:00Z",
+    "operation": "whoami",
+    "status": 200
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "description": "An issue's comments.",
+  "expected": {
+    "data": {
+      "body": {
+        "operationName": "IssueCommentsQuery",
+        "query": "query IssueCommentsQuery($id: String!) {",
+        "variables": {
+          "id": "KK-12"
+        }
+      },
+      "url": "https://api.linear.app/graphql"
+    },
+    "ok": true
+  },
+  "input": {
+    "operation": "issue_comments",
+    "params": {
+      "id": "KK-12"
+    }
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "description": "A Comment webhook changes nothing the snapshot holds.",
+  "expected": {
+    "data": {
+      "freshness": {
+        "age_secs": 10,
+        "state": "fresh"
+      },
+      "reason": "irrelevant-event",
+      "refresh": false
+    },
+    "ok": true
+  },
+  "input": {
+    "event": {
+      "action": "create",
+      "kind": "webhook",
+      "resourceType": "Comment"
+    },
+    "meta": {
+      "fetchedAt": "2026-10-20T11:59:50Z",
+      "schemaVersion": 1
+    },
+    "now": "2026-10-20T12:00:00Z"
+  }
+}

@@ -1,0 +1,918 @@
+{
+  "description": "Every consistency and staleness rule fires once, at the default thresholds.",
+  "expected": {
+    "data": {
+      "findings": [
+        {
+          "actionable": true,
+          "fix": "linear project update done --status started -w ken109",
+          "message": "project is Status completed but has 1 open issue(s)",
+          "rule": "project-state-vs-issues",
+          "severity": "warn",
+          "target": {
+            "id": "p-done",
+            "identifier": "done",
+            "kind": "project",
+            "title": "Project done",
+            "url": "https://linear.app/x/project/done"
+          },
+          "workspace": "ken109"
+        },
+        {
+          "actionable": false,
+          "fix": "linear project update early --status started -w ken109",
+          "message": "project is Status planned but 1 issue(s) are already in progress",
+          "rule": "project-state-vs-issues",
+          "severity": "warn",
+          "target": {
+            "id": "p-early",
+            "identifier": "early",
+            "kind": "project",
+            "title": "Project early",
+            "url": "https://linear.app/x/project/early"
+          },
+          "workspace": "ken109"
+        },
+        {
+          "actionable": true,
+          "fix": "linear project update late --target-date <date> -w ken109",
+          "message": "project target date 2026-10-10 passed 10 days ago",
+          "rule": "overdue",
+          "severity": "warn",
+          "target": {
+            "id": "p-late",
+            "identifier": "late",
+            "kind": "project",
+            "title": "Project late",
+            "url": "https://linear.app/x/project/late"
+          },
+          "workspace": "ken109"
+        },
+        {
+          "actionable": true,
+          "fix": "linear milestone update m-M1 --target-date <date> -w ken109",
+          "message": "milestone M1 of Project late was due 2026-10-01 (19 days ago)",
+          "rule": "overdue",
+          "severity": "warn",
+          "target": {
+            "id": "m-M1",
+            "identifier": "M1",
+            "kind": "milestone",
+            "title": "M1",
+            "url": "https://linear.app/x/project/late"
+          },
+          "workspace": "ken109"
+        },
+        {
+          "actionable": true,
+          "fix": "linear issue update KK-3 --due <date> -w ken109",
+          "message": "KK-3 was due 2026-10-15 (5 days ago) and is State unstarted",
+          "rule": "overdue",
+          "severity": "warn",
+          "target": {
+            "id": "i-KK-3",
+            "identifier": "KK-3",
+            "kind": "issue",
+            "title": "Title of KK-3",
+            "url": "https://linear.app/x/issue/KK-3"
+          },
+          "workspace": "ken109"
+        },
+        {
+          "actionable": true,
+          "fix": "linear issue update KK-4 --milestone <milestone> -w ken109",
+          "message": "KK-4 is in project Project ms, which has milestones, but in none of them",
+          "rule": "issue-without-milestone",
+          "severity": "info",
+          "target": {
+            "id": "i-KK-4",
+            "identifier": "KK-4",
+            "kind": "issue",
+            "title": "Title of KK-4",
+            "url": "https://linear.app/x/issue/KK-4"
+          },
+          "workspace": "ken109"
+        },
+        {
+          "actionable": false,
+          "fix": "linear project update nolead --lead <user> -w ken109",
+          "message": "project Project nolead has no lead",
+          "rule": "project-without-lead",
+          "severity": "info",
+          "target": {
+            "id": "p-nolead",
+            "identifier": "nolead",
+            "kind": "project",
+            "title": "Project nolead",
+            "url": "https://linear.app/x/project/nolead"
+          },
+          "workspace": "ken109"
+        },
+        {
+          "actionable": true,
+          "fix": "linear issue update KK-1 --state <state> -w ken109",
+          "message": "KK-1 has been State started with no update for 19 days (limit 7)",
+          "rule": "stale-in-progress",
+          "severity": "warn",
+          "target": {
+            "id": "i-KK-1",
+            "identifier": "KK-1",
+            "kind": "issue",
+            "title": "Title of KK-1",
+            "url": "https://linear.app/x/issue/KK-1"
+          },
+          "workspace": "ken109"
+        },
+        {
+          "actionable": false,
+          "fix": "linear issue update KK-2 --state <state> -w ken109",
+          "message": "KK-2 has been State started with no update for 15 days (limit 7)",
+          "rule": "stale-in-progress",
+          "severity": "warn",
+          "target": {
+            "id": "i-KK-2",
+            "identifier": "KK-2",
+            "kind": "issue",
+            "title": "Title of KK-2",
+            "url": "https://linear.app/x/issue/KK-2"
+          },
+          "workspace": "ken109"
+        },
+        {
+          "actionable": true,
+          "fix": "linear project status-update outdated --body <text> -w ken109",
+          "message": "project Project outdated is In Progress: its latest status update is 49 days old (limit 14)",
+          "rule": "status-update-outdated",
+          "severity": "warn",
+          "target": {
+            "id": "p-outdated",
+            "identifier": "outdated",
+            "kind": "project",
+            "title": "Project outdated",
+            "url": "https://linear.app/x/project/outdated"
+          },
+          "workspace": "ken109"
+        }
+      ],
+      "unresolved_issues": []
+    },
+    "ok": true
+  },
+  "input": {
+    "config": null,
+    "now": "2026-10-20T12:00:00Z",
+    "options": null,
+    "snapshot": {
+      "issues": [
+        {
+          "assignee": {
+            "active": true,
+            "displayName": "me",
+            "email": "u-me@example.com",
+            "id": "u-me",
+            "isMe": true,
+            "name": "Me"
+          },
+          "attachments": {
+            "nodes": []
+          },
+          "canceledAt": null,
+          "completedAt": null,
+          "createdAt": "2026-09-01T00:00:00Z",
+          "description": null,
+          "dueDate": null,
+          "estimate": null,
+          "id": "i-KK-1",
+          "identifier": "KK-1",
+          "labels": {
+            "nodes": []
+          },
+          "parent": null,
+          "prioritySortOrder": 0.0,
+          "project": null,
+          "projectMilestone": null,
+          "sortOrder": 0.0,
+          "startedAt": "2026-09-20T00:00:00Z",
+          "state": {
+            "id": "s-started",
+            "name": "State started",
+            "type": "started"
+          },
+          "team": {
+            "id": "t-1",
+            "key": "KK",
+            "name": "Team"
+          },
+          "title": "Title of KK-1",
+          "updatedAt": "2026-10-01T00:00:00Z",
+          "url": "https://linear.app/x/issue/KK-1"
+        },
+        {
+          "assignee": {
+            "active": true,
+            "displayName": "other",
+            "email": "u-other@example.com",
+            "id": "u-other",
+            "isMe": false,
+            "name": "Other"
+          },
+          "attachments": {
+            "nodes": []
+          },
+          "canceledAt": null,
+          "completedAt": null,
+          "createdAt": "2026-09-01T00:00:00Z",
+          "description": null,
+          "dueDate": null,
+          "estimate": null,
+          "id": "i-KK-2",
+          "identifier": "KK-2",
+          "labels": {
+            "nodes": []
+          },
+          "parent": null,
+          "prioritySortOrder": 0.0,
+          "project": null,
+          "projectMilestone": null,
+          "sortOrder": 0.0,
+          "startedAt": "2026-09-20T00:00:00Z",
+          "state": {
+            "id": "s-started",
+            "name": "State started",
+            "type": "started"
+          },
+          "team": {
+            "id": "t-1",
+            "key": "KK",
+            "name": "Team"
+          },
+          "title": "Title of KK-2",
+          "updatedAt": "2026-10-05T00:00:00Z",
+          "url": "https://linear.app/x/issue/KK-2"
+        },
+        {
+          "assignee": {
+            "active": true,
+            "displayName": "me",
+            "email": "u-me@example.com",
+            "id": "u-me",
+            "isMe": true,
+            "name": "Me"
+          },
+          "attachments": {
+            "nodes": []
+          },
+          "canceledAt": null,
+          "completedAt": null,
+          "createdAt": "2026-09-01T00:00:00Z",
+          "description": null,
+          "dueDate": "2026-10-15",
+          "estimate": null,
+          "id": "i-KK-3",
+          "identifier": "KK-3",
+          "labels": {
+            "nodes": []
+          },
+          "parent": null,
+          "prioritySortOrder": 0.0,
+          "project": null,
+          "projectMilestone": null,
+          "sortOrder": 0.0,
+          "startedAt": null,
+          "state": {
+            "id": "s-unstarted",
+            "name": "State unstarted",
+            "type": "unstarted"
+          },
+          "team": {
+            "id": "t-1",
+            "key": "KK",
+            "name": "Team"
+          },
+          "title": "Title of KK-3",
+          "updatedAt": "2026-10-19T00:00:00Z",
+          "url": "https://linear.app/x/issue/KK-3"
+        },
+        {
+          "assignee": {
+            "active": true,
+            "displayName": "me",
+            "email": "u-me@example.com",
+            "id": "u-me",
+            "isMe": true,
+            "name": "Me"
+          },
+          "attachments": {
+            "nodes": []
+          },
+          "canceledAt": null,
+          "completedAt": null,
+          "createdAt": "2026-09-01T00:00:00Z",
+          "description": null,
+          "dueDate": null,
+          "estimate": null,
+          "id": "i-KK-4",
+          "identifier": "KK-4",
+          "labels": {
+            "nodes": []
+          },
+          "parent": null,
+          "prioritySortOrder": 0.0,
+          "project": {
+            "id": "p-ms",
+            "name": "Project ms",
+            "slugId": "ms",
+            "url": "https://linear.app/x/project/ms"
+          },
+          "projectMilestone": null,
+          "sortOrder": 0.0,
+          "startedAt": "2026-10-10T00:00:00Z",
+          "state": {
+            "id": "s-started",
+            "name": "State started",
+            "type": "started"
+          },
+          "team": {
+            "id": "t-1",
+            "key": "KK",
+            "name": "Team"
+          },
+          "title": "Title of KK-4",
+          "updatedAt": "2026-10-19T00:00:00Z",
+          "url": "https://linear.app/x/issue/KK-4"
+        },
+        {
+          "assignee": {
+            "active": true,
+            "displayName": "me",
+            "email": "u-me@example.com",
+            "id": "u-me",
+            "isMe": true,
+            "name": "Me"
+          },
+          "attachments": {
+            "nodes": []
+          },
+          "canceledAt": null,
+          "completedAt": "2026-10-02T00:00:00Z",
+          "createdAt": "2026-09-01T00:00:00Z",
+          "description": null,
+          "dueDate": "2026-10-01",
+          "estimate": null,
+          "id": "i-KK-5",
+          "identifier": "KK-5",
+          "labels": {
+            "nodes": []
+          },
+          "parent": null,
+          "prioritySortOrder": 0.0,
+          "project": null,
+          "projectMilestone": null,
+          "sortOrder": 0.0,
+          "startedAt": null,
+          "state": {
+            "id": "s-completed",
+            "name": "State completed",
+            "type": "completed"
+          },
+          "team": {
+            "id": "t-1",
+            "key": "KK",
+            "name": "Team"
+          },
+          "title": "Title of KK-5",
+          "updatedAt": "2026-10-19T00:00:00Z",
+          "url": "https://linear.app/x/issue/KK-5"
+        },
+        {
+          "assignee": {
+            "active": true,
+            "displayName": "me",
+            "email": "u-me@example.com",
+            "id": "u-me",
+            "isMe": true,
+            "name": "Me"
+          },
+          "attachments": {
+            "nodes": []
+          },
+          "canceledAt": null,
+          "completedAt": null,
+          "createdAt": "2026-09-01T00:00:00Z",
+          "description": null,
+          "dueDate": null,
+          "estimate": null,
+          "id": "i-KK-6",
+          "identifier": "KK-6",
+          "labels": {
+            "nodes": []
+          },
+          "parent": null,
+          "prioritySortOrder": 0.0,
+          "project": {
+            "id": "p-ok",
+            "name": "Project ok",
+            "slugId": "ok",
+            "url": "https://linear.app/x/project/ok"
+          },
+          "projectMilestone": null,
+          "sortOrder": 0.0,
+          "startedAt": "2026-10-18T00:00:00Z",
+          "state": {
+            "id": "s-started",
+            "name": "State started",
+            "type": "started"
+          },
+          "team": {
+            "id": "t-1",
+            "key": "KK",
+            "name": "Team"
+          },
+          "title": "Title of KK-6",
+          "updatedAt": "2026-10-19T00:00:00Z",
+          "url": "https://linear.app/x/issue/KK-6"
+        }
+      ],
+      "projects": [
+        {
+          "health": null,
+          "id": "p-done",
+          "initiatives": {
+            "nodes": []
+          },
+          "issues": {
+            "nodes": [
+              {
+                "state": {
+                  "id": "s-completed",
+                  "name": "State completed",
+                  "type": "completed"
+                }
+              },
+              {
+                "state": {
+                  "id": "s-started",
+                  "name": "State started",
+                  "type": "started"
+                }
+              }
+            ],
+            "pageInfo": {
+              "endCursor": null,
+              "hasNextPage": false
+            }
+          },
+          "lastUpdate": {
+            "body": "Update.",
+            "createdAt": "2026-10-19T00:00:00Z",
+            "health": "onTrack",
+            "id": "su-done",
+            "project": {
+              "id": "p-done",
+              "name": "Project done",
+              "slugId": "done",
+              "url": "https://linear.app/x/project/done"
+            },
+            "updatedAt": "2026-10-19T00:00:00Z",
+            "url": "https://linear.app/x/project/done/activity",
+            "user": {
+              "active": true,
+              "displayName": "me",
+              "email": "u-me@example.com",
+              "id": "u-me",
+              "isMe": true,
+              "name": "Me"
+            }
+          },
+          "lead": {
+            "active": true,
+            "displayName": "me",
+            "email": "u-me@example.com",
+            "id": "u-me",
+            "isMe": true,
+            "name": "Me"
+          },
+          "name": "Project done",
+          "projectMilestones": {
+            "nodes": []
+          },
+          "slugId": "done",
+          "startDate": null,
+          "status": {
+            "id": "ps-completed",
+            "name": "Status completed",
+            "type": "completed"
+          },
+          "targetDate": null,
+          "updatedAt": "2026-10-19T00:00:00Z",
+          "url": "https://linear.app/x/project/done"
+        },
+        {
+          "health": null,
+          "id": "p-early",
+          "initiatives": {
+            "nodes": []
+          },
+          "issues": {
+            "nodes": [
+              {
+                "state": {
+                  "id": "s-unstarted",
+                  "name": "State unstarted",
+                  "type": "unstarted"
+                }
+              },
+              {
+                "state": {
+                  "id": "s-started",
+                  "name": "State started",
+                  "type": "started"
+                }
+              }
+            ],
+            "pageInfo": {
+              "endCursor": null,
+              "hasNextPage": false
+            }
+          },
+          "lastUpdate": {
+            "body": "Update.",
+            "createdAt": "2026-10-19T00:00:00Z",
+            "health": "onTrack",
+            "id": "su-early",
+            "project": {
+              "id": "p-early",
+              "name": "Project early",
+              "slugId": "early",
+              "url": "https://linear.app/x/project/early"
+            },
+            "updatedAt": "2026-10-19T00:00:00Z",
+            "url": "https://linear.app/x/project/early/activity",
+            "user": {
+              "active": true,
+              "displayName": "me",
+              "email": "u-me@example.com",
+              "id": "u-me",
+              "isMe": true,
+              "name": "Me"
+            }
+          },
+          "lead": {
+            "active": true,
+            "displayName": "other",
+            "email": "u-other@example.com",
+            "id": "u-other",
+            "isMe": false,
+            "name": "Other"
+          },
+          "name": "Project early",
+          "projectMilestones": {
+            "nodes": []
+          },
+          "slugId": "early",
+          "startDate": null,
+          "status": {
+            "id": "ps-planned",
+            "name": "Status planned",
+            "type": "planned"
+          },
+          "targetDate": null,
+          "updatedAt": "2026-10-19T00:00:00Z",
+          "url": "https://linear.app/x/project/early"
+        },
+        {
+          "health": null,
+          "id": "p-late",
+          "initiatives": {
+            "nodes": []
+          },
+          "issues": {
+            "nodes": [],
+            "pageInfo": {
+              "endCursor": null,
+              "hasNextPage": false
+            }
+          },
+          "lastUpdate": {
+            "body": "Update.",
+            "createdAt": "2026-10-19T00:00:00Z",
+            "health": "onTrack",
+            "id": "su-late",
+            "project": {
+              "id": "p-late",
+              "name": "Project late",
+              "slugId": "late",
+              "url": "https://linear.app/x/project/late"
+            },
+            "updatedAt": "2026-10-19T00:00:00Z",
+            "url": "https://linear.app/x/project/late/activity",
+            "user": {
+              "active": true,
+              "displayName": "me",
+              "email": "u-me@example.com",
+              "id": "u-me",
+              "isMe": true,
+              "name": "Me"
+            }
+          },
+          "lead": {
+            "active": true,
+            "displayName": "me",
+            "email": "u-me@example.com",
+            "id": "u-me",
+            "isMe": true,
+            "name": "Me"
+          },
+          "name": "Project late",
+          "projectMilestones": {
+            "nodes": [
+              {
+                "description": null,
+                "id": "m-M1",
+                "name": "M1",
+                "progress": 0.0,
+                "project": {
+                  "id": "p-late",
+                  "name": "Project late",
+                  "slugId": "late",
+                  "url": "https://linear.app/x/project/late"
+                },
+                "sortOrder": 0.0,
+                "status": "overdue",
+                "targetDate": "2026-10-01"
+              }
+            ]
+          },
+          "slugId": "late",
+          "startDate": null,
+          "status": {
+            "id": "ps-started",
+            "name": "In Progress",
+            "type": "started"
+          },
+          "targetDate": "2026-10-10",
+          "updatedAt": "2026-10-19T00:00:00Z",
+          "url": "https://linear.app/x/project/late"
+        },
+        {
+          "health": null,
+          "id": "p-nolead",
+          "initiatives": {
+            "nodes": []
+          },
+          "issues": {
+            "nodes": [],
+            "pageInfo": {
+              "endCursor": null,
+              "hasNextPage": false
+            }
+          },
+          "lastUpdate": {
+            "body": "Update.",
+            "createdAt": "2026-10-19T00:00:00Z",
+            "health": "onTrack",
+            "id": "su-nolead",
+            "project": {
+              "id": "p-nolead",
+              "name": "Project nolead",
+              "slugId": "nolead",
+              "url": "https://linear.app/x/project/nolead"
+            },
+            "updatedAt": "2026-10-19T00:00:00Z",
+            "url": "https://linear.app/x/project/nolead/activity",
+            "user": {
+              "active": true,
+              "displayName": "me",
+              "email": "u-me@example.com",
+              "id": "u-me",
+              "isMe": true,
+              "name": "Me"
+            }
+          },
+          "lead": null,
+          "name": "Project nolead",
+          "projectMilestones": {
+            "nodes": []
+          },
+          "slugId": "nolead",
+          "startDate": null,
+          "status": {
+            "id": "ps-started",
+            "name": "In Progress",
+            "type": "started"
+          },
+          "targetDate": null,
+          "updatedAt": "2026-10-19T00:00:00Z",
+          "url": "https://linear.app/x/project/nolead"
+        },
+        {
+          "health": null,
+          "id": "p-outdated",
+          "initiatives": {
+            "nodes": []
+          },
+          "issues": {
+            "nodes": [],
+            "pageInfo": {
+              "endCursor": null,
+              "hasNextPage": false
+            }
+          },
+          "lastUpdate": {
+            "body": "Update.",
+            "createdAt": "2026-09-01T00:00:00Z",
+            "health": "onTrack",
+            "id": "su-outdated",
+            "project": {
+              "id": "p-outdated",
+              "name": "Project outdated",
+              "slugId": "outdated",
+              "url": "https://linear.app/x/project/outdated"
+            },
+            "updatedAt": "2026-09-01T00:00:00Z",
+            "url": "https://linear.app/x/project/outdated/activity",
+            "user": {
+              "active": true,
+              "displayName": "me",
+              "email": "u-me@example.com",
+              "id": "u-me",
+              "isMe": true,
+              "name": "Me"
+            }
+          },
+          "lead": {
+            "active": true,
+            "displayName": "me",
+            "email": "u-me@example.com",
+            "id": "u-me",
+            "isMe": true,
+            "name": "Me"
+          },
+          "name": "Project outdated",
+          "projectMilestones": {
+            "nodes": []
+          },
+          "slugId": "outdated",
+          "startDate": null,
+          "status": {
+            "id": "ps-started",
+            "name": "In Progress",
+            "type": "started"
+          },
+          "targetDate": null,
+          "updatedAt": "2026-10-19T00:00:00Z",
+          "url": "https://linear.app/x/project/outdated"
+        },
+        {
+          "health": null,
+          "id": "p-ms",
+          "initiatives": {
+            "nodes": []
+          },
+          "issues": {
+            "nodes": [],
+            "pageInfo": {
+              "endCursor": null,
+              "hasNextPage": false
+            }
+          },
+          "lastUpdate": {
+            "body": "Update.",
+            "createdAt": "2026-10-19T00:00:00Z",
+            "health": "onTrack",
+            "id": "su-ms",
+            "project": {
+              "id": "p-ms",
+              "name": "Project ms",
+              "slugId": "ms",
+              "url": "https://linear.app/x/project/ms"
+            },
+            "updatedAt": "2026-10-19T00:00:00Z",
+            "url": "https://linear.app/x/project/ms/activity",
+            "user": {
+              "active": true,
+              "displayName": "me",
+              "email": "u-me@example.com",
+              "id": "u-me",
+              "isMe": true,
+              "name": "Me"
+            }
+          },
+          "lead": {
+            "active": true,
+            "displayName": "me",
+            "email": "u-me@example.com",
+            "id": "u-me",
+            "isMe": true,
+            "name": "Me"
+          },
+          "name": "Project ms",
+          "projectMilestones": {
+            "nodes": [
+              {
+                "description": null,
+                "id": "m-Alpha",
+                "name": "Alpha",
+                "progress": 0.0,
+                "project": {
+                  "id": "p-ms",
+                  "name": "Project ms",
+                  "slugId": "ms",
+                  "url": "https://linear.app/x/project/ms"
+                },
+                "sortOrder": 0.0,
+                "status": "next",
+                "targetDate": "2026-12-01"
+              }
+            ]
+          },
+          "slugId": "ms",
+          "startDate": null,
+          "status": {
+            "id": "ps-started",
+            "name": "In Progress",
+            "type": "started"
+          },
+          "targetDate": null,
+          "updatedAt": "2026-10-19T00:00:00Z",
+          "url": "https://linear.app/x/project/ms"
+        },
+        {
+          "health": null,
+          "id": "p-ok",
+          "initiatives": {
+            "nodes": []
+          },
+          "issues": {
+            "nodes": [
+              {
+                "state": {
+                  "id": "s-started",
+                  "name": "State started",
+                  "type": "started"
+                }
+              },
+              {
+                "state": {
+                  "id": "s-completed",
+                  "name": "State completed",
+                  "type": "completed"
+                }
+              }
+            ],
+            "pageInfo": {
+              "endCursor": null,
+              "hasNextPage": false
+            }
+          },
+          "lastUpdate": {
+            "body": "Update.",
+            "createdAt": "2026-10-19T00:00:00Z",
+            "health": "onTrack",
+            "id": "su-ok",
+            "project": {
+              "id": "p-ok",
+              "name": "Project ok",
+              "slugId": "ok",
+              "url": "https://linear.app/x/project/ok"
+            },
+            "updatedAt": "2026-10-19T00:00:00Z",
+            "url": "https://linear.app/x/project/ok/activity",
+            "user": {
+              "active": true,
+              "displayName": "me",
+              "email": "u-me@example.com",
+              "id": "u-me",
+              "isMe": true,
+              "name": "Me"
+            }
+          },
+          "lead": {
+            "active": true,
+            "displayName": "me",
+            "email": "u-me@example.com",
+            "id": "u-me",
+            "isMe": true,
+            "name": "Me"
+          },
+          "name": "Project ok",
+          "projectMilestones": {
+            "nodes": []
+          },
+          "slugId": "ok",
+          "startDate": null,
+          "status": {
+            "id": "ps-started",
+            "name": "In Progress",
+            "type": "started"
+          },
+          "targetDate": null,
+          "updatedAt": "2026-10-19T00:00:00Z",
+          "url": "https://linear.app/x/project/ok"
+        }
+      ],
+      "templates": [],
+      "workspace": "ken109"
+    }
+  }
+}

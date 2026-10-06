@@ -1,0 +1,38 @@
+{
+  "description": "The anonymized response `users`, read as `users`.",
+  "expected": {
+    "data": {
+      "users": {
+        "nodes": [
+          {
+            "active": true,
+            "displayName": "linear",
+            "email": "linear@example.com",
+            "id": "00000000-0000-4000-8000-000000000040",
+            "isMe": false,
+            "name": "Linear"
+          },
+          {
+            "active": true,
+            "displayName": "alice",
+            "email": "alice@example.com",
+            "id": "00000000-0000-4000-8000-000000000001",
+            "isMe": true,
+            "name": "Alice Example"
+          }
+        ],
+        "pageInfo": {
+          "endCursor": null,
+          "hasNextPage": false
+        }
+      }
+    },
+    "ok": true
+  },
+  "input": {
+    "fixture": "users",
+    "now": "2026-10-20T12:00:00Z",
+    "operation": "users",
+    "status": 200
+  }
+}

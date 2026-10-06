@@ -1,0 +1,14 @@
+{
+  "description": "An operation that is not in the table.",
+  "expected": {
+    "error": {
+      "code": "usage",
+      "message": "unknown operation: nope"
+    },
+    "ok": false
+  },
+  "input": {
+    "operation": "nope",
+    "params": null
+  }
+}

@@ -1,0 +1,237 @@
+{
+  "description": "The issue and projects of the anonymized sandbox responses, with thresholds of one day, a fortnight later.",
+  "expected": {
+    "data": {
+      "findings": [
+        {
+          "actionable": true,
+          "fix": "linear issue update EX-23 --state <state> -w example",
+          "message": "EX-23 has been In Progress with no update for 13 days (limit 1)",
+          "rule": "stale-in-progress",
+          "severity": "warn",
+          "target": {
+            "id": "00000000-0000-4000-8000-000000000003",
+            "identifier": "EX-23",
+            "kind": "issue",
+            "title": "Write the fixture issue",
+            "url": "https://linear.app/example/issue/EX-23/write-the-fixture-issue"
+          },
+          "workspace": "example"
+        },
+        {
+          "actionable": true,
+          "fix": "linear project status-update aaaaaaaaaaaa --body <text> -w example",
+          "message": "project Fixture Project is In Progress: its latest status update (2026-10-06) is older than the last issue state change (2026-10-06, EX-23); its latest status update is 13 days old (limit 1)",
+          "rule": "status-update-outdated",
+          "severity": "warn",
+          "target": {
+            "id": "00000000-0000-4000-8000-000000000006",
+            "identifier": "aaaaaaaaaaaa",
+            "kind": "project",
+            "title": "Fixture Project",
+            "url": "https://linear.app/example/project/fixture-project-aaaaaaaaaaaa"
+          },
+          "workspace": "example"
+        }
+      ],
+      "unresolved_issues": []
+    },
+    "ok": true
+  },
+  "input": {
+    "config": {
+      "stale_days": 1,
+      "status_update_days": 1,
+      "validators": []
+    },
+    "now": "2026-10-20T12:00:00Z",
+    "options": null,
+    "snapshot": {
+      "issues": [
+        {
+          "assignee": {
+            "active": true,
+            "displayName": "alice",
+            "email": "alice@example.com",
+            "id": "00000000-0000-4000-8000-000000000001",
+            "isMe": true,
+            "name": "Alice Example"
+          },
+          "attachments": {
+            "nodes": [
+              {
+                "createdAt": "2026-10-06T13:34:36.673Z",
+                "id": "00000000-0000-4000-8000-000000000011",
+                "sourceType": "unknown",
+                "subtitle": null,
+                "title": "Origin",
+                "url": "https://example.com/source/1"
+              }
+            ]
+          },
+          "canceledAt": null,
+          "completedAt": null,
+          "createdAt": "2026-10-06T13:34:35.885Z",
+          "description": "Body of the fixture issue.",
+          "dueDate": "2026-11-01",
+          "estimate": 3,
+          "id": "00000000-0000-4000-8000-000000000003",
+          "identifier": "EX-23",
+          "labels": {
+            "nodes": [
+              {
+                "color": "#4EA7FC",
+                "id": "00000000-0000-4000-8000-000000000008",
+                "isGroup": false,
+                "name": "api",
+                "parent": {
+                  "groupType": "singleSelect",
+                  "id": "00000000-0000-4000-8000-000000000009",
+                  "name": "area"
+                }
+              },
+              {
+                "color": "#EB5757",
+                "id": "00000000-0000-4000-8000-000000000010",
+                "isGroup": false,
+                "name": "Bug",
+                "parent": null
+              }
+            ]
+          },
+          "parent": null,
+          "prioritySortOrder": -2003.25,
+          "project": {
+            "id": "00000000-0000-4000-8000-000000000006",
+            "name": "Fixture Project",
+            "slugId": "aaaaaaaaaaaa",
+            "url": "https://linear.app/example/project/fixture-project-aaaaaaaaaaaa"
+          },
+          "projectMilestone": {
+            "description": "First milestone",
+            "id": "00000000-0000-4000-8000-000000000007",
+            "name": "Milestone 1",
+            "progress": 25,
+            "project": {
+              "id": "00000000-0000-4000-8000-000000000006",
+              "name": "Fixture Project",
+              "slugId": "aaaaaaaaaaaa",
+              "url": "https://linear.app/example/project/fixture-project-aaaaaaaaaaaa"
+            },
+            "sortOrder": -88,
+            "status": "next",
+            "targetDate": "2026-11-15"
+          },
+          "sortOrder": -1003.5,
+          "startedAt": "2026-10-06T13:34:35.947Z",
+          "state": {
+            "id": "00000000-0000-4000-8000-000000000005",
+            "name": "In Progress",
+            "type": "started"
+          },
+          "team": {
+            "id": "00000000-0000-4000-8000-000000000004",
+            "key": "EX",
+            "name": "Example"
+          },
+          "title": "Write the fixture issue",
+          "updatedAt": "2026-10-06T13:34:35.885Z",
+          "url": "https://linear.app/example/issue/EX-23/write-the-fixture-issue"
+        }
+      ],
+      "projects": [
+        {
+          "health": "onTrack",
+          "id": "00000000-0000-4000-8000-000000000006",
+          "initiatives": {
+            "nodes": []
+          },
+          "issues": {
+            "nodes": [
+              {
+                "state": {
+                  "id": "00000000-0000-4000-8000-000000000005",
+                  "name": "In Progress",
+                  "type": "started"
+                }
+              },
+              {
+                "state": {
+                  "id": "00000000-0000-4000-8000-000000000014",
+                  "name": "Done",
+                  "type": "completed"
+                }
+              }
+            ],
+            "pageInfo": {
+              "endCursor": "00000000-0000-4000-8000-000000000015",
+              "hasNextPage": false
+            }
+          },
+          "lastUpdate": {
+            "body": "On track.",
+            "createdAt": "2026-10-06T13:34:22.881Z",
+            "health": "onTrack",
+            "id": "00000000-0000-4000-8000-000000000013",
+            "project": {
+              "id": "00000000-0000-4000-8000-000000000006",
+              "name": "Fixture Project",
+              "slugId": "aaaaaaaaaaaa",
+              "url": "https://linear.app/example/project/fixture-project-aaaaaaaaaaaa"
+            },
+            "updatedAt": "2026-10-06T13:34:22.881Z",
+            "url": "https://linear.app/example/project/fixture-project-aaaaaaaaaaaa/activity#project-update-bbbbbbbb",
+            "user": {
+              "active": true,
+              "displayName": "alice",
+              "email": "alice@example.com",
+              "id": "00000000-0000-4000-8000-000000000001",
+              "isMe": true,
+              "name": "Alice Example"
+            }
+          },
+          "lead": {
+            "active": true,
+            "displayName": "alice",
+            "email": "alice@example.com",
+            "id": "00000000-0000-4000-8000-000000000001",
+            "isMe": true,
+            "name": "Alice Example"
+          },
+          "name": "Fixture Project",
+          "projectMilestones": {
+            "nodes": [
+              {
+                "description": "First milestone",
+                "id": "00000000-0000-4000-8000-000000000007",
+                "name": "Milestone 1",
+                "progress": 25,
+                "project": {
+                  "id": "00000000-0000-4000-8000-000000000006",
+                  "name": "Fixture Project",
+                  "slugId": "aaaaaaaaaaaa",
+                  "url": "https://linear.app/example/project/fixture-project-aaaaaaaaaaaa"
+                },
+                "sortOrder": -88,
+                "status": "next",
+                "targetDate": "2026-11-15"
+              }
+            ]
+          },
+          "slugId": "aaaaaaaaaaaa",
+          "startDate": "2026-10-06",
+          "status": {
+            "id": "00000000-0000-4000-8000-000000000012",
+            "name": "In Progress",
+            "type": "started"
+          },
+          "targetDate": "2026-12-31",
+          "updatedAt": "2026-10-06T13:34:42.333Z",
+          "url": "https://linear.app/example/project/fixture-project-aaaaaaaaaaaa"
+        }
+      ],
+      "templates": [],
+      "workspace": "example"
+    }
+  }
+}

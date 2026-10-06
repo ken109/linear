@@ -1,0 +1,22 @@
+{
+  "description": "An id with non-ASCII text survives into the variables.",
+  "expected": {
+    "data": {
+      "body": {
+        "operationName": "IssueById",
+        "query": "query IssueById($id: String!) {",
+        "variables": {
+          "id": "KK-1 日本語"
+        }
+      },
+      "url": "https://api.linear.app/graphql"
+    },
+    "ok": true
+  },
+  "input": {
+    "operation": "issue",
+    "params": {
+      "id": "KK-1 日本語"
+    }
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "description": "A valid signature over a body without webhookTimestamp.",
+  "expected": {
+    "data": {
+      "reason": "missing-timestamp",
+      "status": "invalid"
+    },
+    "ok": true
+  },
+  "input": {
+    "body": "{\"action\":\"create\",\"type\":\"Issue\"}",
+    "now": "2026-10-20T12:00:00Z",
+    "secret": "lin_wh_goldensecret",
+    "signature": "6e8612b98a218e44ef3f2f767c06bed965eb8e641e76ff616caba4e4a7c370a2"
+  }
+}

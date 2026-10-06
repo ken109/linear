@@ -1,0 +1,16 @@
+{
+  "description": "A valid signature over text that is not a payload.",
+  "expected": {
+    "data": {
+      "reason": "malformed-body",
+      "status": "invalid"
+    },
+    "ok": true
+  },
+  "input": {
+    "body": "hello",
+    "now": "2026-10-20T12:00:00Z",
+    "secret": "lin_wh_goldensecret",
+    "signature": "6264da1d115cc6f3c124582115815d360c8f987d3c635b80d713747bbd5e1eb1"
+  }
+}

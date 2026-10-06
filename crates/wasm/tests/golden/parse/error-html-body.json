@@ -1,0 +1,17 @@
+{
+  "description": "A body that is not a GraphQL response.",
+  "expected": {
+    "error": {
+      "code": "error",
+      "message": "could not decode the response: the body is not a GraphQL response"
+    },
+    "ok": false
+  },
+  "input": {
+    "body": "<html>bad gateway</html>",
+    "fixture": null,
+    "now": "2026-10-20T12:00:00Z",
+    "operation": "whoami",
+    "status": 200
+  }
+}

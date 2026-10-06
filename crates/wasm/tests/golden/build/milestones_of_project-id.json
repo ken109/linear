@@ -1,0 +1,22 @@
+{
+  "description": "A project's milestones.",
+  "expected": {
+    "data": {
+      "body": {
+        "operationName": "MilestonesOfProject",
+        "query": "query MilestonesOfProject($id: String!) {",
+        "variables": {
+          "id": "p-1"
+        }
+      },
+      "url": "https://api.linear.app/graphql"
+    },
+    "ok": true
+  },
+  "input": {
+    "operation": "milestones_of_project",
+    "params": {
+      "id": "p-1"
+    }
+  }
+}

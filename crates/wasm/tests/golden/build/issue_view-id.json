@@ -1,0 +1,22 @@
+{
+  "description": "An issue with its detail.",
+  "expected": {
+    "data": {
+      "body": {
+        "operationName": "IssueView",
+        "query": "query IssueView($id: String!) {",
+        "variables": {
+          "id": "KK-12"
+        }
+      },
+      "url": "https://api.linear.app/graphql"
+    },
+    "ok": true
+  },
+  "input": {
+    "operation": "issue_view",
+    "params": {
+      "id": "KK-12"
+    }
+  }
+}

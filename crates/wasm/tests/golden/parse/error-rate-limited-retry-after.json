@@ -1,0 +1,19 @@
+{
+  "description": "The wait comes from Retry-After.",
+  "expected": {
+    "error": {
+      "code": "error",
+      "message": "rate limited by Linear (retry in 7s)",
+      "retryAfterSecs": 7
+    },
+    "ok": false
+  },
+  "input": {
+    "body": "{}",
+    "fixture": null,
+    "now": "2026-10-20T12:00:00Z",
+    "operation": "whoami",
+    "retryAfterSecs": 7,
+    "status": 429
+  }
+}

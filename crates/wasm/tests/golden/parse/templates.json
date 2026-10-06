@@ -1,0 +1,29 @@
+{
+  "description": "The anonymized response `templates`, read as `templates`.",
+  "expected": {
+    "data": {
+      "templates": [
+        {
+          "description": "Template for fixtures",
+          "id": "00000000-0000-4000-8000-000000000016",
+          "name": "Fixture Template",
+          "team": {
+            "id": "00000000-0000-4000-8000-000000000004",
+            "key": "EX",
+            "name": "Example"
+          },
+          "templateData": "{\"title\":\"\",\"descriptionData\":{\"type\":\"doc\",\"content\":[{\"type\":\"paragraph\",\"content\":[{\"type\":\"text\",\"text\":\"## Goal\"}]}]}}",
+          "type": "issue",
+          "updatedAt": "2026-10-06T13:35:53.246Z"
+        }
+      ]
+    },
+    "ok": true
+  },
+  "input": {
+    "fixture": "templates",
+    "now": "2026-10-20T12:00:00Z",
+    "operation": "templates",
+    "status": 200
+  }
+}

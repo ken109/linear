@@ -1,0 +1,16 @@
+{
+  "description": "One millisecond past the window.",
+  "expected": {
+    "data": {
+      "reason": "stale-timestamp",
+      "status": "invalid"
+    },
+    "ok": true
+  },
+  "input": {
+    "body": "{\"action\":\"update\",\"type\":\"Issue\",\"organizationId\":\"org-1\",\"webhookTimestamp\":1792497600000}",
+    "now": "2026-10-20T12:01:00.001Z",
+    "secret": "lin_wh_goldensecret",
+    "signature": "2009a050d6fa651208ac3186b8e379366e4832954438c6ff6f3976cb63eeba6c"
+  }
+}

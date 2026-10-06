@@ -1,0 +1,20 @@
+{
+  "description": "No cache at all.",
+  "expected": {
+    "data": {
+      "freshness": {
+        "state": "missing"
+      },
+      "reason": "never-fetched",
+      "refresh": true
+    },
+    "ok": true
+  },
+  "input": {
+    "event": {
+      "kind": "read"
+    },
+    "meta": null,
+    "now": "2026-10-20T12:00:00Z"
+  }
+}

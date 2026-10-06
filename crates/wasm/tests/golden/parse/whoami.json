@@ -1,0 +1,27 @@
+{
+  "description": "The anonymized response `whoami`, read as `whoami`.",
+  "expected": {
+    "data": {
+      "organization": {
+        "id": "00000000-0000-4000-8000-000000000002",
+        "name": "Example",
+        "urlKey": "example"
+      },
+      "viewer": {
+        "active": true,
+        "displayName": "alice",
+        "email": "alice@example.com",
+        "id": "00000000-0000-4000-8000-000000000001",
+        "isMe": true,
+        "name": "Alice Example"
+      }
+    },
+    "ok": true
+  },
+  "input": {
+    "fixture": "whoami",
+    "now": "2026-10-20T12:00:00Z",
+    "operation": "whoami",
+    "status": 200
+  }
+}

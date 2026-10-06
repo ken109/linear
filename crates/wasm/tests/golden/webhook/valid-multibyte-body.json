@@ -1,0 +1,21 @@
+{
+  "description": "A body with Japanese text and an emoji: the bytes signed are UTF-8, on both sides.",
+  "expected": {
+    "data": {
+      "event": {
+        "action": "create",
+        "organizationId": null,
+        "type": "Issue",
+        "webhookTimestamp": 1792497600000
+      },
+      "status": "valid"
+    },
+    "ok": true
+  },
+  "input": {
+    "body": "{\"action\":\"create\",\"type\":\"Issue\",\"data\":{\"title\":\"日本語の題名 — emoji 😀\"},\"webhookTimestamp\":1792497600000}",
+    "now": "2026-10-20T12:00:00Z",
+    "secret": "lin_wh_goldensecret",
+    "signature": "8e6bddb1684c5ab85f9bf25a3c4b94fbaa30b0dc537515c8a86814e93c75e87c"
+  }
+}

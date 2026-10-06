@@ -1,0 +1,319 @@
+{
+  "description": "Nothing is new.",
+  "expected": {
+    "data": [],
+    "ok": true
+  },
+  "input": {
+    "current": {
+      "findings": [
+        {
+          "actionable": true,
+          "fix": "linear project update done --status started -w ken109",
+          "message": "project is Status completed but has 1 open issue(s)",
+          "rule": "project-state-vs-issues",
+          "severity": "warn",
+          "target": {
+            "id": "p-done",
+            "identifier": "done",
+            "kind": "project",
+            "title": "Project done",
+            "url": "https://linear.app/x/project/done"
+          },
+          "workspace": "ken109"
+        },
+        {
+          "actionable": false,
+          "fix": "linear project update early --status started -w ken109",
+          "message": "project is Status planned but 1 issue(s) are already in progress",
+          "rule": "project-state-vs-issues",
+          "severity": "warn",
+          "target": {
+            "id": "p-early",
+            "identifier": "early",
+            "kind": "project",
+            "title": "Project early",
+            "url": "https://linear.app/x/project/early"
+          },
+          "workspace": "ken109"
+        },
+        {
+          "actionable": true,
+          "fix": "linear project update late --target-date <date> -w ken109",
+          "message": "project target date 2026-10-10 passed 10 days ago",
+          "rule": "overdue",
+          "severity": "warn",
+          "target": {
+            "id": "p-late",
+            "identifier": "late",
+            "kind": "project",
+            "title": "Project late",
+            "url": "https://linear.app/x/project/late"
+          },
+          "workspace": "ken109"
+        },
+        {
+          "actionable": true,
+          "fix": "linear milestone update m-M1 --target-date <date> -w ken109",
+          "message": "milestone M1 of Project late was due 2026-10-01 (19 days ago)",
+          "rule": "overdue",
+          "severity": "warn",
+          "target": {
+            "id": "m-M1",
+            "identifier": "M1",
+            "kind": "milestone",
+            "title": "M1",
+            "url": "https://linear.app/x/project/late"
+          },
+          "workspace": "ken109"
+        },
+        {
+          "actionable": true,
+          "fix": "linear issue update KK-3 --due <date> -w ken109",
+          "message": "KK-3 was due 2026-10-15 (5 days ago) and is State unstarted",
+          "rule": "overdue",
+          "severity": "warn",
+          "target": {
+            "id": "i-KK-3",
+            "identifier": "KK-3",
+            "kind": "issue",
+            "title": "Title of KK-3",
+            "url": "https://linear.app/x/issue/KK-3"
+          },
+          "workspace": "ken109"
+        },
+        {
+          "actionable": true,
+          "fix": "linear issue update KK-4 --milestone <milestone> -w ken109",
+          "message": "KK-4 is in project Project ms, which has milestones, but in none of them",
+          "rule": "issue-without-milestone",
+          "severity": "info",
+          "target": {
+            "id": "i-KK-4",
+            "identifier": "KK-4",
+            "kind": "issue",
+            "title": "Title of KK-4",
+            "url": "https://linear.app/x/issue/KK-4"
+          },
+          "workspace": "ken109"
+        },
+        {
+          "actionable": false,
+          "fix": "linear project update nolead --lead <user> -w ken109",
+          "message": "project Project nolead has no lead",
+          "rule": "project-without-lead",
+          "severity": "info",
+          "target": {
+            "id": "p-nolead",
+            "identifier": "nolead",
+            "kind": "project",
+            "title": "Project nolead",
+            "url": "https://linear.app/x/project/nolead"
+          },
+          "workspace": "ken109"
+        },
+        {
+          "actionable": true,
+          "fix": "linear issue update KK-1 --state <state> -w ken109",
+          "message": "KK-1 has been State started with no update for 19 days (limit 7)",
+          "rule": "stale-in-progress",
+          "severity": "warn",
+          "target": {
+            "id": "i-KK-1",
+            "identifier": "KK-1",
+            "kind": "issue",
+            "title": "Title of KK-1",
+            "url": "https://linear.app/x/issue/KK-1"
+          },
+          "workspace": "ken109"
+        },
+        {
+          "actionable": false,
+          "fix": "linear issue update KK-2 --state <state> -w ken109",
+          "message": "KK-2 has been State started with no update for 15 days (limit 7)",
+          "rule": "stale-in-progress",
+          "severity": "warn",
+          "target": {
+            "id": "i-KK-2",
+            "identifier": "KK-2",
+            "kind": "issue",
+            "title": "Title of KK-2",
+            "url": "https://linear.app/x/issue/KK-2"
+          },
+          "workspace": "ken109"
+        },
+        {
+          "actionable": true,
+          "fix": "linear project status-update outdated --body <text> -w ken109",
+          "message": "project Project outdated is In Progress: its latest status update is 49 days old (limit 14)",
+          "rule": "status-update-outdated",
+          "severity": "warn",
+          "target": {
+            "id": "p-outdated",
+            "identifier": "outdated",
+            "kind": "project",
+            "title": "Project outdated",
+            "url": "https://linear.app/x/project/outdated"
+          },
+          "workspace": "ken109"
+        }
+      ],
+      "unresolved_issues": []
+    },
+    "previous": {
+      "findings": [
+        {
+          "actionable": true,
+          "fix": "linear project update done --status started -w ken109",
+          "message": "project is Status completed but has 1 open issue(s)",
+          "rule": "project-state-vs-issues",
+          "severity": "warn",
+          "target": {
+            "id": "p-done",
+            "identifier": "done",
+            "kind": "project",
+            "title": "Project done",
+            "url": "https://linear.app/x/project/done"
+          },
+          "workspace": "ken109"
+        },
+        {
+          "actionable": false,
+          "fix": "linear project update early --status started -w ken109",
+          "message": "project is Status planned but 1 issue(s) are already in progress",
+          "rule": "project-state-vs-issues",
+          "severity": "warn",
+          "target": {
+            "id": "p-early",
+            "identifier": "early",
+            "kind": "project",
+            "title": "Project early",
+            "url": "https://linear.app/x/project/early"
+          },
+          "workspace": "ken109"
+        },
+        {
+          "actionable": true,
+          "fix": "linear project update late --target-date <date> -w ken109",
+          "message": "project target date 2026-10-10 passed 10 days ago",
+          "rule": "overdue",
+          "severity": "warn",
+          "target": {
+            "id": "p-late",
+            "identifier": "late",
+            "kind": "project",
+            "title": "Project late",
+            "url": "https://linear.app/x/project/late"
+          },
+          "workspace": "ken109"
+        },
+        {
+          "actionable": true,
+          "fix": "linear milestone update m-M1 --target-date <date> -w ken109",
+          "message": "milestone M1 of Project late was due 2026-10-01 (19 days ago)",
+          "rule": "overdue",
+          "severity": "warn",
+          "target": {
+            "id": "m-M1",
+            "identifier": "M1",
+            "kind": "milestone",
+            "title": "M1",
+            "url": "https://linear.app/x/project/late"
+          },
+          "workspace": "ken109"
+        },
+        {
+          "actionable": true,
+          "fix": "linear issue update KK-3 --due <date> -w ken109",
+          "message": "KK-3 was due 2026-10-15 (5 days ago) and is State unstarted",
+          "rule": "overdue",
+          "severity": "warn",
+          "target": {
+            "id": "i-KK-3",
+            "identifier": "KK-3",
+            "kind": "issue",
+            "title": "Title of KK-3",
+            "url": "https://linear.app/x/issue/KK-3"
+          },
+          "workspace": "ken109"
+        },
+        {
+          "actionable": true,
+          "fix": "linear issue update KK-4 --milestone <milestone> -w ken109",
+          "message": "KK-4 is in project Project ms, which has milestones, but in none of them",
+          "rule": "issue-without-milestone",
+          "severity": "info",
+          "target": {
+            "id": "i-KK-4",
+            "identifier": "KK-4",
+            "kind": "issue",
+            "title": "Title of KK-4",
+            "url": "https://linear.app/x/issue/KK-4"
+          },
+          "workspace": "ken109"
+        },
+        {
+          "actionable": false,
+          "fix": "linear project update nolead --lead <user> -w ken109",
+          "message": "project Project nolead has no lead",
+          "rule": "project-without-lead",
+          "severity": "info",
+          "target": {
+            "id": "p-nolead",
+            "identifier": "nolead",
+            "kind": "project",
+            "title": "Project nolead",
+            "url": "https://linear.app/x/project/nolead"
+          },
+          "workspace": "ken109"
+        },
+        {
+          "actionable": true,
+          "fix": "linear issue update KK-1 --state <state> -w ken109",
+          "message": "KK-1 has been State started with no update for 19 days (limit 7)",
+          "rule": "stale-in-progress",
+          "severity": "warn",
+          "target": {
+            "id": "i-KK-1",
+            "identifier": "KK-1",
+            "kind": "issue",
+            "title": "Title of KK-1",
+            "url": "https://linear.app/x/issue/KK-1"
+          },
+          "workspace": "ken109"
+        },
+        {
+          "actionable": false,
+          "fix": "linear issue update KK-2 --state <state> -w ken109",
+          "message": "KK-2 has been State started with no update for 15 days (limit 7)",
+          "rule": "stale-in-progress",
+          "severity": "warn",
+          "target": {
+            "id": "i-KK-2",
+            "identifier": "KK-2",
+            "kind": "issue",
+            "title": "Title of KK-2",
+            "url": "https://linear.app/x/issue/KK-2"
+          },
+          "workspace": "ken109"
+        },
+        {
+          "actionable": true,
+          "fix": "linear project status-update outdated --body <text> -w ken109",
+          "message": "project Project outdated is In Progress: its latest status update is 49 days old (limit 14)",
+          "rule": "status-update-outdated",
+          "severity": "warn",
+          "target": {
+            "id": "p-outdated",
+            "identifier": "outdated",
+            "kind": "project",
+            "title": "Project outdated",
+            "url": "https://linear.app/x/project/outdated"
+          },
+          "workspace": "ken109"
+        }
+      ],
+      "unresolved_issues": []
+    }
+  }
+}

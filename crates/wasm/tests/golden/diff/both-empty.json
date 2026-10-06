@@ -1,0 +1,17 @@
+{
+  "description": "Nothing before, nothing now.",
+  "expected": {
+    "data": [],
+    "ok": true
+  },
+  "input": {
+    "current": {
+      "findings": [],
+      "unresolved_issues": []
+    },
+    "previous": {
+      "findings": [],
+      "unresolved_issues": []
+    }
+  }
+}

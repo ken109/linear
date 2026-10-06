@@ -1,0 +1,20 @@
+{
+  "description": "An unknown key in the meta is refused.",
+  "expected": {
+    "error": {
+      "code": "usage",
+      "message": "invalid meta: unknown field `fetched`, expected one of `schemaVersion`, `fetchedAt`, `lastFailureAt`, `ttlSecs`, `failureBackoffSecs` at line 1 column 10"
+    },
+    "ok": false
+  },
+  "input": {
+    "event": {
+      "kind": "read"
+    },
+    "meta": {
+      "fetched": "2026-10-20T12:00:00Z",
+      "schemaVersion": 1
+    },
+    "now": "2026-10-20T12:00:00Z"
+  }
+}

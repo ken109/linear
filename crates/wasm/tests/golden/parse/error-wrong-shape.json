@@ -1,0 +1,16 @@
+{
+  "description": "A response for another query.",
+  "expected": {
+    "error": {
+      "code": "error",
+      "message": "could not decode the response: missing field `issue`"
+    },
+    "ok": false
+  },
+  "input": {
+    "fixture": "whoami",
+    "now": "2026-10-20T12:00:00Z",
+    "operation": "issue",
+    "status": 200
+  }
+}

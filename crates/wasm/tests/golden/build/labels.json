@@ -1,0 +1,21 @@
+{
+  "description": "Labels.",
+  "expected": {
+    "data": {
+      "body": {
+        "operationName": "Labels",
+        "query": "query Labels($first: Int!, $after: String) {",
+        "variables": {
+          "after": null,
+          "first": 100
+        }
+      },
+      "url": "https://api.linear.app/graphql"
+    },
+    "ok": true
+  },
+  "input": {
+    "operation": "labels",
+    "params": null
+  }
+}

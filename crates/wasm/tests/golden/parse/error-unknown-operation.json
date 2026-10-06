@@ -1,0 +1,17 @@
+{
+  "description": "An operation that is not in the table.",
+  "expected": {
+    "error": {
+      "code": "usage",
+      "message": "unknown operation: nope"
+    },
+    "ok": false
+  },
+  "input": {
+    "body": "{}",
+    "fixture": null,
+    "now": "2026-10-20T12:00:00Z",
+    "operation": "nope",
+    "status": 200
+  }
+}

@@ -1,0 +1,47 @@
+{
+  "description": "The anonymized response `initiatives`, read as `initiatives`.",
+  "expected": {
+    "data": {
+      "initiatives": {
+        "nodes": [
+          {
+            "id": "00000000-0000-4000-8000-000000000101",
+            "name": "Example Initiative",
+            "owner": {
+              "active": true,
+              "displayName": "alice",
+              "email": "alice@example.com",
+              "id": "00000000-0000-4000-8000-000000000001",
+              "isMe": true,
+              "name": "Alice Example"
+            },
+            "slugId": "dddddddddddd",
+            "status": "Active",
+            "targetDate": "2026-12-31",
+            "url": "https://linear.app/example/initiative/example-initiative-dddddddddddd"
+          },
+          {
+            "id": "00000000-0000-4000-8000-000000000102",
+            "name": "Initiative with a status Linear adds later",
+            "owner": null,
+            "slugId": "eeeeeeeeeeee",
+            "status": "Paused",
+            "targetDate": null,
+            "url": "https://linear.app/example/initiative/later-eeeeeeeeeeee"
+          }
+        ],
+        "pageInfo": {
+          "endCursor": null,
+          "hasNextPage": false
+        }
+      }
+    },
+    "ok": true
+  },
+  "input": {
+    "fixture": "initiatives",
+    "now": "2026-10-20T12:00:00Z",
+    "operation": "initiatives",
+    "status": 200
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "description": "Linear's own error code is passed on.",
+  "expected": {
+    "error": {
+      "apiCode": "INPUT_ERROR",
+      "code": "error",
+      "message": "Linear API error: Query too complex: The query is too complex. Complexity: 12720.000000000002. Maximum allowed complexity: 10000."
+    },
+    "ok": false
+  },
+  "input": {
+    "fixture": "error_too_complex",
+    "now": "2026-10-20T12:00:00Z",
+    "operation": "projects",
+    "status": 400
+  }
+}

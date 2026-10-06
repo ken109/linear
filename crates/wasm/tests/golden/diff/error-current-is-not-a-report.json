@@ -1,0 +1,16 @@
+{
+  "description": "The current report must be a report.",
+  "expected": {
+    "error": {
+      "code": "usage",
+      "message": "invalid current report: invalid type: string \"no\", expected a sequence at line 1 column 16"
+    },
+    "ok": false
+  },
+  "input": {
+    "current": {
+      "findings": "no"
+    },
+    "previous": null
+  }
+}

@@ -1,0 +1,25 @@
+{
+  "description": "A person asks right after a failure.",
+  "expected": {
+    "data": {
+      "freshness": {
+        "age_secs": 7200,
+        "state": "expired"
+      },
+      "reason": "manual",
+      "refresh": true
+    },
+    "ok": true
+  },
+  "input": {
+    "event": {
+      "kind": "manual"
+    },
+    "meta": {
+      "fetchedAt": "2026-10-20T10:00:00Z",
+      "lastFailureAt": "2026-10-20T11:59:55Z",
+      "schemaVersion": 1
+    },
+    "now": "2026-10-20T12:00:00Z"
+  }
+}

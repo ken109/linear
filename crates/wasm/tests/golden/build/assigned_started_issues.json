@@ -1,0 +1,21 @@
+{
+  "description": "The first page at the default size.",
+  "expected": {
+    "data": {
+      "body": {
+        "operationName": "AssignedStartedIssues",
+        "query": "query AssignedStartedIssues($first: Int!, $after: String) {",
+        "variables": {
+          "after": null,
+          "first": 50
+        }
+      },
+      "url": "https://api.linear.app/graphql"
+    },
+    "ok": true
+  },
+  "input": {
+    "operation": "assigned_started_issues",
+    "params": null
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "description": "An initiative.",
+  "expected": {
+    "data": {
+      "body": {
+        "operationName": "InitiativeView",
+        "query": "query InitiativeView($id: String!) {",
+        "variables": {
+          "id": "i-1"
+        }
+      },
+      "url": "https://api.linear.app/graphql"
+    },
+    "ok": true
+  },
+  "input": {
+    "operation": "initiative_view",
+    "params": {
+      "id": "i-1"
+    }
+  }
+}

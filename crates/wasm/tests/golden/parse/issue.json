@@ -1,0 +1,104 @@
+{
+  "description": "The anonymized response `issue`, read as `issue`.",
+  "expected": {
+    "data": {
+      "issue": {
+        "assignee": {
+          "active": true,
+          "displayName": "alice",
+          "email": "alice@example.com",
+          "id": "00000000-0000-4000-8000-000000000001",
+          "isMe": true,
+          "name": "Alice Example"
+        },
+        "attachments": {
+          "nodes": [
+            {
+              "createdAt": "2026-10-06T13:34:36.673Z",
+              "id": "00000000-0000-4000-8000-000000000011",
+              "sourceType": "unknown",
+              "subtitle": null,
+              "title": "Origin",
+              "url": "https://example.com/source/1"
+            }
+          ]
+        },
+        "canceledAt": null,
+        "completedAt": null,
+        "createdAt": "2026-10-06T13:34:35.885Z",
+        "description": "Body of the fixture issue.",
+        "dueDate": "2026-11-01",
+        "estimate": 3.0,
+        "id": "00000000-0000-4000-8000-000000000003",
+        "identifier": "EX-23",
+        "labels": {
+          "nodes": [
+            {
+              "color": "#4EA7FC",
+              "id": "00000000-0000-4000-8000-000000000008",
+              "isGroup": false,
+              "name": "api",
+              "parent": {
+                "groupType": "singleSelect",
+                "id": "00000000-0000-4000-8000-000000000009",
+                "name": "area"
+              }
+            },
+            {
+              "color": "#EB5757",
+              "id": "00000000-0000-4000-8000-000000000010",
+              "isGroup": false,
+              "name": "Bug",
+              "parent": null
+            }
+          ]
+        },
+        "parent": null,
+        "prioritySortOrder": -2003.25,
+        "project": {
+          "id": "00000000-0000-4000-8000-000000000006",
+          "name": "Fixture Project",
+          "slugId": "aaaaaaaaaaaa",
+          "url": "https://linear.app/example/project/fixture-project-aaaaaaaaaaaa"
+        },
+        "projectMilestone": {
+          "description": "First milestone",
+          "id": "00000000-0000-4000-8000-000000000007",
+          "name": "Milestone 1",
+          "progress": 25.0,
+          "project": {
+            "id": "00000000-0000-4000-8000-000000000006",
+            "name": "Fixture Project",
+            "slugId": "aaaaaaaaaaaa",
+            "url": "https://linear.app/example/project/fixture-project-aaaaaaaaaaaa"
+          },
+          "sortOrder": -88.0,
+          "status": "next",
+          "targetDate": "2026-11-15"
+        },
+        "sortOrder": -1003.5,
+        "startedAt": "2026-10-06T13:34:35.947Z",
+        "state": {
+          "id": "00000000-0000-4000-8000-000000000005",
+          "name": "In Progress",
+          "type": "started"
+        },
+        "team": {
+          "id": "00000000-0000-4000-8000-000000000004",
+          "key": "EX",
+          "name": "Example"
+        },
+        "title": "Write the fixture issue",
+        "updatedAt": "2026-10-06T13:34:35.885Z",
+        "url": "https://linear.app/example/issue/EX-23/write-the-fixture-issue"
+      }
+    },
+    "ok": true
+  },
+  "input": {
+    "fixture": "issue",
+    "now": "2026-10-20T12:00:00Z",
+    "operation": "issue",
+    "status": 200
+  }
+}

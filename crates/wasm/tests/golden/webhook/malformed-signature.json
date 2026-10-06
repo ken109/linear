@@ -1,0 +1,16 @@
+{
+  "description": "Not 64 hex digits.",
+  "expected": {
+    "data": {
+      "reason": "malformed-signature",
+      "status": "invalid"
+    },
+    "ok": true
+  },
+  "input": {
+    "body": "{\"action\":\"update\",\"type\":\"Issue\",\"organizationId\":\"org-1\",\"webhookTimestamp\":1792497600000}",
+    "now": "2026-10-20T12:00:00Z",
+    "secret": "lin_wh_goldensecret",
+    "signature": "sha256=2009a050d6fa651208ac3186b8e379366e4832954438c6ff6f3976cb63eeba6c"
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "description": "An unknown parameter is refused.",
+  "expected": {
+    "error": {
+      "code": "usage",
+      "message": "invalid parameters: unknown field `id`, there are no fields at line 1 column 5"
+    },
+    "ok": false
+  },
+  "input": {
+    "operation": "whoami",
+    "params": {
+      "id": "x"
+    }
+  }
+}

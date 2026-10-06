@@ -1,0 +1,24 @@
+{
+  "description": "Exactly at the TTL is still within it.",
+  "expected": {
+    "data": {
+      "freshness": {
+        "age_secs": 300,
+        "state": "fresh"
+      },
+      "reason": "fresh",
+      "refresh": false
+    },
+    "ok": true
+  },
+  "input": {
+    "event": {
+      "kind": "read"
+    },
+    "meta": {
+      "fetchedAt": "2026-10-20T11:55:00Z",
+      "schemaVersion": 1
+    },
+    "now": "2026-10-20T12:00:00Z"
+  }
+}

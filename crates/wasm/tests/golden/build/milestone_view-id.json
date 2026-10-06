@@ -1,0 +1,22 @@
+{
+  "description": "A milestone.",
+  "expected": {
+    "data": {
+      "body": {
+        "operationName": "MilestoneView",
+        "query": "query MilestoneView($id: String!) {",
+        "variables": {
+          "id": "m-1"
+        }
+      },
+      "url": "https://api.linear.app/graphql"
+    },
+    "ok": true
+  },
+  "input": {
+    "operation": "milestone_view",
+    "params": {
+      "id": "m-1"
+    }
+  }
+}

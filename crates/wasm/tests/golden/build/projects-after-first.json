@@ -1,0 +1,24 @@
+{
+  "description": "A later page.",
+  "expected": {
+    "data": {
+      "body": {
+        "operationName": "Projects",
+        "query": "query Projects($first: Int!, $after: String) {",
+        "variables": {
+          "after": "cursor-1",
+          "first": 3
+        }
+      },
+      "url": "https://api.linear.app/graphql"
+    },
+    "ok": true
+  },
+  "input": {
+    "operation": "projects",
+    "params": {
+      "after": "cursor-1",
+      "first": 3
+    }
+  }
+}

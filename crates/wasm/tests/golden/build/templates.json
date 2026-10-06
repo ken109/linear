@@ -1,0 +1,17 @@
+{
+  "description": "Templates.",
+  "expected": {
+    "data": {
+      "body": {
+        "operationName": "Templates",
+        "query": "query Templates {"
+      },
+      "url": "https://api.linear.app/graphql"
+    },
+    "ok": true
+  },
+  "input": {
+    "operation": "templates",
+    "params": null
+  }
+}

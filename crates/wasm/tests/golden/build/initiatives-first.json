@@ -1,0 +1,23 @@
+{
+  "description": "Initiatives.",
+  "expected": {
+    "data": {
+      "body": {
+        "operationName": "Initiatives",
+        "query": "query Initiatives($first: Int!, $after: String) {",
+        "variables": {
+          "after": null,
+          "first": 5
+        }
+      },
+      "url": "https://api.linear.app/graphql"
+    },
+    "ok": true
+  },
+  "input": {
+    "operation": "initiatives",
+    "params": {
+      "first": 5
+    }
+  }
+}

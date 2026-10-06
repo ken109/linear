@@ -1,0 +1,22 @@
+{
+  "description": "A project by slug.",
+  "expected": {
+    "data": {
+      "body": {
+        "operationName": "ProjectView",
+        "query": "query ProjectView($id: String!) {",
+        "variables": {
+          "id": "my-project-1a2b3c"
+        }
+      },
+      "url": "https://api.linear.app/graphql"
+    },
+    "ok": true
+  },
+  "input": {
+    "operation": "project_view",
+    "params": {
+      "id": "my-project-1a2b3c"
+    }
+  }
+}

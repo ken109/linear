@@ -1,0 +1,17 @@
+{
+  "description": "An empty object for no parameters.",
+  "expected": {
+    "data": {
+      "body": {
+        "operationName": "Whoami",
+        "query": "query Whoami {"
+      },
+      "url": "https://api.linear.app/graphql"
+    },
+    "ok": true
+  },
+  "input": {
+    "operation": "whoami",
+    "params": {}
+  }
+}

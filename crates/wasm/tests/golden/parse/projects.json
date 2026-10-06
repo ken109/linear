@@ -1,0 +1,111 @@
+{
+  "description": "The anonymized response `projects`, read as `projects`.",
+  "expected": {
+    "data": {
+      "projects": {
+        "nodes": [
+          {
+            "health": "onTrack",
+            "id": "00000000-0000-4000-8000-000000000006",
+            "initiatives": {
+              "nodes": []
+            },
+            "issues": {
+              "nodes": [
+                {
+                  "state": {
+                    "id": "00000000-0000-4000-8000-000000000005",
+                    "name": "In Progress",
+                    "type": "started"
+                  }
+                },
+                {
+                  "state": {
+                    "id": "00000000-0000-4000-8000-000000000014",
+                    "name": "Done",
+                    "type": "completed"
+                  }
+                }
+              ],
+              "pageInfo": {
+                "endCursor": "00000000-0000-4000-8000-000000000015",
+                "hasNextPage": false
+              }
+            },
+            "lastUpdate": {
+              "body": "On track.",
+              "createdAt": "2026-10-06T13:34:22.881Z",
+              "health": "onTrack",
+              "id": "00000000-0000-4000-8000-000000000013",
+              "project": {
+                "id": "00000000-0000-4000-8000-000000000006",
+                "name": "Fixture Project",
+                "slugId": "aaaaaaaaaaaa",
+                "url": "https://linear.app/example/project/fixture-project-aaaaaaaaaaaa"
+              },
+              "updatedAt": "2026-10-06T13:34:22.881Z",
+              "url": "https://linear.app/example/project/fixture-project-aaaaaaaaaaaa/activity#project-update-bbbbbbbb",
+              "user": {
+                "active": true,
+                "displayName": "alice",
+                "email": "alice@example.com",
+                "id": "00000000-0000-4000-8000-000000000001",
+                "isMe": true,
+                "name": "Alice Example"
+              }
+            },
+            "lead": {
+              "active": true,
+              "displayName": "alice",
+              "email": "alice@example.com",
+              "id": "00000000-0000-4000-8000-000000000001",
+              "isMe": true,
+              "name": "Alice Example"
+            },
+            "name": "Fixture Project",
+            "projectMilestones": {
+              "nodes": [
+                {
+                  "description": "First milestone",
+                  "id": "00000000-0000-4000-8000-000000000007",
+                  "name": "Milestone 1",
+                  "progress": 25.0,
+                  "project": {
+                    "id": "00000000-0000-4000-8000-000000000006",
+                    "name": "Fixture Project",
+                    "slugId": "aaaaaaaaaaaa",
+                    "url": "https://linear.app/example/project/fixture-project-aaaaaaaaaaaa"
+                  },
+                  "sortOrder": -88.0,
+                  "status": "next",
+                  "targetDate": "2026-11-15"
+                }
+              ]
+            },
+            "slugId": "aaaaaaaaaaaa",
+            "startDate": "2026-10-06",
+            "status": {
+              "id": "00000000-0000-4000-8000-000000000012",
+              "name": "In Progress",
+              "type": "started"
+            },
+            "targetDate": "2026-12-31",
+            "updatedAt": "2026-10-06T13:34:42.333Z",
+            "url": "https://linear.app/example/project/fixture-project-aaaaaaaaaaaa"
+          }
+        ],
+        "pageInfo": {
+          "endCursor": "00000000-0000-4000-8000-000000000006",
+          "hasNextPage": false
+        }
+      }
+    },
+    "ok": true
+  },
+  "input": {
+    "fixture": "projects",
+    "now": "2026-10-20T12:00:00Z",
+    "operation": "projects",
+    "status": 200
+  }
+}

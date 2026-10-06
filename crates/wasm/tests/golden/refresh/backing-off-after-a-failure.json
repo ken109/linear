@@ -1,0 +1,25 @@
+{
+  "description": "A failure a moment ago: leave Linear alone, and the old snapshot is expired.",
+  "expected": {
+    "data": {
+      "freshness": {
+        "age_secs": 7200,
+        "state": "expired"
+      },
+      "reason": "backing-off",
+      "refresh": false
+    },
+    "ok": true
+  },
+  "input": {
+    "event": {
+      "kind": "read"
+    },
+    "meta": {
+      "fetchedAt": "2026-10-20T10:00:00Z",
+      "lastFailureAt": "2026-10-20T11:59:30Z",
+      "schemaVersion": 1
+    },
+    "now": "2026-10-20T12:00:00Z"
+  }
+}
