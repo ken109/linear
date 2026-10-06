@@ -244,7 +244,7 @@ fields = [
 [[entry]]
 type = "Mutation"
 status = "unsupported"
-reason = "A write command is planned (milestone 3: writes); until it exists, `linear api` refuses mutations."
+reason = "A write command is planned (milestone 3: writes). Until it exists, only `linear api --mutation` (with `allow_raw_mutation = true`) can send it, and no ownership rule or validator applies."
 fields = [
   "attachmentLinkURL", "commentUpdate",
   "initiativeToProjectCreate", "initiativeUpdate", "initiativeUpdateCreate", "issueAddLabel",
@@ -360,7 +360,7 @@ fields = [
 [[entry]]
 type = "Mutation"
 status = "unsupported"
-reason = "Outside the CLI's scope (issues, projects, milestones, initiatives, status updates, templates); `linear api` refuses mutations."
+reason = "Outside the CLI's scope (issues, projects, milestones, initiatives, status updates, templates); `linear api` sends them only with `--mutation` and `allow_raw_mutation = true`."
 fields = [
   "agentActivityCreate", "agentActivityCreatePrompt", "agentActivitySendQueued",
   "agentSessionCreate", "agentSessionCreateOnComment", "agentSessionCreateOnIssue",

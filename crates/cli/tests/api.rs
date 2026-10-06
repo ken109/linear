@@ -145,7 +145,8 @@ fn mutations_are_refused_with_exit_4_before_anything_is_sent() {
         assert!(e["error"]["message"].as_str().unwrap().contains("mutation"));
     }
 
-    // `--mutation` is reserved: it does not unlock anything yet.
+    // `--mutation` alone unlocks nothing: the workspace has to allow it too
+    // (`api_mutation.rs` covers the workspaces that do).
     for doc in [
         "mutation { issueDelete(id: \"x\") { success } }",
         "{ viewer { id } }",
@@ -153,6 +154,7 @@ fn mutations_are_refused_with_exit_4_before_anything_is_sent() {
         let o = sb.run(&["api", doc, "--mutation"], Some(&mock), ENV);
         assert_eq!(code(&o), 4, "{doc}");
         assert!(stderr(&o).contains("allow_raw_mutation"));
+        assert!(stderr(&o).contains("\"example\""), "names the workspace");
     }
     assert!(mock.requests().is_empty(), "nothing may reach Linear");
 }

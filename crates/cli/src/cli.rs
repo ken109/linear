@@ -66,7 +66,7 @@ pub enum Command {
     /// Manage the cache that hooks and the statusline read
     #[command(subcommand)]
     Cache(crate::commands::cache::CacheCommand),
-    /// Send a raw GraphQL query (read-only) and print the response data
+    /// Send a raw GraphQL document and print the response data (queries; mutations only with --mutation)
     Api(ApiArgs),
 }
 
@@ -91,8 +91,10 @@ pub struct ApiArgs {
     /// Which operation to run when the document defines several
     #[arg(long, value_name = "NAME")]
     pub operation_name: Option<String>,
-    /// Allow a mutation. Not available yet: it will require
-    /// `allow_raw_mutation = true` in the workspace config
+    /// Allow a mutation. Needs `allow_raw_mutation = true` for the workspace in
+    /// workspaces.toml (exit 4 otherwise). WARNING: the ownership rules and the validators
+    /// do NOT apply to a raw mutation; nothing checks whose project or issue it changes.
+    /// A warning is printed to stderr first (not with --json or --quiet)
     #[arg(long)]
     pub mutation: bool,
 }

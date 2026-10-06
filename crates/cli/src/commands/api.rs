@@ -1,13 +1,21 @@
-//! `linear api`: send a raw GraphQL query and print the response data.
+//! `linear api`: send a raw GraphQL document and print the response data.
 //!
 //! This is the escape hatch for anything without a dedicated command. It
 //! honours `--workspace` and the stored credentials like every other command,
-//! but none of the CLI's own rules apply to what it sends (a free-form
-//! document cannot be checked against ownership rules or validators), so it is
-//! read-only: mutations are refused. Allowing them is a separate, opt-in
-//! feature that does not exist yet.
+//! but none of the CLI's own rules apply to what it sends: a free-form
+//! document cannot be checked against the ownership rules or the validators,
+//! because what it changes cannot be read off it by a machine.
+//!
+//! So it is read-only unless the workspace opts in. A mutation needs both
+//! `--mutation` on the command line and `allow_raw_mutation = true` for the
+//! workspace in `workspaces.toml`; without either it is refused with exit code
+//! 4 before anything is sent. When it does run, the credentials are first
+//! checked to belong to the configured workspace (as for every write), and a
+//! warning that no rule applies goes to stderr; it is left out with `--json`
+//! and `--quiet`, like the other status lines, so a script that asked for
+//! machine output gets exactly the response. Subscriptions are never sent.
 
-use super::Ctx;
+use super::{verify, Ctx};
 use crate::cli::ApiArgs;
 use crate::error::{CliError, Result};
 use crate::http::Client;
@@ -20,9 +28,14 @@ use std::io::Read;
 use std::path::Path;
 
 pub fn run(ctx: &Ctx, args: &ApiArgs) -> Result<()> {
-    // Refuse before anything is read or sent.
+    // `--mutation` is checked against the workspace's setting before anything
+    // is read or sent.
     if args.mutation {
-        return Err(raw_mutation_unavailable());
+        let config = store::read_config(&ctx.dirs)?;
+        let resolved = ctx.resolve(&config)?;
+        if !resolved.config.allow_raw_mutation {
+            return Err(raw_mutation_not_enabled(&resolved.name));
+        }
     }
 
     let stdin_users = [
@@ -42,12 +55,16 @@ pub fn run(ctx: &Ctx, args: &ApiArgs) -> Result<()> {
             "subscriptions are not supported; `linear api` sends queries over plain HTTP",
         ));
     }
-    if kinds.contains(&OperationKind::Mutation) {
+    // A document that defines a mutation anywhere counts, even when
+    // `--operation-name` would pick the query in it.
+    let is_mutation = kinds.contains(&OperationKind::Mutation);
+    if is_mutation && !args.mutation {
         return Err(CliError::new(
             ErrorCode::WriteDenied,
-            "the document defines a mutation, but `linear api` only runs queries by default; \
-             raw mutations are not available yet (they will need `--mutation` and \
-             `allow_raw_mutation = true` in the workspace config)",
+            "the document defines a mutation, but `linear api` only runs queries unless \
+             `--mutation` is given; a raw mutation also needs `allow_raw_mutation = true` \
+             for the workspace in workspaces.toml, and it bypasses the ownership rules \
+             and the validators",
         ));
     }
 
@@ -69,7 +86,17 @@ pub fn run(ctx: &Ctx, args: &ApiArgs) -> Result<()> {
         )));
     }
 
-    let data: Value = Client::new(credential).execute_request(&request)?;
+    let client = Client::new(credential);
+    if is_mutation {
+        // A key for the wrong workspace must never write, so check before sending.
+        verify(&client, &resolved.name, &resolved.config.url_key)?;
+        ctx.out.status(&format!(
+            "warning: sending a raw mutation to workspace {:?}. The ownership rules and the \
+             validators do not apply to it; nothing checks whose project or issue it changes.",
+            resolved.name
+        ));
+    }
+    let data: Value = client.execute_request(&request)?;
     ctx.out.emit(
         &data,
         || pretty(&data),
@@ -78,11 +105,15 @@ pub fn run(ctx: &Ctx, args: &ApiArgs) -> Result<()> {
     Ok(())
 }
 
-fn raw_mutation_unavailable() -> CliError {
+fn raw_mutation_not_enabled(workspace: &str) -> CliError {
     CliError::new(
         ErrorCode::WriteDenied,
-        "raw mutations are not available yet; `--mutation` will require \
-         `allow_raw_mutation = true` in the workspace config",
+        format!(
+            "raw mutations are not enabled for workspace {workspace:?}: set \
+             `allow_raw_mutation = true` under [workspaces.{workspace}] in workspaces.toml \
+             (it is off by default because a raw mutation bypasses the ownership rules \
+             and the validators)"
+        ),
     )
 }
 

@@ -271,10 +271,32 @@ echo '{ teams { nodes { key } } }' | linear api -
 Variables: `--var KEY=VALUE` (always a string), `--var-json KEY=JSON` (typed),
 `--variables-file FILE` (a JSON object; the flags override it).
 
-`linear api` is read-only. A document that defines a mutation is refused locally with exit
-code 4 before anything is sent, because the CLI's ownership rules and validators cannot be
-applied to free-form documents. `--mutation` is reserved for a future opt-in
-(`allow_raw_mutation = true` in the workspace config) and does nothing yet.
+`linear api` is read-only by default. A document that defines a mutation is refused locally
+with exit code 4 before anything is sent. A subscription is always a usage error (exit 2).
+
+### Raw mutations
+
+```toml
+# ~/.config/linear/workspaces.toml
+[workspaces.main]
+allow_raw_mutation = true   # default: false
+```
+
+```sh
+linear api --mutation 'mutation($id: String!) { issueDelete(id: $id) { success } }' --var id=ENG-1
+```
+
+A mutation is sent only with **both** `--mutation` and `allow_raw_mutation = true` for the
+selected workspace; with either missing it is refused (exit 4, and the message names the
+setting). **The ownership rules and the validators do not apply to it.** A free-form document
+cannot be read by a machine to find out whose project or issue it changes, so nothing checks
+that you own it, that an issue follows its template, or that a source is attached: it can change
+anything the API key can. Use the dedicated commands when one exists.
+
+Before sending, the CLI checks that the credentials belong to the workspace the configuration
+names (as for every write) and prints a warning to stderr saying that no rule applies. The
+warning is left out with `--json` and `--quiet`, so a script that asked for machine output gets
+exactly the response. `--mutation` on a document that only has queries runs the query as usual.
 
 ## Schema coverage
 
@@ -303,7 +325,7 @@ cargo test --workspace
   config directory (`LINEAR_CONFIG_DIR`).
   `tests/issue_write.rs` answers by operation name (`write_support`), to check the order of
   requests, rollback, idempotence and exit codes 4 and 5; `structure_write.rs` does the same
-  for milestones, initiatives and templates.
+  for milestones, initiatives and templates, and `api_mutation.rs` for `linear api --mutation`.
 - `crates/cli/tests/live*.rs` talk to a real (sandbox) workspace and are ignored by default;
   `live_write.rs` creates issues there and cancels them when it is done:
 
