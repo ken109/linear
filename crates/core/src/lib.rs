@@ -4,6 +4,7 @@
 //! network. Callers fetch and persist; this crate builds requests, interprets
 //! responses and decides. Anything time-dependent takes `now` as an argument.
 
+pub mod auth;
 pub mod config;
 pub mod error;
 pub mod inputs;
