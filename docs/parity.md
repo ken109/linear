@@ -65,6 +65,8 @@ New in `linear` (no old equivalent):
 | New command | Notes |
 | --- | --- |
 | `linear issue view <ISSUE>` | One issue with description and comments. |
+| `linear issue update --body-file --template --source --source-title --meta --labels --add-labels --remove-labels` | The old `update-issue` could not change the description, labels or source. |
+| `linear issue create --meta` | Metadata of the source attachment. |
 | `linear project view <PROJECT> --content` | Includes issue counts and the body. |
 | `linear project reorder <PROJECT>...` | Orders projects. |
 | `linear milestone view <MILESTONE> --project` | The milestone's issues. |
