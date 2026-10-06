@@ -17,3 +17,9 @@ wasm-bindgen = "0.2"
 serde.workspace = true
 serde_json.workspace = true
 chrono.workspace = true
+schemars.workspace = true
+
+[features]
+# Exports `probe_panic` and `probe_fine`, to check how a panic looks from
+# JavaScript (the package's panic test builds with it). Never in a release.
+panic-probe = []

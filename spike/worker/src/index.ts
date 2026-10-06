@@ -11,17 +11,17 @@ interface Env {
 initSync({ module: wasmModule });
 
 type Wire =
-  | { ok: true; request: { url: string; body: string } }
+  | { ok: true; data: { url: string; body: string } }
   | { ok: false; error: { code: string; message: string } };
 
 async function call(op: string, vars: unknown, apiKey: string): Promise<unknown> {
   const built = JSON.parse(build_request(op, JSON.stringify(vars ?? {}))) as Wire;
   if (!built.ok) return built;
 
-  const res = await fetch(built.request.url, {
+  const res = await fetch(built.data.url, {
     method: "POST",
     headers: { "content-type": "application/json", authorization: apiKey },
-    body: built.request.body,
+    body: built.data.body,
   });
   const body = await res.text();
   const meta = {

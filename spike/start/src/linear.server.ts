@@ -17,10 +17,10 @@ export async function call(op: string, vars: unknown, apiKey: string): Promise<L
   const built = JSON.parse(build_request(op, JSON.stringify(vars ?? {})));
   if (!built.ok) return built;
 
-  const res = await fetch(built.request.url, {
+  const res = await fetch(built.data.url, {
     method: "POST",
     headers: { "content-type": "application/json", authorization: apiKey },
-    body: built.request.body,
+    body: built.data.body,
   });
   const body = await res.text();
   const meta = { status: res.status };
