@@ -24,6 +24,7 @@ use crate::error::{CliError, Result};
 use crate::http::Client;
 use crate::output::Output;
 use crate::store::{self, CredentialSource, Dirs};
+use linear_core::auth::{client_secret_env_var, AuthMethod, CLIENT_SECRET_ENV};
 use linear_core::config::{self, Config, Resolved, Selectors};
 use linear_core::queries::{self, Whoami};
 
@@ -80,6 +81,21 @@ impl Ctx {
         &self,
         name: &str,
     ) -> Result<(linear_core::auth::Credential, CredentialSource)> {
+        // A workspace that authenticates as an app has no stored credential: its
+        // client id and secret come from the environment.
+        let config = store::read_config(&self.dirs)?;
+        if let Some(ws) = config
+            .get(name)
+            .filter(|w| w.auth == AuthMethod::ClientCredentials)
+        {
+            return store::load_client_credentials(name, ws)?.ok_or_else(|| {
+                CliError::auth(format!(
+                    "no client secret for workspace {name:?}: set {} (or {})",
+                    CLIENT_SECRET_ENV,
+                    client_secret_env_var(name)
+                ))
+            });
+        }
         store::load_credential(&self.dirs, name)?.ok_or_else(|| {
             CliError::auth(format!(
                 "no credentials for workspace {name:?}; run `linear workspace login {name}`"

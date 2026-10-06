@@ -19,6 +19,11 @@ pub enum AuthMethod {
     ApiKey,
     /// OAuth 2.0 with PKCE.
     Oauth,
+    /// An app, by the OAuth client credentials grant: the client id and secret
+    /// are exchanged for a token on every run. Meant for CI. Written
+    /// `client_credentials` (`client-credentials` is accepted too).
+    #[serde(rename = "client_credentials", alias = "client-credentials")]
+    ClientCredentials,
 }
 
 impl fmt::Display for AuthMethod {
@@ -26,6 +31,7 @@ impl fmt::Display for AuthMethod {
         f.write_str(match self {
             Self::ApiKey => "api-key",
             Self::Oauth => "oauth",
+            Self::ClientCredentials => "client_credentials",
         })
     }
 }
@@ -81,6 +87,12 @@ pub struct WorkspaceConfig {
     pub default_team: Option<String>,
     #[serde(default)]
     pub auth: AuthMethod,
+    /// The OAuth app's client id, for `auth = "client_credentials"`. It is public,
+    /// so it can live here; `LINEAR_CLIENT_ID` (or `LINEAR_CLIENT_ID_<NAME>`)
+    /// overrides it. The client secret is never in this file: it comes from
+    /// `LINEAR_CLIENT_SECRET` (or `LINEAR_CLIENT_SECRET_<NAME>`).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub client_id: Option<String>,
     /// How strictly the ownership rules apply: `"strict"` (the default) or
     /// `"lenient"` (see [`Ownership`]).
     #[serde(default, skip_serializing_if = "Ownership::is_strict")]
@@ -168,6 +180,20 @@ impl WorkspaceConfig {
             }
         }
         Ok(())
+    }
+
+    /// `client_id` belongs to the client credentials grant, and must not be blank.
+    fn validate_client_id(&self, workspace: &str) -> Result<()> {
+        match &self.client_id {
+            None => Ok(()),
+            Some(id) if id.trim().is_empty() => Err(Error::Config(format!(
+                "workspace {workspace:?}: client_id must not be empty"
+            ))),
+            Some(_) if self.auth != AuthMethod::ClientCredentials => Err(Error::Config(format!(
+                "workspace {workspace:?}: client_id needs auth = \"client_credentials\""
+            ))),
+            Some(_) => Ok(()),
+        }
     }
 
     /// A blank default title would attach every source untitled.
@@ -261,6 +287,7 @@ impl Config {
             ws.validate_audit(name)?;
             ws.validate_source_kinds(name)?;
             ws.validate_source_title(name)?;
+            ws.validate_client_id(name)?;
         }
         if let Some(default) = &self.default {
             if !self.workspaces.contains_key(default) {

@@ -130,6 +130,49 @@ fn an_unknown_ownership_is_a_config_error() {
     }
 }
 
+// ------------------------------------------------------------------ client credentials
+
+#[test]
+fn client_credentials_is_an_auth_method_with_an_optional_public_client_id() {
+    let c = Config::parse(
+        "[workspaces.ci]\nurl_key = \"ci\"\nauth = \"client_credentials\"\nclient_id = \"abc123\"\n\
+         [workspaces.ci2]\nurl_key = \"ci2\"\nauth = \"client-credentials\"\n",
+    )
+    .unwrap();
+    let ci = c.get("ci").unwrap();
+    assert_eq!(ci.auth, AuthMethod::ClientCredentials);
+    assert_eq!(ci.client_id.as_deref(), Some("abc123"));
+    assert_eq!(ci.auth.to_string(), "client_credentials");
+    // The dashed spelling is accepted; the id may come from the environment instead.
+    let ci2 = c.get("ci2").unwrap();
+    assert_eq!(ci2.auth, AuthMethod::ClientCredentials);
+    assert_eq!(ci2.client_id, None);
+
+    // It is written back with the underscore.
+    let text = toml_edit::ser::to_string(&c).unwrap();
+    assert!(text.contains("auth = \"client_credentials\""), "{text}");
+    assert_eq!(Config::parse(&text).unwrap(), c);
+}
+
+#[test]
+fn a_client_id_needs_client_credentials_and_must_not_be_blank() {
+    for bad in [
+        "[workspaces.a]\nurl_key = \"a\"\nclient_id = \"x\"\n",
+        "[workspaces.a]\nurl_key = \"a\"\nauth = \"oauth\"\nclient_id = \"x\"\n",
+        "[workspaces.a]\nurl_key = \"a\"\nauth = \"client_credentials\"\nclient_id = \" \"\n",
+    ] {
+        let err = Config::parse(bad).unwrap_err();
+        assert!(matches!(err, Error::Config(_)), "{bad:?} -> {err:?}");
+        assert!(err.to_string().contains("client_id"), "{err}");
+    }
+    // There is no key for the secret, so one cannot be put in the file.
+    let err = Config::parse(
+        "[workspaces.a]\nurl_key = \"a\"\nauth = \"client_credentials\"\nclient_secret = \"x\"\n",
+    )
+    .unwrap_err();
+    assert!(matches!(err, Error::Config(_)));
+}
+
 // ------------------------------------------------------------------ source title
 
 #[test]

@@ -1,8 +1,11 @@
 //! Reading and writing configuration and credentials on disk.
 
 use crate::error::{CliError, Result};
-use linear_core::auth::{api_key_env_var, Credential, Secret};
-use linear_core::config::{validate_workspace_name, Config};
+use linear_core::auth::{
+    api_key_env_var, client_id_env_var, client_secret_env_var, Credential, Secret, CLIENT_ID_ENV,
+    CLIENT_SECRET_ENV,
+};
+use linear_core::config::{validate_workspace_name, Config, WorkspaceConfig};
 use std::fs;
 use std::io::Write;
 use std::path::{Path, PathBuf};
@@ -127,6 +130,66 @@ pub fn load_credential(
         ))
     })?;
     Ok(Some((cred, CredentialSource::File(path))))
+}
+
+/// The first of these environment variables that is set to something.
+fn first_env(names: &[String]) -> Option<(String, String)> {
+    names.iter().find_map(|name| {
+        std::env::var(name)
+            .ok()
+            .map(|v| v.trim().to_owned())
+            .filter(|v| !v.is_empty())
+            .map(|v| (name.clone(), v))
+    })
+}
+
+/// The client credentials of a workspace with `auth = "client_credentials"`:
+/// the secret from `LINEAR_CLIENT_SECRET_<NAME>` or `LINEAR_CLIENT_SECRET`, the
+/// id from `LINEAR_CLIENT_ID_<NAME>`, `LINEAR_CLIENT_ID` or `client_id` in the
+/// workspace's config. Nothing is read from or written to a file. `None` when
+/// there is no secret; an error when there is a secret but no id.
+pub fn load_client_credentials(
+    workspace: &str,
+    config: &WorkspaceConfig,
+) -> Result<Option<(Credential, CredentialSource)>> {
+    let Some((secret_var, secret)) = first_env(&[
+        client_secret_env_var(workspace),
+        CLIENT_SECRET_ENV.to_owned(),
+    ]) else {
+        return Ok(None);
+    };
+    let id = first_env(&[client_id_env_var(workspace), CLIENT_ID_ENV.to_owned()])
+        .map(|(_, v)| v)
+        .or_else(|| {
+            config
+                .client_id
+                .as_deref()
+                .map(str::trim)
+                .filter(|v| !v.is_empty())
+                .map(str::to_owned)
+        })
+        .ok_or_else(|| {
+            CliError::auth(format!(
+                "no client id for workspace {workspace:?}: set `client_id` under \
+                 [workspaces.{workspace}] in workspaces.toml, or {CLIENT_ID_ENV}"
+            ))
+        })?;
+    Ok(Some((
+        Credential::ClientCredentials {
+            client_id: id,
+            client_secret: Secret::new(secret),
+        },
+        CredentialSource::Env(secret_var),
+    )))
+}
+
+/// Whether the client secret of a workspace is set (not its value).
+pub fn client_secret_is_set(workspace: &str) -> bool {
+    first_env(&[
+        client_secret_env_var(workspace),
+        CLIENT_SECRET_ENV.to_owned(),
+    ])
+    .is_some()
 }
 
 /// Refuse a credentials file that other users can read.

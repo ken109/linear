@@ -9,17 +9,22 @@
 
 use crate::error::{CliError, Result};
 use chrono::Utc;
-use linear_core::auth::Credential;
+use linear_core::auth::{
+    client_credentials_form, parse_token_response, AccessToken, Credential, Secret, APP_SCOPE,
+};
 use linear_core::document::{operation_kinds, OperationKind};
 use linear_core::retry::{Failure, RetryPolicy};
 use linear_core::wire::{build_request, parse_response, Request, ResponseMeta};
+use linear_core::Error;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
-use std::sync::OnceLock;
+use std::sync::{Mutex, OnceLock};
 use std::time::Duration;
 
 /// Overrides the API endpoint (used by tests and proxies).
 pub const API_URL_ENV: &str = "LINEAR_API_URL";
+/// Overrides Linear's token endpoint (used by tests and proxies).
+pub const TOKEN_URL_ENV: &str = "LINEAR_OAUTH_TOKEN_URL";
 /// The time limit of one request, in seconds. `--timeout` overrides it.
 pub const TIMEOUT_ENV: &str = "LINEAR_TIMEOUT";
 /// How many times a failed read is sent again (default 2; 0 turns retrying off).
@@ -94,8 +99,13 @@ pub fn configure(settings: Settings) {
 pub struct Client {
     agent: ureq::Agent,
     url: String,
+    token_url: String,
     credential: Credential,
     retry: RetryPolicy,
+    /// The app's access token, for client credentials: fetched when first
+    /// needed, kept for the run, and replaced when it is about to expire or
+    /// Linear refuses it. Never written anywhere.
+    token: Mutex<Option<AccessToken>>,
 }
 
 /// One try at a request.
@@ -122,12 +132,94 @@ impl Client {
             .user_agent(concat!("linear-cli/", env!("CARGO_PKG_VERSION")))
             .build()
             .into();
+        let token_url = std::env::var(TOKEN_URL_ENV)
+            .ok()
+            .filter(|u| !u.is_empty())
+            .unwrap_or_else(|| linear_core::auth::TOKEN_URL.to_owned());
         Self {
             agent,
             url,
+            token_url,
             credential,
             retry: settings.retry,
+            token: Mutex::new(None),
         }
+    }
+
+    fn is_app(&self) -> bool {
+        matches!(self.credential, Credential::ClientCredentials { .. })
+    }
+
+    /// The `Authorization` header value. For client credentials this is the
+    /// app's token, fetched first if there is none or it is about to expire.
+    fn authorization(&self) -> Result<String> {
+        let Credential::ClientCredentials {
+            client_id,
+            client_secret,
+        } = &self.credential
+        else {
+            return Ok(self.credential.authorization());
+        };
+        let mut slot = self.token.lock().unwrap_or_else(|e| e.into_inner());
+        if let Some(token) = slot.as_ref().filter(|t| !t.needs_replacing(Utc::now())) {
+            return Ok(token.bearer());
+        }
+        let token = self.fetch_token(client_id, client_secret)?;
+        let bearer = token.bearer();
+        *slot = Some(token);
+        Ok(bearer)
+    }
+
+    /// Drop the token, so the next request fetches a new one.
+    fn forget_token(&self) {
+        *self.token.lock().unwrap_or_else(|e| e.into_inner()) = None;
+    }
+
+    /// Exchange the client id and secret for a token. Asking for a token changes
+    /// nothing, so it is retried like a read.
+    fn fetch_token(&self, client_id: &str, client_secret: &Secret) -> Result<AccessToken> {
+        let form = client_credentials_form(client_id, client_secret, APP_SCOPE);
+        let mut retries = 0;
+        loop {
+            let (error, wait) = match self.post_token(&form, client_secret) {
+                Ok(token) => return Ok(token),
+                Err(Attempt::Failed(e)) => return Err(e),
+                Err(Attempt::Transport(e)) => {
+                    retries += 1;
+                    (e, self.retry.wait(Failure::Transport, retries))
+                }
+                Err(Attempt::Linear(e)) => {
+                    retries += 1;
+                    let wait = self.retry.wait(Failure::Response(&e), retries);
+                    (CliError::from(e), wait)
+                }
+            };
+            match wait {
+                Some(wait) => std::thread::sleep(wait),
+                None => return Err(error),
+            }
+        }
+    }
+
+    fn post_token(
+        &self,
+        form: &Secret,
+        client_secret: &Secret,
+    ) -> std::result::Result<AccessToken, Attempt> {
+        let mut response = self
+            .agent
+            .post(&self.token_url)
+            .header("content-type", "application/x-www-form-urlencoded")
+            .send(form.expose())
+            .map_err(transport)?;
+        let status = response.status().as_u16();
+        let body = response.body_mut().read_to_string().map_err(|e| {
+            Attempt::Transport(CliError::general(format!(
+                "could not read Linear's answer to the token request: {}",
+                short(&e)
+            )))
+        })?;
+        parse_token_response(status, &body, Utc::now(), client_secret).map_err(Attempt::Linear)
     }
 
     /// Run an operation and decode its data.
@@ -149,13 +241,25 @@ impl Client {
         };
         // The number of the retry that would follow the attempt now being made.
         let mut next_retry = 0;
+        let mut replaced_token = false;
         loop {
-            next_retry += 1;
             let (error, wait) = match self.send(request) {
                 Ok(data) => return Ok(data),
                 Err(Attempt::Failed(e)) => return Err(e),
-                Err(Attempt::Transport(e)) => (e, policy.wait(Failure::Transport, next_retry)),
+                // The app's token was refused (revoked, or expired early): get a
+                // new one and send the request again, once. A refusal comes before
+                // anything runs, so this is safe for a write as well.
+                Err(Attempt::Linear(Error::Auth(_))) if self.is_app() && !replaced_token => {
+                    replaced_token = true;
+                    self.forget_token();
+                    continue;
+                }
+                Err(Attempt::Transport(e)) => {
+                    next_retry += 1;
+                    (e, policy.wait(Failure::Transport, next_retry))
+                }
                 Err(Attempt::Linear(e)) => {
+                    next_retry += 1;
                     let wait = policy.wait(Failure::Response(&e), next_retry);
                     (CliError::from(e), wait)
                 }
@@ -168,11 +272,12 @@ impl Client {
     }
 
     fn send<T: DeserializeOwned>(&self, request: &Request) -> std::result::Result<T, Attempt> {
+        let authorization = self.authorization().map_err(Attempt::Failed)?;
         let mut response = self
             .agent
             .post(&self.url)
             .header("content-type", "application/json")
-            .header("authorization", self.credential.authorization())
+            .header("authorization", authorization)
             .send(request.to_json())
             .map_err(transport)?;
 

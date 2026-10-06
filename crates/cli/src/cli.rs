@@ -144,9 +144,13 @@ pub struct AddArgs {
     /// Default team key
     #[arg(long, value_name = "KEY")]
     pub team: Option<String>,
-    /// How to authenticate
+    /// How to authenticate (`client-credentials` is for CI: an app's client id and secret)
     #[arg(long, value_enum, default_value_t = AuthArg::ApiKey)]
     pub auth: AuthArg,
+    /// The app's client id, with --auth client-credentials (or set LINEAR_CLIENT_ID). The
+    /// client secret is never stored: it comes from LINEAR_CLIENT_SECRET
+    #[arg(long, value_name = "ID")]
+    pub client_id: Option<String>,
     /// Make this the default workspace
     #[arg(long)]
     pub default: bool,
@@ -165,4 +169,6 @@ pub struct LoginArgs {
 pub enum AuthArg {
     ApiKey,
     Oauth,
+    #[value(alias = "client_credentials")]
+    ClientCredentials,
 }

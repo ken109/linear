@@ -47,7 +47,7 @@ fn list(ctx: &Ctx) -> Result<()> {
             auth: ws.auth,
             ownership: ws.ownership,
             default: config.default.as_deref() == Some(name),
-            credentials: credential_kind(ctx, name),
+            credentials: credential_kind(ctx, name, ws.auth),
         })
         .collect();
 
@@ -67,7 +67,16 @@ fn list(ctx: &Ctx) -> Result<()> {
                         r.default_team.clone().unwrap_or_else(|| "-".into()),
                         r.auth.to_string(),
                         r.ownership.to_string(),
-                        r.credentials.map_or("not logged in", |k| k).to_owned(),
+                        r.credentials
+                            .map_or(
+                                if r.auth == AuthMethod::ClientCredentials {
+                                    "no client secret"
+                                } else {
+                                    "not logged in"
+                                },
+                                |k| k,
+                            )
+                            .to_owned(),
                     ]
                 })
                 .collect();
@@ -82,7 +91,11 @@ fn list(ctx: &Ctx) -> Result<()> {
 }
 
 /// Whether credentials exist, and where, without reading them.
-fn credential_kind(ctx: &Ctx, name: &str) -> Option<&'static str> {
+fn credential_kind(ctx: &Ctx, name: &str, auth: AuthMethod) -> Option<&'static str> {
+    // An app has no stored credential: its secret comes from the environment.
+    if auth == AuthMethod::ClientCredentials {
+        return store::client_secret_is_set(name).then_some("env");
+    }
     if std::env::var(api_key_env_var(name)).is_ok_and(|v| !v.trim().is_empty()) {
         return Some("env");
     }
@@ -96,6 +109,16 @@ fn add(ctx: &Ctx, args: &AddArgs) -> Result<()> {
     validate_workspace_name(&args.name)?;
     if args.url_key.trim().is_empty() {
         return Err(CliError::usage("--url-key must not be empty"));
+    }
+    if let Some(id) = &args.client_id {
+        if !matches!(args.auth, AuthArg::ClientCredentials) {
+            return Err(CliError::usage(
+                "--client-id is the app's client_id and needs --auth client-credentials",
+            ));
+        }
+        if id.trim().is_empty() {
+            return Err(CliError::usage("--client-id must not be empty"));
+        }
     }
 
     let path = ctx.dirs.workspaces_file();
@@ -143,7 +166,11 @@ fn add(ctx: &Ctx, args: &AddArgs) -> Result<()> {
     ws["auth"] = toml_edit::value(match args.auth {
         AuthArg::ApiKey => "api-key",
         AuthArg::Oauth => "oauth",
+        AuthArg::ClientCredentials => "client_credentials",
     });
+    if let Some(id) = &args.client_id {
+        ws["client_id"] = toml_edit::value(id.trim());
+    }
     workspaces.insert(&args.name, toml_edit::Item::Table(ws));
 
     let text = doc.to_string();
@@ -181,6 +208,32 @@ fn login(ctx: &Ctx, args: &LoginArgs) -> Result<()> {
         return Err(CliError::general(
             "OAuth login is not implemented yet; configure the workspace with --auth api-key",
         ));
+    }
+
+    // An app has nothing to log in to: its id and secret are read from the
+    // environment on every run. Check that they work, and store nothing.
+    if ws.auth == AuthMethod::ClientCredentials {
+        let (credential, source) = ctx.credential(&name)?;
+        let who = verify(&Client::new(credential), &name, &ws.url_key)?;
+        ctx.out.status(&format!(
+            "Nothing is stored: the client credentials are read from the {} on every run",
+            source.describe()
+        ));
+        ctx.out.emit(
+            &serde_json::json!({
+                "workspace": name,
+                "urlKey": who.organization.url_key,
+                "user": { "id": who.viewer.id, "name": who.viewer.name, "email": who.viewer.email },
+            }),
+            || {
+                format!(
+                    "The client credentials work for {} (as {})",
+                    who.organization.url_key, who.viewer.name
+                )
+            },
+            || name.clone(),
+        );
+        return Ok(());
     }
 
     let key = read_api_key(args.with_token, &name)?;
