@@ -66,6 +66,15 @@ pub enum Command {
     /// Manage the cache that hooks and the statusline read
     #[command(subcommand)]
     Cache(crate::commands::cache::CacheCommand),
+    /// One line from the cache for a statusline or hook: what is In Progress and what needs fixing
+    ///
+    /// Reads the cache only (no credentials, no request) and returns at once. For each
+    /// workspace: `main: 3 in progress, 1 actionable`. A snapshot older than --ttl, or none,
+    /// prints `main: unknown (snapshot 2h old)` and no numbers: old figures are never shown as
+    /// current. Workspaces are joined with ` | `. The exit code is 0 whatever the state; with
+    /// --json every workspace has `state` (fresh, expired, missing or unusable). Keeping the
+    /// cache fresh is the caller's job: run `linear cache refresh` in the background.
+    Status(crate::commands::status::StatusArgs),
     /// Send a raw GraphQL document and print the response data (queries; mutations only with --mutation)
     Api(ApiArgs),
 }

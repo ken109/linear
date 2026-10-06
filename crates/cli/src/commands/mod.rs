@@ -11,6 +11,7 @@ pub mod label;
 mod listing;
 pub mod milestone;
 pub mod project;
+pub mod status;
 pub mod team;
 pub mod template;
 pub mod user;
@@ -51,6 +52,7 @@ pub fn run(cli: &Cli, out: Output) -> Result<()> {
         Command::User(cmd) => user::run(&ctx, cmd),
         Command::Audit(args) => audit::run(&ctx, args),
         Command::Cache(cmd) => cache::run(&ctx, cmd),
+        Command::Status(args) => status::run(&ctx, args),
     }
 }
 
