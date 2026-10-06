@@ -6,6 +6,7 @@
 //! state *types*, never on names, which teams may rename.
 
 mod consistency;
+mod diff;
 mod finding;
 mod scope;
 mod stale;
@@ -19,6 +20,7 @@ use chrono::{DateTime, NaiveDate, Utc};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
+pub use diff::diff;
 pub use finding::{AuditReport, Finding, FindingKey, RuleId, Severity, Target, TargetKind};
 pub use scope::AuditOptions;
 
