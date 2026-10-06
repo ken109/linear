@@ -5,6 +5,7 @@ pub mod audit;
 pub mod brief;
 pub mod cache;
 pub mod cached;
+pub mod cycle;
 mod format;
 pub mod initiative;
 pub mod issue;
@@ -53,6 +54,7 @@ pub fn run(cli: &Cli, out: Output) -> Result<()> {
         Command::Label(cmd) => label::run(&ctx, cmd),
         Command::Team(cmd) => team::run(&ctx, cmd),
         Command::User(cmd) => user::run(&ctx, cmd),
+        Command::Cycle(args) => cycle::run(&ctx, args),
         Command::Audit(args) => audit::run(&ctx, args),
         Command::Cache(cmd) => cache::run(&ctx, cmd),
         Command::Status(args) => status::run(&ctx, args),

@@ -276,7 +276,36 @@ pub fn view(identifier: &str) -> View {
     View(v)
 }
 
+/// The two cycles of the `cycles` fixture: #41 (2026-10-05T15:00Z ..) and #42.
+pub const CYCLE_41: &str = "00000000-0000-4000-8000-000000000201";
+pub const CYCLE_42: &str = "00000000-0000-4000-8000-000000000202";
+/// A meeting day whose next day is in cycle #41.
+pub const MEETING: &str = "2026-10-05";
+
+/// What `cycles` returns: cycles #41 and #42 of the fixture team.
+pub fn cycles() -> Reply {
+    data(fixture_data("cycles"))
+}
+
 impl View {
+    /// In the cycle with this id (one of the fixture's), or in none.
+    pub fn in_cycle(mut self, id: Option<&str>) -> View {
+        self.0["write"]["cycle"] = match id {
+            Some(id) => {
+                let all = fixture_data("cycles");
+                all["cycles"]["nodes"]
+                    .as_array()
+                    .unwrap()
+                    .iter()
+                    .find(|c| c["id"] == id)
+                    .unwrap_or_else(|| panic!("no fixture cycle {id}"))
+                    .clone()
+            }
+            None => Value::Null,
+        };
+        self
+    }
+
     pub fn order(mut self, sort: f64, priority: f64) -> View {
         self.0["issue"]["sortOrder"] = json!(sort);
         self.0["issue"]["prioritySortOrder"] = json!(priority);

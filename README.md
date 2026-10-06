@@ -173,6 +173,7 @@ linear label list                                           # groups first, each
 linear team list
 linear user view me
 linear brief                                                # where each unfinished project stands
+linear cycle 2026-10-05                                     # the cycle that holds the day after that meeting
 ```
 
 Listings return at most 50 results; `--limit <N>` changes that and `--all` follows every page.
