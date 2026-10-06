@@ -31,6 +31,35 @@ pub enum Command {
     /// Manage workspaces and credentials
     #[command(subcommand)]
     Workspace(WorkspaceCommand),
+    /// Send a raw GraphQL query (read-only) and print the response data
+    Api(ApiArgs),
+}
+
+#[derive(Debug, Args)]
+pub struct ApiArgs {
+    /// The GraphQL document; `-` reads it from standard input
+    #[arg(value_name = "QUERY", required_unless_present = "query_file")]
+    pub query: Option<String>,
+    /// Read the GraphQL document from a file
+    #[arg(long, value_name = "FILE", conflicts_with = "query")]
+    pub query_file: Option<std::path::PathBuf>,
+    /// Set a string variable (repeatable)
+    #[arg(long = "var", value_name = "KEY=VALUE")]
+    pub var: Vec<String>,
+    /// Set a variable from a JSON value, e.g. `--var-json first=5` (repeatable)
+    #[arg(long = "var-json", value_name = "KEY=JSON")]
+    pub var_json: Vec<String>,
+    /// Read variables from a JSON object in a file (`-` for standard input);
+    /// --var and --var-json override it
+    #[arg(long, value_name = "FILE")]
+    pub variables_file: Option<std::path::PathBuf>,
+    /// Which operation to run when the document defines several
+    #[arg(long, value_name = "NAME")]
+    pub operation_name: Option<String>,
+    /// Allow a mutation. Not available yet: it will require
+    /// `allow_raw_mutation = true` in the workspace config
+    #[arg(long)]
+    pub mutation: bool,
 }
 
 #[derive(Debug, Subcommand)]

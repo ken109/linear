@@ -3,7 +3,7 @@
 use crate::error::{CliError, Result};
 use chrono::Utc;
 use linear_core::auth::Credential;
-use linear_core::wire::{build_request, parse_response, ResponseMeta};
+use linear_core::wire::{build_request, parse_response, Request, ResponseMeta};
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 use std::time::Duration;
@@ -43,7 +43,11 @@ impl Client {
         V: Serialize,
         T: DeserializeOwned,
     {
-        let request = build_request(op);
+        self.execute_request(&build_request(op))
+    }
+
+    /// Send an already-built request and decode its data.
+    pub fn execute_request<T: DeserializeOwned>(&self, request: &Request) -> Result<T> {
         let mut response = self
             .agent
             .post(&self.url)

@@ -68,6 +68,26 @@ Tokens are never printed.
 | 5    | write refused by a validator             |
 | 6    | `audit --fail-on` found actionable items |
 
+## Raw GraphQL: `linear api`
+
+For anything without a dedicated command, send a query directly. It uses the selected
+workspace and its credentials, and prints the response's `data` as JSON.
+
+```sh
+linear api '{ viewer { name } }'
+linear api 'query($id: String!) { issue(id: $id) { title } }' --var id=ENG-1
+linear api --query-file q.graphql --variables-file vars.json -w other
+echo '{ teams { nodes { key } } }' | linear api -
+```
+
+Variables: `--var KEY=VALUE` (always a string), `--var-json KEY=JSON` (typed),
+`--variables-file FILE` (a JSON object; the flags override it).
+
+`linear api` is read-only. A document that defines a mutation is refused locally with exit
+code 4 before anything is sent, because the CLI's ownership rules and validators cannot be
+applied to free-form documents. `--mutation` is reserved for a future opt-in
+(`allow_raw_mutation = true` in the workspace config) and does nothing yet.
+
 ## Testing
 
 ```sh

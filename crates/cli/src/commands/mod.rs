@@ -1,5 +1,6 @@
 //! Command implementations.
 
+mod api;
 mod workspace;
 
 use crate::cli::{Cli, Command};
@@ -25,6 +26,7 @@ pub fn run(cli: &Cli, out: Output) -> Result<()> {
     };
     match &cli.command {
         Command::Workspace(cmd) => workspace::run(&ctx, cmd),
+        Command::Api(args) => api::run(&ctx, args),
     }
 }
 
