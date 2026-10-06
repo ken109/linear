@@ -179,7 +179,7 @@ pub struct UrlVars {
 }
 
 /// An attachment, reduced to the issue it hangs on.
-#[derive(cynic::QueryFragment, Debug, Clone, PartialEq, Serialize)]
+#[derive(cynic::QueryFragment, Debug, Clone, PartialEq, Serialize, JsonSchema)]
 #[cynic(graphql_type = "Attachment")]
 pub struct AttachmentOwner {
     pub issue: IssueRef,
