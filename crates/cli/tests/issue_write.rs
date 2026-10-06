@@ -841,8 +841,69 @@ fn reorder_needs_one_project_and_ownership_of_every_issue() {
     let o = run(&sb, &mock, &["issue", "reorder", "EX-1", "EX-2"]);
     assert_eq!(code(&o), 4, "{}", stderr(&o));
     mock.assert_read_only();
+}
 
-    // Naming a single issue is a usage error (the plan itself also rejects a repeat).
-    let o = run(&sb, &mock, &["issue", "reorder", "EX-1"]);
+/// The three issues of `three_views`, in the order they are asked for.
+fn three_writes() -> Vec<Value> {
+    vec![
+        json!({ "id": "id-EX-3", "input": { "sortOrder": 1.0, "prioritySortOrder": 10.0 } }),
+        json!({ "id": "id-EX-1", "input": { "sortOrder": 2.0, "prioritySortOrder": 20.0 } }),
+        json!({ "id": "id-EX-2", "input": { "sortOrder": 3.0, "prioritySortOrder": 30.0 } }),
+    ]
+}
+
+#[test]
+fn reorder_reads_one_comma_separated_list_the_same_as_separate_arguments() {
+    let sb = workspace_with_rules(&[]);
+    for args in [
+        // One comma-separated value (clap counts values before it splits them).
+        vec!["EX-3,EX-1,EX-2"],
+        // Separate arguments.
+        vec!["EX-3", "EX-1", "EX-2"],
+        // Mixed.
+        vec!["EX-3", "EX-1,EX-2"],
+        vec!["EX-3,EX-1", "EX-2"],
+        // Stray spaces and a trailing comma are not issues.
+        vec!["EX-3, EX-1 ,EX-2,"],
+    ] {
+        let mock = Routed::start(reorder_routes(
+            three_views(),
+            vec![issue_payload("issueUpdate", "EX-3")],
+        ));
+        let mut full = vec!["issue", "reorder"];
+        full.extend(&args);
+        full.push("--json");
+        let o = run(&sb, &mock, &full);
+        assert_eq!(code(&o), 0, "{args:?}: {}", stderr(&o));
+        assert_eq!(
+            stdout_json(&o)["updated"],
+            json!(["EX-3", "EX-1", "EX-2"]),
+            "{args:?}"
+        );
+        assert_eq!(mock.of("IssueUpdate"), three_writes(), "{args:?}");
+    }
+}
+
+#[test]
+fn reorder_of_a_single_issue_is_a_usage_error_before_any_request() {
+    let sb = workspace_with_rules(&[]);
+    for args in [vec!["EX-1"], vec!["EX-1,"], vec!["EX-1", " "], vec![","]] {
+        let mock = Routed::start(reorder_routes(three_views(), vec![]));
+        let mut full = vec!["issue", "reorder"];
+        full.extend(&args);
+        let o = run(&sb, &mock, &full);
+        assert_eq!(code(&o), 2, "{args:?}: {}", stderr(&o));
+        assert!(
+            stderr(&o).contains("at least two issues"),
+            "{args:?}: {}",
+            stderr(&o)
+        );
+        assert!(mock.ops().is_empty(), "{args:?}: {:?}", mock.ops());
+    }
+
+    // No issue at all is refused by clap itself.
+    let mock = Routed::start(reorder_routes(three_views(), vec![]));
+    let o = run(&sb, &mock, &["issue", "reorder"]);
     assert_eq!(code(&o), 2, "{}", stderr(&o));
+    assert!(mock.ops().is_empty());
 }

@@ -518,7 +518,7 @@ pub fn comment(ctx: &Ctx, cmd: &CommentCmd) -> Result<()> {
 pub struct ReorderCmd {
     /// The issues in the order they should end up, top first (identifiers,
     /// space- or comma-separated). They must all be in the same project
-    #[arg(required = true, num_args = 2.., value_delimiter = ',', value_name = "ISSUE")]
+    #[arg(required = true, num_args = 1.., value_delimiter = ',', value_name = "ISSUE")]
     pub issues: Vec<String>,
 }
 
@@ -534,10 +534,19 @@ struct Reordered<'a> {
 }
 
 pub fn reorder(ctx: &Ctx, cmd: &ReorderCmd) -> Result<()> {
+    // Checked here, not by clap, so that `A,B` (one comma-separated value) counts as two.
+    let references: Vec<&str> = cmd
+        .issues
+        .iter()
+        .map(|r| r.trim())
+        .filter(|r| !r.is_empty())
+        .collect();
+    if references.len() < 2 {
+        return Err(CliError::usage("reordering needs at least two issues"));
+    }
     let ws = ctx.write_session()?;
 
-    let views = cmd
-        .issues
+    let views = references
         .iter()
         .map(|reference| fetch_issue(&ws, reference))
         .collect::<Result<Vec<_>>>()?;
