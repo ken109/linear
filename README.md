@@ -88,6 +88,21 @@ code 4 before anything is sent, because the CLI's ownership rules and validators
 applied to free-form documents. `--mutation` is reserved for a future opt-in
 (`allow_raw_mutation = true` in the workspace config) and does nothing yet.
 
+## Schema coverage
+
+`schema/linear.graphql` is Linear's published SDL. `crates/core/coverage.toml` classifies every
+field of the Query, Mutation and Subscription roots, and of the core entities (Issue, Project,
+ProjectMilestone, ProjectUpdate, Initiative, User, Template, Team, IssueLabel, Comment,
+Attachment), as `implemented` or `unsupported` (with a reason). For the entities, `implemented`
+means the field is part of the `--json` output. `crates/core/tests/coverage.rs` fails when a
+field is unclassified, when a classified field no longer exists, and when the manifest
+disagrees with what the code selects. So adding a query or a fragment field means updating the
+manifest in the same change.
+
+`scripts/update-schema.sh` refreshes the vendored schema. The `update-schema` workflow runs it
+weekly and opens a PR when the schema changed; the PR body says whether coverage still passes
+and lists the fields to classify.
+
 ## Testing
 
 ```sh

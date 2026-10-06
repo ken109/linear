@@ -537,6 +537,7 @@ dependencies = [
  "chrono",
  "cynic",
  "cynic-codegen",
+ "cynic-parser",
  "serde",
  "serde_json",
  "thiserror 2.0.21",

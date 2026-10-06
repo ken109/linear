@@ -1,0 +1,1093 @@
+# Coverage manifest: how the CLI relates to Linear's GraphQL schema.
+#
+# `crates/core/tests/coverage.rs` checks this file against `schema/linear.graphql`
+# (and against the code). It fails when
+#
+#   * a field of the Query, Mutation or Subscription root, or of one of the core
+#     entities (Issue, Project, ProjectMilestone, ProjectUpdate, Initiative, User,
+#     Template, Team, IssueLabel, Comment, Attachment), is not classified here;
+#   * a classified field no longer exists in the schema;
+#   * a field is classified twice;
+#   * the classification disagrees with what the code actually selects.
+#
+# Each `[[entry]]` classifies a list of fields of one GraphQL type:
+#
+#   status = "implemented"   `via` names the item in `linear-core` that implements it
+#                            (`queries::<fn>`, `inputs::<fn>` or `types::<Struct>`; the
+#                            test checks it exists). `commands` lists the CLI commands
+#                            that expose it (free text; empty until a command exists).
+#   status = "unsupported"   `reason` says why. Use "planned" wording only for things
+#                            that are on the roadmap; everything is reachable for reads
+#                            through `linear api`.
+#
+# For the root types a field is "implemented" when a typed query or mutation selects
+# it. For the core entities, "implemented" means the entity's `--json` output includes
+# it (the fixed fragment in `types.rs`), and "unsupported" means it is left out.
+#
+# When the schema changes (scripts/update-schema.sh, run weekly by CI) and the test
+# lists new fields, add them to an existing entry or start a new one.
+
+
+# ============================================================================
+# Query
+# ============================================================================
+
+[[entry]]
+type = "Query"
+status = "implemented"
+via = ["queries::initiatives"]
+fields = [
+  "initiatives",
+]
+
+[[entry]]
+type = "Query"
+status = "implemented"
+via = ["queries::issue", "queries::issue_comments"]
+fields = [
+  "issue",
+]
+
+[[entry]]
+type = "Query"
+status = "implemented"
+via = ["queries::whoami"]
+commands = ["workspace whoami"]
+fields = [
+  "organization", "viewer",
+]
+
+[[entry]]
+type = "Query"
+status = "implemented"
+via = ["queries::projects"]
+fields = [
+  "projects",
+]
+
+[[entry]]
+type = "Query"
+status = "implemented"
+via = ["queries::templates"]
+fields = [
+  "templates",
+]
+
+[[entry]]
+type = "Query"
+status = "unsupported"
+reason = "A read command is planned (milestone 2: reads); until it exists, use `linear api`."
+fields = [
+  "attachment", "attachments", "comment", "comments", "initiative", "issueLabel", "issueLabels",
+  "issueRelation", "issueRelations", "issueSearch", "issues", "project", "projectMilestone",
+  "projectMilestones", "projectStatus", "projectStatuses", "projectUpdate", "projectUpdates",
+  "searchIssues", "searchProjects", "team", "teams", "template", "user", "users",
+  "workflowState", "workflowStates",
+]
+
+[[entry]]
+type = "Query"
+status = "unsupported"
+reason = "Account, authentication, workspace administration or billing; outside the CLI's scope."
+fields = [
+  "applicationInfo", "auditEntries", "auditEntryTypes", "auditLogWebhookFailureEvents",
+  "authenticationSessions", "availableUsers", "dependencyPackageMetadata", "emailIntakeAddress",
+  "externalUser", "externalUsers", "failuresForOauthWebhooks", "integrationsSettings",
+  "oauthApplication", "oauthApplications", "organizationDomainClaimRequest",
+  "organizationExists", "organizationInvite", "organizationInviteDetails", "organizationInvites",
+  "organizationMeta", "partnerOfferDetails", "partnerOfferWorkspaces", "partnerProgramPartners",
+  "pushSubscriptionTest", "rateLimitStatus", "ssoUrlFromEmail", "usageAlert", "usageAlerts",
+  "userSessions", "userSettings", "userViewPreferences",
+  "verifyGitHubEnterpriseServerInstallation", "webhook", "webhooks",
+]
+
+[[entry]]
+type = "Query"
+status = "unsupported"
+reason = "Outside the CLI's scope (issues, projects, milestones, initiatives, status updates, templates); reachable through `linear api`."
+fields = [
+  "_dummy", "administrableTeams", "agentActivities", "agentActivity", "agentSession",
+  "agentSessionSandbox", "agentSessionSshAddress", "agentSessions", "agentSkill", "agentSkills",
+  "archivedIntegrations", "archivedTeams", "attachmentIssue", "attachmentSources",
+  "attachmentsForURL", "customView", "customViewDetailsSuggestion", "customViewHasSubscribers",
+  "customViews", "customer", "customerNeed", "customerNeeds", "customerStatus",
+  "customerStatuses", "customerTier", "customerTiers", "customers", "cycle", "cycles", "diff",
+  "document", "documentContentHistory", "documentContentHistoryEntries",
+  "documentContentHistoryTimeline", "documents", "emoji", "emojis", "entityExternalLink",
+  "favorite", "favorites", "inboxNotifications", "initiativeFilterSuggestion", "initiativeLabel",
+  "initiativeLabels", "initiativeLeadTeamChangeImpact", "initiativeRelation",
+  "initiativeRelations", "initiativeToProject", "initiativeToProjects", "initiativeUpdate",
+  "initiativeUpdates", "integration", "integrationHasScopes", "integrationJiraProjectStatuses",
+  "integrationTemplate", "integrationTemplates", "integrations", "issueFigmaFileKeySearch",
+  "issueFilterSuggestion", "issueImportCheckCSV", "issueImportCheckSync", "issueImportJqlCheck",
+  "issuePriorityValues", "issueRepositorySuggestions", "issueTitleSuggestionFromCustomerRequest",
+  "issueToRelease", "issueToReleases", "issueVcsBranchSearch", "latestReleaseByAccessKey",
+  "microsoftTeamsChannels", "notification", "notificationSubscription",
+  "notificationSubscriptions", "notifications", "notificationsUnreadCount",
+  "projectFilterSuggestion", "projectLabel", "projectLabels", "projectRelation",
+  "projectRelations", "projectStatusProjectCount", "recentReleasesByAccessKey", "release",
+  "releaseNote", "releaseNotes", "releasePipeline", "releasePipelineByAccessKey",
+  "releasePipelines", "releaseSearch", "releaseStage", "releaseStages", "releases", "roadmap",
+  "roadmapToProject", "roadmapToProjects", "roadmaps", "searchDocuments", "semanticSearch",
+  "slaConfigurations", "teamMembership", "teamMemberships", "templateSearch",
+  "templatesForIntegration", "timeSchedule", "timeSchedules", "triageResponsibilities",
+  "triageResponsibility",
+]
+
+# ============================================================================
+# Mutation
+# ============================================================================
+
+[[entry]]
+type = "Mutation"
+status = "implemented"
+via = ["inputs::issue_update"]
+fields = [
+  "issueUpdate",
+]
+
+[[entry]]
+type = "Mutation"
+status = "unsupported"
+reason = "A write command is planned (milestone 3: writes); until it exists, `linear api` refuses mutations."
+fields = [
+  "attachmentCreate", "attachmentLinkURL", "commentCreate", "commentUpdate", "initiativeCreate",
+  "initiativeToProjectCreate", "initiativeUpdate", "initiativeUpdateCreate", "issueAddLabel",
+  "issueBatchUpdate", "issueCreate", "issueLabelCreate", "issueRelationCreate",
+  "issueRemoveLabel", "projectAddLabel", "projectCreate", "projectMilestoneCreate",
+  "projectMilestoneUpdate", "projectRemoveLabel", "projectUpdate", "projectUpdateCreate",
+  "projectUpdateUpdate",
+]
+
+[[entry]]
+type = "Mutation"
+status = "unsupported"
+reason = "Account, authentication, workspace administration or billing; outside the CLI's scope."
+fields = [
+  "contactCreate", "contactSalesCreate", "createCsvExportReport",
+  "createOrganizationFromOnboarding", "emailIntakeAddressCreate",
+  "emailIntakeAddressRefreshSesDomainStatus", "emailIntakeAddressUpdate",
+  "emailTokenUserAccountAuth", "emailUserAccountAuthChallenge", "fileUpload",
+  "googleUserAccountAuth", "imageUploadFromUrl", "importFileUpload",
+  "joinOrganizationFromOnboarding", "leaveOrganization", "logout", "logoutAllSessions",
+  "logoutOtherSessions", "logoutSession", "oauthApplicationCreate", "oauthApplicationUpdate",
+  "organizationDomainClaim", "organizationDomainCreate", "organizationDomainUpdate",
+  "organizationDomainVerify", "organizationInviteCreate", "organizationInviteUpdate",
+  "organizationStartTrial", "organizationStartTrialForPlan", "organizationUpdate",
+  "partnerApplicationCreate", "partnerOfferRedeem", "passkeyLoginFinish", "passkeyLoginStart",
+  "pushSubscriptionCreate", "samlTokenUserAccountAuth", "trackAnonymousEvent", "userChangeRole",
+  "userDiscordConnect", "userFlagUpdate", "userSettingsUpdate", "userUpdate", "webhookCreate",
+  "webhookUpdate",
+]
+
+[[entry]]
+type = "Mutation"
+status = "unsupported"
+reason = "Integration setup or sync; outside the CLI's scope."
+fields = [
+  "airbyteIntegrationConnect", "attachmentLinkDiscord", "attachmentLinkFront",
+  "attachmentLinkGitHubIssue", "attachmentLinkGitHubPR", "attachmentLinkGitLabMR",
+  "attachmentLinkIntercom", "attachmentLinkJiraIssue", "attachmentLinkSalesforce",
+  "attachmentLinkSlack", "attachmentLinkZendesk", "attachmentSyncToSlack", "customerUnsync",
+  "gitAutomationStateCreate", "gitAutomationStateDelete", "gitAutomationStateUpdate",
+  "gitAutomationTargetBranchCreate", "gitAutomationTargetBranchDelete",
+  "gitAutomationTargetBranchUpdate", "integrationArchive", "integrationAsksConnectChannel",
+  "integrationCustomerDataAttributesRefresh", "integrationDatadogConnect",
+  "integrationDatadogEnvironments", "integrationDelete", "integrationDiscord",
+  "integrationFigma", "integrationFront", "integrationGitHubEnterpriseServerConnect",
+  "integrationGitHubPersonal", "integrationGithubCommitCreate", "integrationGithubConnect",
+  "integrationGithubImportConnect", "integrationGithubImportRefresh",
+  "integrationGithubRemoveCodeAccess", "integrationGitlabConnect", "integrationGitlabRotate",
+  "integrationGitlabTestConnection", "integrationGitlabUpdateRotationSettings",
+  "integrationGitlabUpdateToken", "integrationGong", "integrationGoogleCalendarPersonalConnect",
+  "integrationGoogleSheets", "integrationIntercom", "integrationIntercomDelete",
+  "integrationIntercomSettingsUpdate", "integrationJiraFetchProjectStatuses",
+  "integrationJiraPersonal", "integrationJiraUpdate", "integrationLaunchDarklyConnect",
+  "integrationLaunchDarklyPersonalConnect", "integrationLoom", "integrationMcpServerConnect",
+  "integrationMcpServerPersonalConnect", "integrationMicrosoftPersonalConnect",
+  "integrationMicrosoftTeams", "integrationMicrosoftTeamsProjectPost",
+  "integrationOpsgenieConnect", "integrationOpsgenieRefreshScheduleMappings",
+  "integrationPagerDutyConnect", "integrationPagerDutyRefreshScheduleMappings",
+  "integrationRequest", "integrationSalesforce", "integrationSalesforceMetadataRefresh",
+  "integrationSentryConnect", "integrationSettingsUpdate", "integrationSlack",
+  "integrationSlackAsks", "integrationSlackCustomViewNotifications",
+  "integrationSlackCustomerChannelLink", "integrationSlackImportEmojis",
+  "integrationSlackInitiativePost", "integrationSlackOrAsksUpdateSlackTeamName",
+  "integrationSlackOrgInitiativeUpdatesPost", "integrationSlackOrgProjectUpdatesPost",
+  "integrationSlackPersonal", "integrationSlackPost", "integrationSlackProjectPost",
+  "integrationSlackWorkflowAccessUpdate", "integrationTemplateCreate",
+  "integrationTemplateDelete", "integrationUpdate", "integrationZendesk",
+  "integrationsSettingsCreate", "integrationsSettingsUpdate", "issueDescriptionUpdateFromFront",
+  "issueExternalSyncDisable", "issueImportCreateAsana", "issueImportCreateCSVJira",
+  "issueImportCreateClubhouse", "issueImportCreateGithub", "issueImportCreateJira",
+  "issueImportCreateLinearV2", "issueImportDelete", "issueImportProcess", "issueImportUpdate",
+  "jiraIntegrationConnect", "projectCreateSlackChannel",
+  "projectDismissSlackChannelCreationFailure", "projectExternalSyncDisable",
+  "refreshGoogleSheetsData", "timeScheduleRefreshIntegrationSchedule",
+  "timeScheduleUpsertExternal", "updateIntegrationSlackScopes",
+]
+
+[[entry]]
+type = "Mutation"
+status = "unsupported"
+reason = "Not part of the planned write surface: the CLI creates and updates, it does not delete, archive or restore."
+fields = [
+  "agentActivityDeleteQueued", "agentSkillDelete", "attachmentDelete", "commentDelete",
+  "customViewDelete", "customerDelete", "customerNeedArchive", "customerNeedDelete",
+  "customerNeedUnarchive", "customerStatusDelete", "customerTierDelete", "cycleArchive",
+  "documentDelete", "documentUnarchive", "emailIntakeAddressDelete", "emailIntakeAddressRotate",
+  "emailUnsubscribe", "emojiDelete", "entityExternalLinkDelete", "favoriteDelete",
+  "fileUploadDangerouslyDelete", "initiativeArchive", "initiativeDelete",
+  "initiativeLabelDelete", "initiativeLabelRestore", "initiativeLabelRetire",
+  "initiativeRelationDelete", "initiativeToProjectDelete", "initiativeUnarchive",
+  "initiativeUpdateArchive", "initiativeUpdateUnarchive", "issueArchive", "issueDelete",
+  "issueLabelDelete", "issueLabelRestore", "issueLabelRetire", "issueRelationDelete",
+  "issueToReleaseDelete", "issueToReleaseDeleteByIssueAndRelease", "issueUnarchive",
+  "issueUnshare", "issueUnsubscribe", "notificationArchive", "notificationArchiveAll",
+  "notificationSubscriptionDelete", "notificationUnarchive", "oauthApplicationArchive",
+  "oauthApplicationRotateSecret", "oauthApplicationRotateWebhookSecret",
+  "organizationCancelDelete", "organizationDelete", "organizationDeleteChallenge",
+  "organizationDomainDelete", "organizationInviteDelete", "projectArchive", "projectDelete",
+  "projectLabelDelete", "projectLabelRestore", "projectLabelRetire", "projectMilestoneDelete",
+  "projectRelationDelete", "projectStatusArchive", "projectStatusUnarchive", "projectUnarchive",
+  "projectUpdateArchive", "projectUpdateDelete", "projectUpdateUnarchive",
+  "pushSubscriptionDelete", "reactionDelete", "releaseArchive", "releaseDelete",
+  "releaseNoteDelete", "releasePipelineArchive", "releasePipelineDelete",
+  "releasePipelineUnarchive", "releaseStageArchive", "releaseStageUnarchive", "releaseUnarchive",
+  "roadmapArchive", "roadmapDelete", "roadmapToProjectDelete", "roadmapUnarchive",
+  "teamCyclesDelete", "teamDelete", "teamKeyDelete", "teamMembershipDelete", "teamUnarchive",
+  "templateDelete", "timeScheduleDelete", "triageResponsibilityDelete",
+  "userExternalUserDisconnect", "userRevokeAllSessions", "userRevokeSession",
+  "userSettingsFlagsReset", "userSuspend", "userUnlinkFromIdentityProvider", "userUnsuspend",
+  "viewPreferencesDelete", "webhookDelete", "webhookRotateSecret", "workflowStateArchive",
+]
+
+[[entry]]
+type = "Mutation"
+status = "unsupported"
+reason = "Outside the CLI's scope (issues, projects, milestones, initiatives, status updates, templates); `linear api` refuses mutations."
+fields = [
+  "agentActivityCreate", "agentActivityCreatePrompt", "agentActivitySendQueued",
+  "agentSessionCreate", "agentSessionCreateOnComment", "agentSessionCreateOnIssue",
+  "agentSessionRestartWithDefaultModel", "agentSessionUpdate", "agentSessionUpdateExternalUrl",
+  "agentSkillCreate", "agentSkillUpdate", "attachmentUpdate", "commentResolve",
+  "commentUnresolve", "createInitiativeUpdateReminder", "createProjectUpdateReminder",
+  "customViewCreate", "customViewUpdate", "customerCreate", "customerMerge",
+  "customerNeedCreate", "customerNeedCreateFromAttachment", "customerNeedUpdate",
+  "customerStatusCreate", "customerStatusUpdate", "customerTierCreate", "customerTierUpdate",
+  "customerUpdate", "customerUpsert", "cycleCreate", "cycleShiftAll",
+  "cycleStartUpcomingCycleToday", "cycleUpdate", "documentCreate", "documentUpdate",
+  "emojiCreate", "entityExternalLinkCreate", "entityExternalLinkUpdate", "favoriteCreate",
+  "favoriteUpdate", "inboxNotificationUpdate", "initiativeAddLabel", "initiativeLabelCreate",
+  "initiativeLabelUpdate", "initiativeLeadTeamUpdate", "initiativeRelationCreate",
+  "initiativeRelationUpdate", "initiativeRemoveLabel", "initiativeToProjectUpdate",
+  "initiativeUpdateUpdate", "issueBatchCreate", "issueLabelUpdate", "issueRelationUpdate",
+  "issueReminder", "issueShare", "issueSubscribe", "issueToReleaseCreate",
+  "notificationCategoryChannelSubscriptionUpdate", "notificationMarkReadAll",
+  "notificationMarkUnreadAll", "notificationSnoozeAll", "notificationSubscriptionCreate",
+  "notificationSubscriptionUpdate", "notificationUnsnoozeAll", "notificationUpdate",
+  "projectLabelCreate", "projectLabelUpdate", "projectMilestoneMove", "projectReassignStatus",
+  "projectRelationCreate", "projectRelationUpdate", "projectStatusCreate", "projectStatusUpdate",
+  "reactionCreate", "releaseComplete", "releaseCompleteByAccessKey", "releaseCreate",
+  "releaseNoteCreate", "releaseNoteUpdate", "releasePipelineCreate", "releasePipelineUpdate",
+  "releaseStageCreate", "releaseStageUpdate", "releaseSync", "releaseSyncByAccessKey",
+  "releaseUpdate", "releaseUpdateByPipeline", "releaseUpdateByPipelineByAccessKey",
+  "resendOrganizationInvite", "resendOrganizationInviteByEmail", "roadmapCreate",
+  "roadmapToProjectCreate", "roadmapToProjectUpdate", "roadmapUpdate", "teamCreate",
+  "teamMembershipCreate", "teamMembershipUpdate", "teamUpdate", "templateCreate",
+  "templateUpdate", "timeScheduleCreate", "timeScheduleUpdate", "triageResponsibilityCreate",
+  "triageResponsibilityUpdate", "viewPreferencesCreate", "viewPreferencesUpdate",
+  "workflowStateCreate", "workflowStateUpdate",
+]
+
+# ============================================================================
+# Subscription
+# ============================================================================
+
+[[entry]]
+type = "Subscription"
+status = "unsupported"
+reason = "Subscriptions use a WebSocket transport; `linear api` sends plain HTTP requests, so they are not supported."
+fields = [
+  "agentActivityArchived", "agentActivityCreated", "agentActivityUpdated", "agentSessionCreated",
+  "agentSessionUpdated", "aiConversationUpdated", "aiPromptProgressCreated",
+  "aiPromptProgressUpdated", "commentArchived", "commentCreated", "commentDeleted",
+  "commentUnarchived", "commentUpdated", "cycleArchived", "cycleCreated", "cycleUpdated",
+  "documentArchived", "documentContentCreated", "documentContentDraftCreated",
+  "documentContentDraftDeleted", "documentContentDraftUpdated", "documentContentRevisionCreated",
+  "documentContentRevisionDeleted", "documentContentRevisionUpdated", "documentContentUpdated",
+  "documentCreated", "documentUnarchived", "documentUpdated", "draftCreated", "draftDeleted",
+  "draftUpdated", "favoriteCreated", "favoriteDeleted", "favoriteUpdated", "initiativeCreated",
+  "initiativeDeleted", "initiativeUpdated", "issueArchived", "issueCreated", "issueDraftCreated",
+  "issueDraftDeleted", "issueDraftUpdated", "issueHistoryCreated", "issueHistoryUpdated",
+  "issueLabelCreated", "issueLabelDeleted", "issueLabelUpdated", "issueRelationCreated",
+  "issueRelationDeleted", "issueRelationUpdated", "issueUnarchived", "issueUpdated",
+  "notificationArchived", "notificationCreated", "notificationDeleted", "notificationUnarchived",
+  "notificationUpdated", "organizationUpdated", "projectArchived", "projectCreated",
+  "projectLabelCreated", "projectLabelDeleted", "projectLabelUpdated", "projectUnarchived",
+  "projectUpdateArchived", "projectUpdateCreated", "projectUpdateDeleted",
+  "projectUpdateUpdated", "projectUpdated", "pullRequestUpdated", "roadmapCreated",
+  "roadmapDeleted", "roadmapUpdated", "teamCreated", "teamDeleted", "teamMembershipCreated",
+  "teamMembershipDeleted", "teamMembershipUpdated", "teamUpdated", "userCreated",
+  "userSettingsUpdated", "userUpdated", "workflowStateArchived", "workflowStateCreated",
+  "workflowStateUpdated",
+]
+
+# ============================================================================
+# Issue (what `--json` includes; types::Issue)
+# ============================================================================
+
+[[entry]]
+type = "Issue"
+status = "implemented"
+via = ["types::Issue"]
+fields = [
+  "assignee", "attachments", "completedAt", "createdAt", "dueDate", "estimate", "id",
+  "identifier", "labels", "parent", "project", "projectMilestone", "startedAt", "state", "team",
+  "title", "updatedAt", "url",
+]
+
+[[entry]]
+type = "Issue"
+status = "unsupported"
+reason = "A lifecycle timestamp the CLI does not use yet; use `linear api`."
+fields = [
+  "addedToProjectAt", "addedToTeamAt", "archivedAt", "canceledAt", "startedTriageAt",
+  "triagedAt",
+]
+
+[[entry]]
+type = "Issue"
+status = "unsupported"
+reason = "A presentation detail (icon, color, avatar, display text) the CLI does not use."
+fields = [
+  "priorityLabel",
+]
+
+[[entry]]
+type = "Issue"
+status = "unsupported"
+reason = "A related entity or connection that is not embedded in this output; use the related entity's own command or `linear api`."
+fields = [
+  "agentSessions", "asksExternalUserRequester", "asksRequester", "botActor", "children",
+  "comments", "creator", "cycle", "delegate", "documents", "externalUserCreator", "favorite",
+  "formerAttachments", "formerNeeds", "inverseRelations", "lastAppliedTemplate", "needs",
+  "reactions", "recurringIssueTemplate", "relations", "releases", "sharedAccess", "snoozedBy",
+  "sourceComment", "subscribers", "syncedWith",
+]
+
+[[entry]]
+type = "Issue"
+status = "unsupported"
+reason = "AI-generated or suggestion data; outside the CLI's scope."
+fields = [
+  "activitySummary", "aiPromptProgresses", "incomingSuggestions", "suggestions",
+  "suggestionsGeneratedAt", "summary",
+]
+
+[[entry]]
+type = "Issue"
+status = "unsupported"
+reason = "History or time series: large and rarely needed; use `linear api`."
+fields = [
+  "history", "stateHistory",
+]
+
+[[entry]]
+type = "Issue"
+status = "unsupported"
+reason = "Internal ordering, sync or integration bookkeeping with no use in the CLI."
+fields = [
+  "addedToCycleAt", "autoArchivedAt", "autoClosedAt", "boardOrder", "inheritsSharedAccess",
+  "integrationSourceType", "previousIdentifiers", "prioritySortOrder", "reactionData",
+  "slaBreachesAt", "slaHighRiskAt", "slaMediumRiskAt", "slaStartedAt", "slaType",
+  "snoozedUntilAt", "sortOrder", "subIssueSortOrder", "trusted",
+]
+
+[[entry]]
+type = "Issue"
+status = "unsupported"
+reason = "Not selected in the fixed fragment; use `linear api` if it is needed."
+fields = [
+  "branchName", "customerTicketCount", "description", "number", "priority", "trashed",
+]
+
+[[entry]]
+type = "Issue"
+status = "unsupported"
+reason = "Rich-text or document representation of content already available as plain text, or editor state; not needed."
+fields = [
+  "descriptionState", "documentContent",
+]
+
+[[entry]]
+type = "Issue"
+status = "unsupported"
+reason = "The raw id of a relation; the relation itself is not selected here."
+fields = [
+  "labelIds",
+]
+
+# ============================================================================
+# Project (what `--json` includes; types::Project)
+# ============================================================================
+
+[[entry]]
+type = "Project"
+status = "implemented"
+via = ["types::Project"]
+fields = [
+  "health", "id", "initiatives", "issues", "lastUpdate", "lead", "name", "projectMilestones",
+  "slugId", "startDate", "status", "targetDate", "updatedAt", "url",
+]
+
+[[entry]]
+type = "Project"
+status = "unsupported"
+reason = "A lifecycle timestamp the CLI does not use yet; use `linear api`."
+fields = [
+  "archivedAt", "canceledAt", "completedAt", "createdAt", "healthUpdatedAt",
+  "projectUpdateRemindersPausedUntilAt", "startedAt",
+]
+
+[[entry]]
+type = "Project"
+status = "unsupported"
+reason = "A presentation detail (icon, color, avatar, display text) the CLI does not use."
+fields = [
+  "color", "icon", "priorityLabel",
+]
+
+[[entry]]
+type = "Project"
+status = "unsupported"
+reason = "A related entity or connection that is not embedded in this output; use the related entity's own command or `linear api`."
+fields = [
+  "attachments", "comments", "convertedFromIssue", "creator", "documents", "externalLinks",
+  "facets", "favorite", "initiativeToProjects", "integrationsSettings", "inverseRelations",
+  "labels", "lastAppliedTemplate", "leadTeam", "members", "needs", "projectUpdates", "relations",
+  "syncedWith", "teams",
+]
+
+[[entry]]
+type = "Project"
+status = "unsupported"
+reason = "History or time series: large and rarely needed; use `linear api`."
+fields = [
+  "completedIssueCountHistory", "completedScopeHistory", "history", "inProgressScopeHistory",
+  "issueCountHistory", "progressHistory", "scopeHistory",
+]
+
+[[entry]]
+type = "Project"
+status = "unsupported"
+reason = "Internal ordering, sync or integration bookkeeping with no use in the CLI."
+fields = [
+  "autoArchivedAt", "microsoftTeamsChannelId", "previousIdentifiers", "prioritySortOrder",
+  "slackChannelId", "slackIssueComments", "slackIssueStatuses", "slackNewIssue", "sortOrder",
+]
+
+[[entry]]
+type = "Project"
+status = "unsupported"
+reason = "Not selected in the fixed fragment; use `linear api` if it is needed."
+fields = [
+  "content", "currentProgress", "description", "frequencyResolution", "identifier", "priority",
+  "progress", "resourceCount", "scope", "startDateResolution", "state", "targetDateResolution",
+  "trashed", "updateReminderFrequency", "updateReminderFrequencyInWeeks", "updateRemindersDay",
+  "updateRemindersHour",
+]
+
+[[entry]]
+type = "Project"
+status = "unsupported"
+reason = "Rich-text or document representation of content already available as plain text, or editor state; not needed."
+fields = [
+  "contentState", "documentContent",
+]
+
+[[entry]]
+type = "Project"
+status = "unsupported"
+reason = "The raw id of a relation; the relation itself is not selected here."
+fields = [
+  "labelIds", "leadTeamId",
+]
+
+# ============================================================================
+# ProjectMilestone (what `--json` includes; types::Milestone)
+# ============================================================================
+
+[[entry]]
+type = "ProjectMilestone"
+status = "implemented"
+via = ["types::Milestone"]
+fields = [
+  "description", "id", "name", "progress", "project", "sortOrder", "status", "targetDate",
+]
+
+[[entry]]
+type = "ProjectMilestone"
+status = "unsupported"
+reason = "A lifecycle timestamp the CLI does not use yet; use `linear api`."
+fields = [
+  "archivedAt", "createdAt", "updatedAt",
+]
+
+[[entry]]
+type = "ProjectMilestone"
+status = "unsupported"
+reason = "A related entity or connection that is not embedded in this output; use the related entity's own command or `linear api`."
+fields = [
+  "issues",
+]
+
+[[entry]]
+type = "ProjectMilestone"
+status = "unsupported"
+reason = "History or time series: large and rarely needed; use `linear api`."
+fields = [
+  "progressHistory",
+]
+
+[[entry]]
+type = "ProjectMilestone"
+status = "unsupported"
+reason = "Not selected in the fixed fragment; use `linear api` if it is needed."
+fields = [
+  "currentProgress",
+]
+
+[[entry]]
+type = "ProjectMilestone"
+status = "unsupported"
+reason = "Rich-text or document representation of content already available as plain text, or editor state; not needed."
+fields = [
+  "descriptionState", "documentContent",
+]
+
+# ============================================================================
+# ProjectUpdate (what `--json` includes; types::StatusUpdate)
+# ============================================================================
+
+[[entry]]
+type = "ProjectUpdate"
+status = "implemented"
+via = ["types::StatusUpdate"]
+fields = [
+  "body", "createdAt", "health", "id", "project", "updatedAt", "url", "user",
+]
+
+[[entry]]
+type = "ProjectUpdate"
+status = "unsupported"
+reason = "A lifecycle timestamp the CLI does not use yet; use `linear api`."
+fields = [
+  "archivedAt", "editedAt",
+]
+
+[[entry]]
+type = "ProjectUpdate"
+status = "unsupported"
+reason = "A presentation detail (icon, color, avatar, display text) the CLI does not use."
+fields = [
+  "isDiffHidden", "isStale",
+]
+
+[[entry]]
+type = "ProjectUpdate"
+status = "unsupported"
+reason = "A related entity or connection that is not embedded in this output; use the related entity's own command or `linear api`."
+fields = [
+  "comments", "reactions",
+]
+
+[[entry]]
+type = "ProjectUpdate"
+status = "unsupported"
+reason = "AI-generated or suggestion data; outside the CLI's scope."
+fields = [
+  "shortSummary",
+]
+
+[[entry]]
+type = "ProjectUpdate"
+status = "unsupported"
+reason = "History or time series: large and rarely needed; use `linear api`."
+fields = [
+  "diff", "diffMarkdown", "infoSnapshot",
+]
+
+[[entry]]
+type = "ProjectUpdate"
+status = "unsupported"
+reason = "Internal ordering, sync or integration bookkeeping with no use in the CLI."
+fields = [
+  "reactionData",
+]
+
+[[entry]]
+type = "ProjectUpdate"
+status = "unsupported"
+reason = "Not selected in the fixed fragment; use `linear api` if it is needed."
+fields = [
+  "commentCount", "slugId",
+]
+
+[[entry]]
+type = "ProjectUpdate"
+status = "unsupported"
+reason = "Rich-text or document representation of content already available as plain text, or editor state; not needed."
+fields = [
+  "bodyData",
+]
+
+# ============================================================================
+# Initiative (what `--json` includes; types::Initiative)
+# ============================================================================
+
+[[entry]]
+type = "Initiative"
+status = "implemented"
+via = ["types::Initiative"]
+fields = [
+  "id", "name", "owner", "slugId", "status", "targetDate", "url",
+]
+
+[[entry]]
+type = "Initiative"
+status = "unsupported"
+reason = "A lifecycle timestamp the CLI does not use yet; use `linear api`."
+fields = [
+  "archivedAt", "canceledAt", "completedAt", "createdAt", "healthUpdatedAt", "startedAt",
+  "updatedAt",
+]
+
+[[entry]]
+type = "Initiative"
+status = "unsupported"
+reason = "A presentation detail (icon, color, avatar, display text) the CLI does not use."
+fields = [
+  "color", "icon",
+]
+
+[[entry]]
+type = "Initiative"
+status = "unsupported"
+reason = "A related entity or connection that is not embedded in this output; use the related entity's own command or `linear api`."
+fields = [
+  "creator", "documents", "facets", "initiativeUpdates", "integrationsSettings", "labels",
+  "lastUpdate", "leadTeam", "links", "organization", "parentInitiative", "parentInitiatives",
+  "projects", "subInitiatives",
+]
+
+[[entry]]
+type = "Initiative"
+status = "unsupported"
+reason = "History or time series: large and rarely needed; use `linear api`."
+fields = [
+  "history",
+]
+
+[[entry]]
+type = "Initiative"
+status = "unsupported"
+reason = "Internal ordering, sync or integration bookkeeping with no use in the CLI."
+fields = [
+  "previousIdentifiers", "prioritySortOrder", "sortOrder",
+]
+
+[[entry]]
+type = "Initiative"
+status = "unsupported"
+reason = "Not selected in the fixed fragment; use `linear api` if it is needed."
+fields = [
+  "content", "description", "frequencyResolution", "health", "identifier", "priority",
+  "targetDateResolution", "trashed", "updateReminderFrequency", "updateReminderFrequencyInWeeks",
+  "updateRemindersDay", "updateRemindersHour", "visibility",
+]
+
+[[entry]]
+type = "Initiative"
+status = "unsupported"
+reason = "Rich-text or document representation of content already available as plain text, or editor state; not needed."
+fields = [
+  "documentContent",
+]
+
+[[entry]]
+type = "Initiative"
+status = "unsupported"
+reason = "The raw id of a relation; the relation itself is not selected here."
+fields = [
+  "labelIds",
+]
+
+# ============================================================================
+# User (what `--json` includes; types::User)
+# ============================================================================
+
+[[entry]]
+type = "User"
+status = "implemented"
+via = ["types::User"]
+fields = [
+  "active", "displayName", "email", "id", "isMe", "name",
+]
+
+[[entry]]
+type = "User"
+status = "unsupported"
+reason = "A lifecycle timestamp the CLI does not use yet; use `linear api`."
+fields = [
+  "archivedAt", "createdAt", "statusUntilAt", "updatedAt",
+]
+
+[[entry]]
+type = "User"
+status = "unsupported"
+reason = "A presentation detail (icon, color, avatar, display text) the CLI does not use."
+fields = [
+  "avatarBackgroundColor", "avatarUrl", "initials", "statusEmoji", "statusLabel",
+]
+
+[[entry]]
+type = "User"
+status = "unsupported"
+reason = "A related entity or connection that is not embedded in this output; use the related entity's own command or `linear api`."
+fields = [
+  "assignedIssues", "createdIssues", "delegatedIssues", "drafts", "feedFacets",
+  "identityProvider", "issueDrafts", "organization", "teamMemberships", "teams",
+]
+
+[[entry]]
+type = "User"
+status = "unsupported"
+reason = "Internal ordering, sync or integration bookkeeping with no use in the CLI."
+fields = [
+  "calendarHash", "gitHubUserId", "inviteHash",
+]
+
+[[entry]]
+type = "User"
+status = "unsupported"
+reason = "Not selected in the fixed fragment; use `linear api` if it is needed."
+fields = [
+  "admin", "app", "canAccessAnyPublicTeam", "createdIssueCount", "description", "disableReason",
+  "guest", "hasGitHubCodeAccess", "isAssignable", "isMentionable", "lastSeen", "owner",
+  "supportsAgentSessions", "timezone", "title", "url",
+]
+
+# ============================================================================
+# Template (what `--json` includes; types::Template)
+# ============================================================================
+
+[[entry]]
+type = "Template"
+status = "implemented"
+via = ["types::Template"]
+fields = [
+  "description", "id", "name", "team", "templateData", "type", "updatedAt",
+]
+
+[[entry]]
+type = "Template"
+status = "unsupported"
+reason = "A lifecycle timestamp the CLI does not use yet; use `linear api`."
+fields = [
+  "archivedAt", "createdAt", "lastAppliedAt",
+]
+
+[[entry]]
+type = "Template"
+status = "unsupported"
+reason = "A presentation detail (icon, color, avatar, display text) the CLI does not use."
+fields = [
+  "color", "icon",
+]
+
+[[entry]]
+type = "Template"
+status = "unsupported"
+reason = "A related entity or connection that is not embedded in this output; use the related entity's own command or `linear api`."
+fields = [
+  "creator", "inheritedFrom", "lastUpdatedBy", "organization", "pipeline",
+]
+
+[[entry]]
+type = "Template"
+status = "unsupported"
+reason = "Internal ordering, sync or integration bookkeeping with no use in the CLI."
+fields = [
+  "sortOrder",
+]
+
+[[entry]]
+type = "Template"
+status = "unsupported"
+reason = "Not selected in the fixed fragment; use `linear api` if it is needed."
+fields = [
+  "content", "hasFormFields",
+]
+
+# ============================================================================
+# Team (what `--json` includes; types::Team)
+# ============================================================================
+
+[[entry]]
+type = "Team"
+status = "implemented"
+via = ["types::Team"]
+fields = [
+  "id", "key", "name",
+]
+
+[[entry]]
+type = "Team"
+status = "unsupported"
+reason = "A lifecycle timestamp the CLI does not use yet; use `linear api`."
+fields = [
+  "archivedAt", "createdAt", "retiredAt", "updatedAt",
+]
+
+[[entry]]
+type = "Team"
+status = "unsupported"
+reason = "A presentation detail (icon, color, avatar, display text) the CLI does not use."
+fields = [
+  "color", "icon",
+]
+
+[[entry]]
+type = "Team"
+status = "unsupported"
+reason = "A related entity or connection that is not embedded in this output; use the related entity's own command or `linear api`."
+fields = [
+  "activeCycle", "ancestors", "children", "cycles", "defaultIssueState",
+  "defaultProjectTemplate", "defaultTemplateForMembers", "defaultTemplateForNonMembers",
+  "draftWorkflowState", "facets", "gitAutomationStates", "integrationsSettings", "issues",
+  "labels", "markedAsDuplicateWorkflowState", "members", "membership", "memberships",
+  "mergeWorkflowState", "mergeableWorkflowState", "organization", "parent", "pinnedResources",
+  "posts", "projects", "protectedBy", "releasePipelines", "resourceSections", "restrictedBy",
+  "reviewWorkflowState", "startWorkflowState", "states", "templates", "triageIssueState",
+  "triageResponsibility", "webhooks",
+]
+
+[[entry]]
+type = "Team"
+status = "unsupported"
+reason = "A team or workspace setting that does not affect what the CLI reads or writes."
+fields = [
+  "allMembersCanJoin", "defaultIssueEstimate", "inheritIssueEstimation",
+  "inheritProjectStatuses", "inheritWorkflowStatuses", "initiativesEnabled",
+  "issueEstimationAllowZero", "issueEstimationExtended", "issueEstimationType",
+  "issueOrderingNoPriorityFirst", "joinByDefault", "ledInitiativeCount", "private",
+  "requirePriorityToLeaveTriage", "securitySettings", "timezone", "triageEnabled", "visibility",
+]
+
+[[entry]]
+type = "Team"
+status = "unsupported"
+reason = "AI-generated or suggestion data; outside the CLI's scope."
+fields = [
+  "aiDiscussionSummariesEnabled", "aiThreadSummariesEnabled",
+]
+
+[[entry]]
+type = "Team"
+status = "unsupported"
+reason = "History or time series: large and rarely needed; use `linear api`."
+fields = [
+  "groupIssueHistory", "progressHistory",
+]
+
+[[entry]]
+type = "Team"
+status = "unsupported"
+reason = "Internal ordering, sync or integration bookkeeping with no use in the CLI."
+fields = [
+  "autoArchivePeriod", "autoCloseChildIssues", "autoCloseParentIssues", "autoClosePeriod",
+  "autoCloseStateId", "cycleCalenderUrl", "cycleCooldownTime", "cycleDuration",
+  "cycleIssueAutoAssignCompleted", "cycleIssueAutoAssignStarted", "cycleLockToActive",
+  "cycleStartDay", "cyclesEnabled", "inheritSlackAutoCreateProjectChannel", "inviteHash",
+  "issueSortOrderDefaultToBottom", "scimGroupName", "scimManaged",
+  "setIssueSortOrderOnStateChange", "slackAutoCreateProjectChannel", "slackIssueComments",
+  "slackIssueStatuses", "slackNewIssue", "upcomingCycleCount",
+]
+
+[[entry]]
+type = "Team"
+status = "unsupported"
+reason = "Not selected in the fixed fragment; use `linear api` if it is needed."
+fields = [
+  "currentProgress", "description", "displayName", "issueCount",
+]
+
+[[entry]]
+type = "Team"
+status = "unsupported"
+reason = "The raw id of a relation; the relation itself is not selected here."
+fields = [
+  "defaultTemplateForMembersId", "defaultTemplateForNonMembersId", "protectedById",
+  "restrictedById",
+]
+
+# ============================================================================
+# IssueLabel (what `--json` includes; types::Label)
+# ============================================================================
+
+[[entry]]
+type = "IssueLabel"
+status = "implemented"
+via = ["types::Label"]
+fields = [
+  "color", "groupType", "id", "isGroup", "name", "parent",
+]
+
+[[entry]]
+type = "IssueLabel"
+status = "unsupported"
+reason = "A lifecycle timestamp the CLI does not use yet; use `linear api`."
+fields = [
+  "archivedAt", "createdAt", "lastAppliedAt", "retiredAt", "updatedAt",
+]
+
+[[entry]]
+type = "IssueLabel"
+status = "unsupported"
+reason = "A related entity or connection that is not embedded in this output; use the related entity's own command or `linear api`."
+fields = [
+  "children", "creator", "inheritedFrom", "issues", "organization", "retiredBy", "team",
+]
+
+[[entry]]
+type = "IssueLabel"
+status = "unsupported"
+reason = "Not selected in the fixed fragment; use `linear api` if it is needed."
+fields = [
+  "description",
+]
+
+# ============================================================================
+# Comment (what `--json` includes; types::Comment)
+# ============================================================================
+
+[[entry]]
+type = "Comment"
+status = "implemented"
+via = ["types::Comment"]
+fields = [
+  "body", "createdAt", "id", "issue", "updatedAt", "url", "user",
+]
+
+[[entry]]
+type = "Comment"
+status = "unsupported"
+reason = "A lifecycle timestamp the CLI does not use yet; use `linear api`."
+fields = [
+  "archivedAt", "editedAt", "resolvedAt",
+]
+
+[[entry]]
+type = "Comment"
+status = "unsupported"
+reason = "A presentation detail (icon, color, avatar, display text) the CLI does not use."
+fields = [
+  "hideInLinear",
+]
+
+[[entry]]
+type = "Comment"
+status = "unsupported"
+reason = "A related entity or connection that is not embedded in this output; use the related entity's own command or `linear api`."
+fields = [
+  "agentSession", "agentSessions", "botActor", "children", "createdIssues", "externalThread",
+  "externalUser", "initiative", "initiativeUpdate", "onBehalfOf", "parent", "post", "project",
+  "projectUpdate", "reactions", "resolvingComment", "resolvingUser", "spawnedAgentSessions",
+  "syncedWith",
+]
+
+[[entry]]
+type = "Comment"
+status = "unsupported"
+reason = "AI-generated or suggestion data; outside the CLI's scope."
+fields = [
+  "aiPromptProgresses", "threadSummary",
+]
+
+[[entry]]
+type = "Comment"
+status = "unsupported"
+reason = "Internal ordering, sync or integration bookkeeping with no use in the CLI."
+fields = [
+  "reactionData",
+]
+
+[[entry]]
+type = "Comment"
+status = "unsupported"
+reason = "Not selected in the fixed fragment; use `linear api` if it is needed."
+fields = [
+  "isArtificialAgentSessionRoot",
+]
+
+[[entry]]
+type = "Comment"
+status = "unsupported"
+reason = "Rich-text or document representation of content already available as plain text, or editor state; not needed."
+fields = [
+  "bodyData", "documentContent", "documentContentId", "quotedText",
+]
+
+[[entry]]
+type = "Comment"
+status = "unsupported"
+reason = "The raw id of a relation; the relation itself is not selected here."
+fields = [
+  "initiativeId", "initiativeUpdateId", "issueId", "parentId", "projectId", "projectUpdateId",
+  "resolvingCommentId",
+]
+
+# ============================================================================
+# Attachment (what `--json` includes; types::Attachment)
+# ============================================================================
+
+[[entry]]
+type = "Attachment"
+status = "implemented"
+via = ["types::Attachment"]
+fields = [
+  "createdAt", "id", "sourceType", "subtitle", "title", "url",
+]
+
+[[entry]]
+type = "Attachment"
+status = "unsupported"
+reason = "A lifecycle timestamp the CLI does not use yet; use `linear api`."
+fields = [
+  "archivedAt", "updatedAt",
+]
+
+[[entry]]
+type = "Attachment"
+status = "unsupported"
+reason = "A related entity or connection that is not embedded in this output; use the related entity's own command or `linear api`."
+fields = [
+  "creator", "externalUserCreator", "issue", "originalIssue",
+]
+
+[[entry]]
+type = "Attachment"
+status = "unsupported"
+reason = "Not selected in the fixed fragment; use `linear api` if it is needed."
+fields = [
+  "groupBySource", "metadata", "source",
+]
+
+[[entry]]
+type = "Attachment"
+status = "unsupported"
+reason = "Rich-text or document representation of content already available as plain text, or editor state; not needed."
+fields = [
+  "bodyData",
+]
