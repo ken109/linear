@@ -11,6 +11,7 @@ pub mod document;
 pub mod error;
 pub mod inputs;
 pub mod queries;
+pub mod rules;
 pub mod scalars;
 pub mod types;
 pub mod wire;

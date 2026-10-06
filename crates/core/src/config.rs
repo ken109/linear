@@ -4,6 +4,7 @@
 //! the CLI's job.
 
 use crate::error::{Error, Result};
+use crate::rules::Operation;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::fmt;
@@ -51,6 +52,11 @@ pub struct WorkspaceConfig {
     /// Validator rules to enforce on writes.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub rules: Vec<Rule>,
+    /// Narrow a rule to some of the operations it supports (by default a rule
+    /// runs for all of them). Each key must be in `rules`, and each operation
+    /// must be one the rule can apply to.
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub rule_operations: BTreeMap<Rule, Vec<Operation>>,
     /// Allow `linear api --mutation` (ownership rules and validators do not apply to it).
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub allow_raw_mutation: bool,
@@ -64,6 +70,35 @@ pub struct Config {
     pub default: Option<String>,
     #[serde(default)]
     pub workspaces: BTreeMap<String, WorkspaceConfig>,
+}
+
+impl WorkspaceConfig {
+    /// `rule_operations` may only narrow enabled rules to operations they support.
+    fn validate_rules(&self, workspace: &str) -> Result<()> {
+        for (rule, ops) in &self.rule_operations {
+            if !self.rules.contains(rule) {
+                return Err(Error::Config(format!(
+                    "workspace {workspace:?}: rule_operations names {rule}, which is not in rules"
+                )));
+            }
+            if ops.is_empty() {
+                return Err(Error::Config(format!(
+                    "workspace {workspace:?}: rule_operations for {rule} is empty; remove the rule from rules instead"
+                )));
+            }
+            for op in ops {
+                if !rule.operations().contains(op) {
+                    let supported: Vec<&str> =
+                        rule.operations().iter().map(|o| o.as_str()).collect();
+                    return Err(Error::Config(format!(
+                        "workspace {workspace:?}: {rule} cannot apply to {op} (it applies to: {})",
+                        supported.join(", ")
+                    )));
+                }
+            }
+        }
+        Ok(())
+    }
 }
 
 /// A workspace name becomes a file name, so it is restricted.
@@ -94,8 +129,9 @@ impl Config {
     }
 
     pub fn validate(&self) -> Result<()> {
-        for name in self.workspaces.keys() {
+        for (name, ws) in &self.workspaces {
             validate_workspace_name(name)?;
+            ws.validate_rules(name)?;
         }
         if let Some(default) = &self.default {
             if !self.workspaces.contains_key(default) {
