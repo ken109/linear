@@ -8,13 +8,18 @@ use crate::types::{Issue, Project, ProjectMilestoneStatus, ProjectStatusType};
 use chrono::NaiveDate;
 
 pub(super) fn run(ctx: &Ctx, out: &mut Vec<Finding>) {
-    for p in &ctx.snapshot.projects {
+    for p in ctx
+        .snapshot
+        .projects
+        .iter()
+        .filter(|p| ctx.project_in_scope(p))
+    {
         project_state_vs_issues(ctx, p, out);
         project_without_lead(ctx, p, out);
         project_overdue(ctx, p, out);
         milestones_overdue(ctx, p, out);
     }
-    for i in &ctx.snapshot.issues {
+    for i in ctx.snapshot.issues.iter().filter(|i| ctx.issue_in_scope(i)) {
         issue_overdue(ctx, i, out);
         issue_without_milestone(ctx, i, out);
     }

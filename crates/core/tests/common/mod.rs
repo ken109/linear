@@ -100,6 +100,32 @@ impl IssueB {
     pub fn in_project(self, slug: &str) -> Self {
         self.set("project", project_ref(slug))
     }
+    /// An attachment with this URL (the issue's source).
+    pub fn source(self, url: &str) -> Self {
+        self.set(
+            "attachments",
+            json!({ "nodes": [{
+                "id": "a-1", "title": "Source", "subtitle": null, "url": url,
+                "sourceType": null, "createdAt": "2026-09-01T00:00:00Z",
+            }] }),
+        )
+    }
+    /// Labels as `(name, group)`, the group being a single-select label group.
+    pub fn labels(self, labels: &[(&str, &str)]) -> Self {
+        let nodes: Vec<Value> = labels
+            .iter()
+            .map(|(name, group)| {
+                json!({
+                    "id": format!("l-{name}"), "name": name, "color": "#000000",
+                    "isGroup": false,
+                    "parent": {
+                        "id": format!("lg-{group}"), "name": group, "groupType": "singleSelect",
+                    },
+                })
+            })
+            .collect();
+        self.set("labels", json!({ "nodes": nodes }))
+    }
     pub fn in_milestone(self, project_slug: &str, name: &str) -> Self {
         self.set(
             "projectMilestone",

@@ -7,14 +7,20 @@
 
 mod consistency;
 mod finding;
+mod scope;
 mod stale;
+mod validators;
 
+use crate::config::Rule;
+use crate::error::Result;
+use crate::rules::RuleSet;
 use crate::types::{Issue, Project, ProjectStatusType};
 use chrono::{DateTime, NaiveDate, Utc};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
 pub use finding::{AuditReport, Finding, FindingKey, RuleId, Severity, Target, TargetKind};
+pub use scope::AuditOptions;
 
 /// Everything the audit looks at, for one workspace.
 ///
@@ -27,8 +33,8 @@ pub struct Snapshot {
     pub projects: Vec<Project>,
 }
 
-/// The thresholds of the staleness rules, set per workspace.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+/// Audit settings, per workspace.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(default, deny_unknown_fields)]
 pub struct AuditConfig {
     /// `stale-in-progress`: an In Progress issue with no update for this many
@@ -37,6 +43,10 @@ pub struct AuditConfig {
     /// `status-update-outdated`: a project's latest status update this many
     /// days old is outdated.
     pub status_update_days: u32,
+    /// Validator rules to apply to existing issues: the workspace's enabled
+    /// rules. `template-sections` is accepted but cannot be judged here, since
+    /// an issue carries neither its body nor the template it came from.
+    pub validators: Vec<Rule>,
 }
 
 impl Default for AuditConfig {
@@ -44,6 +54,7 @@ impl Default for AuditConfig {
         Self {
             stale_days: 7,
             status_update_days: 14,
+            validators: Vec::new(),
         }
     }
 }
@@ -53,10 +64,47 @@ impl Default for AuditConfig {
 /// `now` decides what is overdue or stale; target dates are compared as
 /// calendar dates in UTC, ages in whole days since the timestamp.
 pub fn audit(snapshot: &Snapshot, config: &AuditConfig, now: DateTime<Utc>) -> AuditReport {
-    let ctx = Ctx::new(snapshot, config, now);
+    run(snapshot, config, now, None, Vec::new())
+}
+
+/// Like [`audit`], narrowed to the issues the caller names.
+///
+/// With `options.issues`, only findings about those issues are returned, plus
+/// findings about the projects (and their milestones) those issues belong to,
+/// since changing an issue is what makes its project's state or status update
+/// wrong. Identifiers that the snapshot does not contain are listed in
+/// [`AuditReport::unresolved_issues`] rather than dropped.
+///
+/// With `options.since` as well, each named issue not updated at or after that
+/// time yields a `not-updated-since` finding, always actionable: the caller
+/// said it worked on the issue.
+///
+/// `since` without `issues` is a usage error: it has no issues to be about.
+pub fn audit_scoped(
+    snapshot: &Snapshot,
+    config: &AuditConfig,
+    options: &AuditOptions,
+    now: DateTime<Utc>,
+) -> Result<AuditReport> {
+    match scope::resolve(snapshot, options)? {
+        None => Ok(audit(snapshot, config, now)),
+        Some((scope, unresolved)) => Ok(run(snapshot, config, now, Some(scope), unresolved)),
+    }
+}
+
+fn run(
+    snapshot: &Snapshot,
+    config: &AuditConfig,
+    now: DateTime<Utc>,
+    scope: Option<scope::Scope>,
+    unresolved_issues: Vec<String>,
+) -> AuditReport {
+    let ctx = Ctx::new(snapshot, config, now, scope);
     let mut findings = Vec::new();
     consistency::run(&ctx, &mut findings);
     stale::run(&ctx, &mut findings);
+    validators::run(&ctx, &mut findings);
+    scope::run(&ctx, &mut findings);
     findings.sort_by(|a, b| {
         (a.rule, a.target.kind, &a.target.identifier).cmp(&(
             b.rule,
@@ -64,7 +112,10 @@ pub fn audit(snapshot: &Snapshot, config: &AuditConfig, now: DateTime<Utc>) -> A
             &b.target.identifier,
         ))
     });
-    AuditReport { findings }
+    AuditReport {
+        findings,
+        unresolved_issues,
+    }
 }
 
 /// What the rules share.
@@ -73,16 +124,25 @@ pub(crate) struct Ctx<'a> {
     pub config: &'a AuditConfig,
     pub now: DateTime<Utc>,
     pub today: NaiveDate,
+    pub rules: RuleSet,
+    pub scope: Option<scope::Scope<'a>>,
     projects: HashMap<&'a str, &'a Project>,
 }
 
 impl<'a> Ctx<'a> {
-    fn new(snapshot: &'a Snapshot, config: &'a AuditConfig, now: DateTime<Utc>) -> Self {
+    fn new(
+        snapshot: &'a Snapshot,
+        config: &'a AuditConfig,
+        now: DateTime<Utc>,
+        scope: Option<scope::Scope<'a>>,
+    ) -> Self {
         Self {
             snapshot,
             config,
             now,
             today: now.date_naive(),
+            rules: RuleSet::new(&config.validators),
+            scope,
             projects: snapshot
                 .projects
                 .iter()
@@ -95,6 +155,20 @@ impl<'a> Ctx<'a> {
     pub fn project_of(&self, issue: &Issue) -> Option<&'a Project> {
         let id = issue.project.as_ref()?.id.inner();
         self.projects.get(id).copied()
+    }
+
+    /// Is the issue among those the audit was narrowed to (always, if it was not)?
+    pub fn issue_in_scope(&self, issue: &Issue) -> bool {
+        self.scope
+            .as_ref()
+            .is_none_or(|s| s.has_issue(issue.id.inner()))
+    }
+
+    /// Is the project one the narrowed issues belong to (always, if not narrowed)?
+    pub fn project_in_scope(&self, project: &Project) -> bool {
+        self.scope
+            .as_ref()
+            .is_none_or(|s| s.has_project(project.id.inner()))
     }
 
     pub fn workspace(&self) -> &str {

@@ -19,6 +19,12 @@ pub enum RuleId {
     StaleInProgress,
     /// An In Progress project's latest status update is out of date.
     StatusUpdateOutdated,
+    /// A validator rule (`source-attachment`) applied to an existing issue.
+    SourceAttachment,
+    /// A validator rule (`label-groups-exclusive`) applied to an existing issue.
+    LabelGroupsExclusive,
+    /// An issue the caller said it touched was not updated since a given time.
+    NotUpdatedSince,
 }
 
 impl RuleId {
@@ -31,6 +37,9 @@ impl RuleId {
             Self::ProjectWithoutLead => "project-without-lead",
             Self::StaleInProgress => "stale-in-progress",
             Self::StatusUpdateOutdated => "status-update-outdated",
+            Self::SourceAttachment => "source-attachment",
+            Self::LabelGroupsExclusive => "label-groups-exclusive",
+            Self::NotUpdatedSince => "not-updated-since",
         }
     }
 }
@@ -109,6 +118,10 @@ impl Finding {
 pub struct AuditReport {
     /// Sorted by rule, then target kind, then target identifier.
     pub findings: Vec<Finding>,
+    /// Issue identifiers asked for with `issues` that the snapshot does not
+    /// contain. They could not be checked, which is not the same as passing.
+    #[serde(default)]
+    pub unresolved_issues: Vec<String>,
 }
 
 impl AuditReport {

@@ -8,11 +8,18 @@ use chrono::{DateTime, Utc};
 use std::collections::HashMap;
 
 pub(super) fn run(ctx: &Ctx, out: &mut Vec<Finding>) {
-    for i in &ctx.snapshot.issues {
+    for i in ctx.snapshot.issues.iter().filter(|i| ctx.issue_in_scope(i)) {
         stale_in_progress(ctx, i, out);
     }
+    // State changes are read from every issue, narrowed or not: an issue
+    // outside the scope still changes what its project's update must say.
     let changes = last_state_changes(ctx);
-    for p in &ctx.snapshot.projects {
+    for p in ctx
+        .snapshot
+        .projects
+        .iter()
+        .filter(|p| ctx.project_in_scope(p))
+    {
         status_update_outdated(ctx, p, &changes, out);
     }
 }
