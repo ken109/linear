@@ -174,3 +174,20 @@ fn initiative_filters() {
         json!({"status": {"in": ["Active"]}, "owner": {"isMe": {"eq": true}}})
     );
 }
+
+#[test]
+fn the_audit_filter_is_open_issues_or_recently_updated_ones() {
+    let since = "2026-10-06T00:00:00Z".parse().unwrap();
+    let req = build_request(&read::issue_list(IssueListVars::new(
+        page(),
+        Some(linear_core::filters::audit_issues(since)),
+    )));
+    let v: Value = serde_json::from_str(&req.to_json()).unwrap();
+    assert_eq!(
+        v["variables"]["filter"],
+        json!({"or": [
+            {"state": {"type": {"nin": ["completed", "canceled"]}}},
+            {"updatedAt": {"gte": "2026-10-06T00:00:00Z"}},
+        ]})
+    );
+}

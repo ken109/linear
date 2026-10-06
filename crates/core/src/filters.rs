@@ -9,9 +9,20 @@
 //! a state type) into a filter. They are pure, so they are tested without a
 //! server.
 
+use crate::scalars::DateTimeOrDuration;
 use crate::schema;
+use chrono::{DateTime, Utc};
 
 // ---------------------------------------------------------------- comparators
+
+/// A comparator on a timestamp field that is never null.
+#[derive(cynic::InputObject, Debug, Clone, Default, PartialEq)]
+#[cynic(graphql_type = "DateComparator")]
+pub struct DateComparator {
+    /// At or after this time.
+    #[cynic(skip_serializing_if = "Option::is_none")]
+    pub gte: Option<DateTimeOrDuration>,
+}
 
 #[derive(cynic::InputObject, Debug, Clone, Default, PartialEq)]
 #[cynic(graphql_type = "StringComparator", rename_all = "camelCase")]
@@ -224,10 +235,39 @@ pub struct IssueFilter {
     pub or: Option<Vec<IssueFilter>>,
     #[cynic(skip_serializing_if = "Option::is_none")]
     pub labels: Option<LabelCollectionFilter>,
+    #[cynic(skip_serializing_if = "Option::is_none")]
+    pub updated_at: Option<DateComparator>,
 }
 
 /// State types that mean the work is finished.
 pub const CLOSED_STATE_TYPES: [&str; 2] = ["completed", "canceled"];
+
+/// The issues an audit looks at: every open issue, and any issue updated at
+/// or after `changed_since`.
+///
+/// A state change always updates the issue, so the second alternative catches
+/// the issues that were completed or canceled recently, whose state changes
+/// the staleness of a project's status update is judged against.
+pub fn audit_issues(changed_since: DateTime<Utc>) -> IssueFilter {
+    IssueFilter {
+        or: Some(vec![
+            IssueFilter {
+                state: Some(StateFilter {
+                    type_: Some(StringComparator::none_of(CLOSED_STATE_TYPES)),
+                    name: None,
+                }),
+                ..IssueFilter::default()
+            },
+            IssueFilter {
+                updated_at: Some(DateComparator {
+                    gte: Some(DateTimeOrDuration(changed_since)),
+                }),
+                ..IssueFilter::default()
+            },
+        ]),
+        ..IssueFilter::default()
+    }
+}
 
 /// What `issue list` can be narrowed by. Unset fields do not narrow.
 #[derive(Debug, Clone, Default)]
