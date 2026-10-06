@@ -1,0 +1,99 @@
+{
+  "workspace": "example",
+  "staleDays": 14,
+  "projects": [
+    {
+      "slugId": "eeeeeeeeeeee",
+      "name": "Planned but written about",
+      "url": "https://linear.app/example/project/eeeeeeeeeeee",
+      "status": "Planned",
+      "initiative": null,
+      "health": "offTrack",
+      "update": {
+        "url": "https://linear.app/example/project/eeeeeeeeeeee/activity#u",
+        "createdAt": "2026-10-07T00:30:00Z",
+        "ageDays": 13,
+        "stale": false,
+        "author": "Alice Example",
+        "preview": [
+          "Blocked on a decision.",
+          "Next: ask for it."
+        ]
+      },
+      "milestones": {
+        "total": 1,
+        "done": 1,
+        "next": null
+      }
+    },
+    {
+      "slugId": "aaaaaaaaaaaa",
+      "name": "Ship the importer",
+      "url": "https://linear.app/example/project/aaaaaaaaaaaa",
+      "status": "In Progress",
+      "initiative": "Platform",
+      "health": "onTrack",
+      "update": {
+        "url": "https://linear.app/example/project/aaaaaaaaaaaa/activity#u",
+        "createdAt": "2026-10-06T13:34:22.881Z",
+        "ageDays": 13,
+        "stale": false,
+        "author": "Alice Example",
+        "preview": [
+          "Stage: parser done, writer in progress",
+          "Next: wire the retry queue",
+          "Waiting: nothing"
+        ]
+      },
+      "milestones": {
+        "total": 3,
+        "done": 1,
+        "next": {
+          "name": "Writer",
+          "targetDate": "2026-10-20",
+          "progress": 40.0,
+          "overdue": false
+        }
+      }
+    },
+    {
+      "slugId": "cccccccccccc",
+      "name": "Old research",
+      "url": "https://linear.app/example/project/cccccccccccc",
+      "status": "Paused",
+      "initiative": "Platform",
+      "health": "atRisk",
+      "update": {
+        "url": "https://linear.app/example/project/cccccccccccc/activity#u",
+        "createdAt": "2026-08-01T01:00:00Z",
+        "ageDays": 80,
+        "stale": true,
+        "author": "Bob Example",
+        "preview": [
+          "Stage: waiting for the vendor",
+          "A very long second line that goes on and on. A very long second line that goes on and on. A very long second line that g…"
+        ]
+      },
+      "milestones": {
+        "total": 1,
+        "done": 0,
+        "next": {
+          "name": "Pilot",
+          "targetDate": "2026-09-01",
+          "progress": 10.0,
+          "overdue": true
+        }
+      }
+    },
+    {
+      "slugId": "bbbbbbbbbbbb",
+      "name": "Tidy the backlog",
+      "url": "https://linear.app/example/project/bbbbbbbbbbbb",
+      "status": "In Progress",
+      "initiative": null,
+      "health": null,
+      "update": null,
+      "milestones": null
+    }
+  ]
+}

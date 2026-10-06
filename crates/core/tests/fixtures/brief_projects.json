@@ -1,0 +1,413 @@
+{
+  "data": {
+    "projects": {
+      "nodes": [
+        {
+          "id": "p-aaaaaaaaaaaa",
+          "slugId": "aaaaaaaaaaaa",
+          "name": "Ship the importer",
+          "url": "https://linear.app/example/project/aaaaaaaaaaaa",
+          "status": {
+            "id": "st-started",
+            "name": "In Progress",
+            "type": "started"
+          },
+          "lead": {
+            "id": "00000000-0000-4000-8000-000000000001",
+            "name": "Alice Example",
+            "displayName": "alice",
+            "email": "a@example.com",
+            "active": true,
+            "isMe": true
+          },
+          "startDate": null,
+          "targetDate": null,
+          "health": "onTrack",
+          "projectMilestones": {
+            "nodes": [
+              {
+                "id": "m-Parser",
+                "name": "Parser",
+                "description": null,
+                "targetDate": "2026-09-30",
+                "status": "done",
+                "sortOrder": 2,
+                "progress": 100,
+                "project": {
+                  "id": "p-aaaaaaaaaaaa",
+                  "slugId": "aaaaaaaaaaaa",
+                  "name": "x",
+                  "url": "https://linear.app/example/project/aaaaaaaaaaaa"
+                }
+              },
+              {
+                "id": "m-Writer",
+                "name": "Writer",
+                "description": null,
+                "targetDate": "2026-10-20",
+                "status": "next",
+                "sortOrder": 3,
+                "progress": 40,
+                "project": {
+                  "id": "p-aaaaaaaaaaaa",
+                  "slugId": "aaaaaaaaaaaa",
+                  "name": "x",
+                  "url": "https://linear.app/example/project/aaaaaaaaaaaa"
+                }
+              },
+              {
+                "id": "m-Docs",
+                "name": "Docs",
+                "description": null,
+                "targetDate": "2026-11-15",
+                "status": "unstarted",
+                "sortOrder": 4,
+                "progress": 0,
+                "project": {
+                  "id": "p-aaaaaaaaaaaa",
+                  "slugId": "aaaaaaaaaaaa",
+                  "name": "x",
+                  "url": "https://linear.app/example/project/aaaaaaaaaaaa"
+                }
+              }
+            ]
+          },
+          "initiatives": {
+            "nodes": [
+              {
+                "id": "i-Platform",
+                "name": "Platform",
+                "url": "https://linear.app/example/initiative/Platform"
+              }
+            ]
+          },
+          "lastUpdate": {
+            "id": "u-aaaaaaaaaaaa",
+            "url": "https://linear.app/example/project/aaaaaaaaaaaa/activity#u",
+            "body": "- Stage: parser done, writer in progress\n- Next: wire the retry queue\n- Waiting: nothing\n- A fourth line that is not shown",
+            "health": "onTrack",
+            "createdAt": "2026-10-06T13:34:22.881Z",
+            "updatedAt": "2026-10-06T13:34:22.881Z",
+            "user": {
+              "id": "00000000-0000-4000-8000-000000000001",
+              "name": "Alice Example",
+              "displayName": "alice",
+              "email": "a@example.com",
+              "active": true,
+              "isMe": true
+            },
+            "project": {
+              "id": "p-aaaaaaaaaaaa",
+              "slugId": "aaaaaaaaaaaa",
+              "name": "Ship the importer",
+              "url": "https://linear.app/example/project/aaaaaaaaaaaa"
+            }
+          },
+          "issues": {
+            "nodes": [],
+            "pageInfo": {
+              "hasNextPage": false,
+              "endCursor": null
+            }
+          },
+          "updatedAt": "2026-10-06T13:34:42.333Z"
+        },
+        {
+          "id": "p-bbbbbbbbbbbb",
+          "slugId": "bbbbbbbbbbbb",
+          "name": "Tidy the backlog",
+          "url": "https://linear.app/example/project/bbbbbbbbbbbb",
+          "status": {
+            "id": "st-started",
+            "name": "In Progress",
+            "type": "started"
+          },
+          "lead": {
+            "id": "00000000-0000-4000-8000-000000000001",
+            "name": "Alice Example",
+            "displayName": "alice",
+            "email": "a@example.com",
+            "active": true,
+            "isMe": true
+          },
+          "startDate": null,
+          "targetDate": null,
+          "health": null,
+          "projectMilestones": {
+            "nodes": []
+          },
+          "initiatives": {
+            "nodes": []
+          },
+          "lastUpdate": null,
+          "issues": {
+            "nodes": [],
+            "pageInfo": {
+              "hasNextPage": false,
+              "endCursor": null
+            }
+          },
+          "updatedAt": "2026-10-06T13:34:42.333Z"
+        },
+        {
+          "id": "p-cccccccccccc",
+          "slugId": "cccccccccccc",
+          "name": "Old research",
+          "url": "https://linear.app/example/project/cccccccccccc",
+          "status": {
+            "id": "st-paused",
+            "name": "Paused",
+            "type": "paused"
+          },
+          "lead": {
+            "id": "00000000-0000-4000-8000-000000000001",
+            "name": "Alice Example",
+            "displayName": "alice",
+            "email": "a@example.com",
+            "active": true,
+            "isMe": true
+          },
+          "startDate": null,
+          "targetDate": null,
+          "health": "atRisk",
+          "projectMilestones": {
+            "nodes": [
+              {
+                "id": "m-Pilot",
+                "name": "Pilot",
+                "description": null,
+                "targetDate": "2026-09-01",
+                "status": "overdue",
+                "sortOrder": 1,
+                "progress": 10,
+                "project": {
+                  "id": "p-cccccccccccc",
+                  "slugId": "cccccccccccc",
+                  "name": "x",
+                  "url": "https://linear.app/example/project/cccccccccccc"
+                }
+              }
+            ]
+          },
+          "initiatives": {
+            "nodes": [
+              {
+                "id": "i-Platform",
+                "name": "Platform",
+                "url": "https://linear.app/example/initiative/Platform"
+              },
+              {
+                "id": "i-Research",
+                "name": "Research",
+                "url": "https://linear.app/example/initiative/Research"
+              }
+            ]
+          },
+          "lastUpdate": {
+            "id": "u-cccccccccccc",
+            "url": "https://linear.app/example/project/cccccccccccc/activity#u",
+            "body": "\n\n1. Stage: waiting for the vendor\n2. A very long second line that goes on and on. A very long second line that goes on and on. A very long second line that goes on and on. A very long second line that goes on and on. A very long second line that goes on and on. ",
+            "health": "atRisk",
+            "createdAt": "2026-08-01T01:00:00.000Z",
+            "updatedAt": "2026-08-01T01:00:00.000Z",
+            "user": {
+              "id": "00000000-0000-4000-8000-000000000001",
+              "name": "Bob Example",
+              "displayName": "bob",
+              "email": "a@example.com",
+              "active": true,
+              "isMe": true
+            },
+            "project": {
+              "id": "p-cccccccccccc",
+              "slugId": "cccccccccccc",
+              "name": "Old research",
+              "url": "https://linear.app/example/project/cccccccccccc"
+            }
+          },
+          "issues": {
+            "nodes": [],
+            "pageInfo": {
+              "hasNextPage": false,
+              "endCursor": null
+            }
+          },
+          "updatedAt": "2026-10-06T13:34:42.333Z"
+        },
+        {
+          "id": "p-dddddddddddd",
+          "slugId": "dddddddddddd",
+          "name": "Not started yet",
+          "url": "https://linear.app/example/project/dddddddddddd",
+          "status": {
+            "id": "st-backlog",
+            "name": "Backlog",
+            "type": "backlog"
+          },
+          "lead": {
+            "id": "00000000-0000-4000-8000-000000000001",
+            "name": "Alice Example",
+            "displayName": "alice",
+            "email": "a@example.com",
+            "active": true,
+            "isMe": true
+          },
+          "startDate": null,
+          "targetDate": null,
+          "health": null,
+          "projectMilestones": {
+            "nodes": []
+          },
+          "initiatives": {
+            "nodes": []
+          },
+          "lastUpdate": null,
+          "issues": {
+            "nodes": [],
+            "pageInfo": {
+              "hasNextPage": false,
+              "endCursor": null
+            }
+          },
+          "updatedAt": "2026-10-06T13:34:42.333Z"
+        },
+        {
+          "id": "p-eeeeeeeeeeee",
+          "slugId": "eeeeeeeeeeee",
+          "name": "Planned but written about",
+          "url": "https://linear.app/example/project/eeeeeeeeeeee",
+          "status": {
+            "id": "st-planned",
+            "name": "Planned",
+            "type": "planned"
+          },
+          "lead": {
+            "id": "00000000-0000-4000-8000-000000000001",
+            "name": "Alice Example",
+            "displayName": "alice",
+            "email": "a@example.com",
+            "active": true,
+            "isMe": true
+          },
+          "startDate": null,
+          "targetDate": null,
+          "health": "offTrack",
+          "projectMilestones": {
+            "nodes": [
+              {
+                "id": "m-Only",
+                "name": "Only",
+                "description": null,
+                "targetDate": "2026-10-01",
+                "status": "done",
+                "sortOrder": 1,
+                "progress": 100,
+                "project": {
+                  "id": "p-eeeeeeeeeeee",
+                  "slugId": "eeeeeeeeeeee",
+                  "name": "x",
+                  "url": "https://linear.app/example/project/eeeeeeeeeeee"
+                }
+              }
+            ]
+          },
+          "initiatives": {
+            "nodes": []
+          },
+          "lastUpdate": {
+            "id": "u-eeeeeeeeeeee",
+            "url": "https://linear.app/example/project/eeeeeeeeeeee/activity#u",
+            "body": "Blocked on a decision.\nNext: ask for it.",
+            "health": "offTrack",
+            "createdAt": "2026-10-07T00:30:00.000Z",
+            "updatedAt": "2026-10-07T00:30:00.000Z",
+            "user": {
+              "id": "00000000-0000-4000-8000-000000000001",
+              "name": "Alice Example",
+              "displayName": "alice",
+              "email": "a@example.com",
+              "active": true,
+              "isMe": true
+            },
+            "project": {
+              "id": "p-eeeeeeeeeeee",
+              "slugId": "eeeeeeeeeeee",
+              "name": "Planned but written about",
+              "url": "https://linear.app/example/project/eeeeeeeeeeee"
+            }
+          },
+          "issues": {
+            "nodes": [],
+            "pageInfo": {
+              "hasNextPage": false,
+              "endCursor": null
+            }
+          },
+          "updatedAt": "2026-10-06T13:34:42.333Z"
+        },
+        {
+          "id": "p-ffffffffffff",
+          "slugId": "ffffffffffff",
+          "name": "Already finished",
+          "url": "https://linear.app/example/project/ffffffffffff",
+          "status": {
+            "id": "st-completed",
+            "name": "Completed",
+            "type": "completed"
+          },
+          "lead": {
+            "id": "00000000-0000-4000-8000-000000000001",
+            "name": "Alice Example",
+            "displayName": "alice",
+            "email": "a@example.com",
+            "active": true,
+            "isMe": true
+          },
+          "startDate": null,
+          "targetDate": null,
+          "health": "onTrack",
+          "projectMilestones": {
+            "nodes": []
+          },
+          "initiatives": {
+            "nodes": []
+          },
+          "lastUpdate": {
+            "id": "u-ffffffffffff",
+            "url": "https://linear.app/example/project/ffffffffffff/activity#u",
+            "body": "Done.",
+            "health": "onTrack",
+            "createdAt": "2026-09-01T00:00:00.000Z",
+            "updatedAt": "2026-09-01T00:00:00.000Z",
+            "user": {
+              "id": "00000000-0000-4000-8000-000000000001",
+              "name": "Alice Example",
+              "displayName": "alice",
+              "email": "a@example.com",
+              "active": true,
+              "isMe": true
+            },
+            "project": {
+              "id": "p-ffffffffffff",
+              "slugId": "ffffffffffff",
+              "name": "Already finished",
+              "url": "https://linear.app/example/project/ffffffffffff"
+            }
+          },
+          "issues": {
+            "nodes": [],
+            "pageInfo": {
+              "hasNextPage": false,
+              "endCursor": null
+            }
+          },
+          "updatedAt": "2026-10-06T13:34:42.333Z"
+        }
+      ],
+      "pageInfo": {
+        "hasNextPage": false,
+        "endCursor": "c"
+      }
+    }
+  }
+}
