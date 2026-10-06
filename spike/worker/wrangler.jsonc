@@ -1,0 +1,9 @@
+{
+  // Local only. Never deployed. The API key comes from .dev.vars (gitignored).
+  // `.wasm` imports are bundled as CompiledWasm modules by default.
+  "name": "linear-wasm-spike",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-10-01",
+  // No id: `wrangler dev` uses a local (miniflare) namespace.
+  "kv_namespaces": [{ "binding": "CACHE" }]
+}

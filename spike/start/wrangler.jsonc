@@ -1,0 +1,7 @@
+{
+  // Local only. Never deployed. The API key comes from .dev.vars (gitignored).
+  "name": "linear-wasm-spike-start",
+  "compatibility_date": "2026-10-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "main": "@tanstack/react-start/server-entry"
+}

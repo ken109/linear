@@ -1,0 +1,17 @@
+{
+  "name": "linear-wasm-spike-worker",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Throwaway spike (KK-227): call linear-core compiled to wasm from a Cloudflare Worker. Not an application.",
+  "type": "module",
+  "scripts": {
+    "build:wasm": "sh scripts/build-wasm.sh",
+    "dev": "npm run build:wasm && wrangler dev",
+    "check": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^5.20261006.1",
+    "typescript": "^5.6.0",
+    "wrangler": "^4.147.0"
+  }
+}

@@ -1,0 +1,29 @@
+{
+  "name": "linear-wasm-spike-start",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Throwaway spike (KK-227): minimal TanStack Start app on Workers that imports linear-core compiled to wasm. Not an application.",
+  "type": "module",
+  "scripts": {
+    "build:wasm": "sh ../worker/scripts/build-wasm.sh src/wasm",
+    "dev": "npm run build:wasm && vite dev --port 3000",
+    "build": "npm run build:wasm && vite build",
+    "preview": "vite preview",
+    "check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@tanstack/react-router": "^1.170.41",
+    "@tanstack/react-start": "^1.168.60",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0"
+  },
+  "devDependencies": {
+    "@cloudflare/vite-plugin": "^1.62.5",
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0",
+    "@vitejs/plugin-react": "^6.0.1",
+    "typescript": "^6.0.2",
+    "vite": "^8.0.0",
+    "wrangler": "^4.147.0"
+  }
+}
