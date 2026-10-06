@@ -31,6 +31,9 @@ pub enum Command {
     /// Manage workspaces and credentials
     #[command(subcommand)]
     Workspace(WorkspaceCommand),
+    /// Read issues
+    #[command(subcommand)]
+    Issue(crate::commands::issue::IssueCommand),
     /// Send a raw GraphQL query (read-only) and print the response data
     Api(ApiArgs),
 }
