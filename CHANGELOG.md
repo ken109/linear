@@ -1,5 +1,27 @@
 # Changelog
 
+## [0.3.0](https://github.com/ken109/linear/compare/v0.2.0...v0.3.0) (2026-10-07)
+
+
+### ⚠ BREAKING CHANGES
+
+* **core:** camelCase JSON keys in the audit and cache shapes
+
+### Features
+
+* **core:** camelCase JSON keys in the audit and cache shapes ([95bd336](https://github.com/ken109/linear/commit/95bd336adae308b973c96c879cba50c5e408446e))
+* **core:** require a template to replace a body under template-sections ([f2c3577](https://github.com/ken109/linear/commit/f2c3577a63b566b3e7d8cfb5a8e1d7a612d45d76))
+
+
+### Code Refactoring
+
+* **cli:** decide a cache refresh with core's decide_refresh ([73c1812](https://github.com/ken109/linear/commit/73c18125cd36e0aaf46addcb68d064a82dc000ce))
+
+
+### Documentation
+
+* say template-sections requires --template on body updates ([7610a01](https://github.com/ken109/linear/commit/7610a01317ff39cf0e1a02a0d9d5617d751291cb))
+
 ## [0.2.0](https://github.com/ken109/linear/compare/v0.1.0...v0.2.0) (2026-10-07)
 
 
