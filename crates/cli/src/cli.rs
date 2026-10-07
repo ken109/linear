@@ -66,11 +66,14 @@ pub enum Command {
     /// Read users
     #[command(subcommand)]
     User(crate::commands::user::UserCommand),
-    /// Find the cycle a meeting's commitments go into: the one that contains the day after it
+    /// Find the cycle a meeting's commitments go into (`cycle <DATE>`), or list and view cycles
     ///
-    /// Read-only. Fails (exit 2, listing the cycles that exist) when no cycle contains that
-    /// day, so a missing cycle is never taken for "no cycle". The day is judged at noon
+    /// `linear cycle 2026-10-05` is read-only and prints the cycle that contains the day after
+    /// that meeting. It fails (exit 2, listing the cycles that exist) when no cycle contains
+    /// that day, so a missing cycle is never taken for "no cycle". The day is judged at noon
     /// Japan Standard Time. `issue create --held-on` uses the same rule.
+    /// `linear cycle list` and `linear cycle view <NUMBER>` read a team's cycles and the issues
+    /// in one; they are separate subcommands and do not change the date form.
     Cycle(crate::commands::cycle::CycleArgs),
     /// Find Linear data that has drifted: stale work, outdated status updates, inconsistent states
     ///

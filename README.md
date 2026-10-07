@@ -243,6 +243,8 @@ linear team list
 linear user view me
 linear brief                                                # where each unfinished project stands
 linear cycle 2026-10-05                                     # the cycle that holds the day after that meeting
+linear cycle list --state active                            # a team's cycles, newest first
+linear cycle view 41                                        # one cycle by number, with its issues
 ```
 
 Listings return at most 50 results; `--limit <N>` changes that and `--all` follows every page.
@@ -531,6 +533,23 @@ so). That alignment is a write to an existing issue, so the ownership rule for c
 applies to it (exit 4). With `--json` the output has `cycle` (the cycle the issue is in) and
 `changed` (`["cycle"]` when this run set it, otherwise empty). Creating or changing cycles
 themselves is not supported.
+
+`linear cycle list` and `linear cycle view <NUMBER>` read the same team's cycles for planning
+(read-only; `--team` or `default_team` picks the team). They are subcommands of `cycle`, and
+`linear cycle <DATE>` is unchanged: a date is the command's own argument, so `list` and `view`
+never clash with it (`cycle --team EX list` is refused; give `--team` to the subcommand).
+
+- `cycle list` prints `NUMBER NAME STATE STARTS ENDS PROGRESS`. `STATE` is `active`, `next`
+  (the next one to start), `upcoming` (later) or `past`; `--state active|upcoming|past` narrows
+  it. Linear cannot sort cycles, so every page is fetched and the list is sorted newest first
+  before `--limit` (default 50) or `--all` applies. `--json` prints an array of cycles with
+  `id`, `number`, `name`, `description`, `startsAt`, `endsAt`, `completedAt`, `isActive`,
+  `isFuture`, `isNext`, `isPast`, `progress` (0 to 1) and `team`, each with `workspace`;
+  `--quiet` prints the numbers.
+- `cycle view 41` prints that cycle and the issues in it (`--limit` and `--all` page through
+  the issues, as for the other listings). `--json` is the cycle's fields above plus `issues`
+  (identifier, title, url, state, assignee); `--quiet` prints the cycle number. A number the
+  team does not have is a usage error (exit 2).
 
 #### `issue update`
 
