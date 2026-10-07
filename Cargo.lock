@@ -640,7 +640,7 @@ checksum = "ce5d3ddc6d3fa000eb1536d85e147bfe31aacaba692ed6a876f95cb7c855be78"
 
 [[package]]
 name = "linear"
-version = "0.5.0"
+version = "0.6.0"
 dependencies = [
  "chrono",
  "clap",
@@ -660,7 +660,7 @@ dependencies = [
 
 [[package]]
 name = "linear-core"
-version = "0.5.0"
+version = "0.6.0"
 dependencies = [
  "chrono",
  "cynic",
@@ -677,7 +677,7 @@ dependencies = [
 
 [[package]]
 name = "linear-wasm"
-version = "0.5.0"
+version = "0.6.0"
 dependencies = [
  "chrono",
  "linear-core",
