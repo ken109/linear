@@ -12,6 +12,7 @@ pub mod config;
 pub mod cycle;
 pub mod document;
 pub mod error;
+pub mod files;
 pub mod filters;
 pub mod guard;
 pub mod initiative_write;
