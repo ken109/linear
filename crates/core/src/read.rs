@@ -463,6 +463,20 @@ pub fn initiative_list(vars: InitiativeListVars) -> Operation<InitiativeList, In
     InitiativeList::build(vars)
 }
 
+/// [`InitiativeList`] including archived initiatives (to find one to restore).
+#[derive(cynic::QueryFragment, Debug, Clone, PartialEq)]
+#[cynic(graphql_type = "Query", variables = "PageVars")]
+pub struct InitiativeListWithArchived {
+    #[arguments(first: $first, after: $after, includeArchived: true)]
+    pub initiatives: InitiativeConnection,
+}
+
+pub fn initiative_list_with_archived(
+    vars: PageVars,
+) -> Operation<InitiativeListWithArchived, PageVars> {
+    InitiativeListWithArchived::build(vars)
+}
+
 /// What an initiative `view` shows beyond the initiative's fixed fragment.
 #[derive(cynic::QueryFragment, Debug, Clone, PartialEq, Serialize, JsonSchema)]
 #[cynic(graphql_type = "Initiative")]

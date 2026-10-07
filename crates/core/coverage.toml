@@ -278,14 +278,16 @@ type = "Mutation"
 status = "implemented"
 via = [
   "inputs::milestone_create", "inputs::milestone_update", "inputs::milestone_delete",
-  "inputs::initiative_create", "inputs::template_create",
+  "inputs::initiative_create", "inputs::initiative_archive", "inputs::initiative_unarchive",
+  "inputs::initiative_delete", "inputs::template_create",
 ]
 commands = [
   "milestone create", "milestone update", "milestone delete", "initiative create",
-  "template create",
+  "initiative archive", "initiative unarchive", "initiative delete", "template create",
 ]
 fields = [
-  "initiativeCreate", "projectMilestoneCreate", "projectMilestoneDelete",
+  "initiativeArchive", "initiativeCreate", "initiativeDelete", "initiativeUnarchive",
+  "projectMilestoneCreate", "projectMilestoneDelete",
   "projectMilestoneUpdate", "templateCreate",
 ]
 
@@ -390,16 +392,16 @@ fields = [
 [[entry]]
 type = "Mutation"
 status = "unsupported"
-reason = "Not part of the planned write surface: the CLI creates and updates, it does not delete, archive or restore (its deletes are `issueDelete` and `projectDelete`, which only roll back an issue or project it just created, and `projectMilestoneDelete`, which refuses a milestone that still has issues)."
+reason = "Not part of the planned write surface: the CLI deletes and archives only issues, projects and initiatives (reversibly, and an attachment of an issue with `--yes`), and milestones (refused while they still have issues). `projectArchive` is deprecated by Linear in favour of `projectDelete`."
 fields = [
   "agentActivityDeleteQueued", "agentSkillDelete", "commentDelete",
   "customViewDelete", "customerDelete", "customerNeedArchive", "customerNeedDelete",
   "customerNeedUnarchive", "customerStatusDelete", "customerTierDelete", "cycleArchive",
   "documentDelete", "documentUnarchive", "emailIntakeAddressDelete", "emailIntakeAddressRotate",
   "emailUnsubscribe", "emojiDelete", "entityExternalLinkDelete", "favoriteDelete",
-  "fileUploadDangerouslyDelete", "initiativeArchive", "initiativeDelete",
+  "fileUploadDangerouslyDelete",
   "initiativeLabelDelete", "initiativeLabelRestore", "initiativeLabelRetire",
-  "initiativeRelationDelete", "initiativeToProjectDelete", "initiativeUnarchive",
+  "initiativeRelationDelete", "initiativeToProjectDelete",
   "initiativeUpdateArchive", "initiativeUpdateUnarchive",
   "issueLabelDelete", "issueLabelRestore", "issueLabelRetire", "issueRelationDelete",
   "issueToReleaseDelete", "issueToReleaseDeleteByIssueAndRelease",

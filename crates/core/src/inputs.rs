@@ -490,6 +490,59 @@ pub fn initiative_create(
     InitiativeCreate::build(InitiativeCreateVars { input })
 }
 
+#[derive(cynic::QueryVariables, Debug, Clone)]
+pub struct InitiativeIdVars {
+    pub id: String,
+}
+
+#[derive(cynic::QueryFragment, Debug, Clone, PartialEq)]
+#[cynic(graphql_type = "InitiativeArchivePayload")]
+pub struct InitiativeArchiveResult {
+    pub success: bool,
+}
+
+/// Archives an initiative (`initiativeArchive`).
+#[derive(cynic::QueryFragment, Debug, Clone, PartialEq)]
+#[cynic(graphql_type = "Mutation", variables = "InitiativeIdVars")]
+pub struct InitiativeArchive {
+    #[arguments(id: $id)]
+    pub initiative_archive: InitiativeArchiveResult,
+}
+
+pub fn initiative_archive(
+    id: impl Into<String>,
+) -> cynic::Operation<InitiativeArchive, InitiativeIdVars> {
+    InitiativeArchive::build(InitiativeIdVars { id: id.into() })
+}
+
+/// Restores an archived initiative (`initiativeUnarchive`).
+#[derive(cynic::QueryFragment, Debug, Clone, PartialEq)]
+#[cynic(graphql_type = "Mutation", variables = "InitiativeIdVars")]
+pub struct InitiativeUnarchive {
+    #[arguments(id: $id)]
+    pub initiative_unarchive: InitiativeArchiveResult,
+}
+
+pub fn initiative_unarchive(
+    id: impl Into<String>,
+) -> cynic::Operation<InitiativeUnarchive, InitiativeIdVars> {
+    InitiativeUnarchive::build(InitiativeIdVars { id: id.into() })
+}
+
+/// Trashes an initiative (`initiativeDelete`; Linear keeps it for a while).
+#[derive(cynic::QueryFragment, Debug, Clone, PartialEq)]
+#[cynic(graphql_type = "Mutation", variables = "InitiativeIdVars")]
+pub struct InitiativeDelete {
+    #[arguments(id: $id)]
+    pub initiative_delete: DeleteResult,
+}
+
+pub fn initiative_delete(
+    id: impl Into<String>,
+) -> cynic::Operation<InitiativeDelete, InitiativeIdVars> {
+    InitiativeDelete::build(InitiativeIdVars { id: id.into() })
+}
+
 // ---------------------------------------------------------------- template
 
 #[derive(cynic::InputObject, Debug, Clone)]

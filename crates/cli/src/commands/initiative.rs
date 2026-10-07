@@ -1,4 +1,4 @@
-//! `linear initiative list|view|create` (the write lives in `write::initiative`).
+//! `linear initiative list|view|create|archive|unarchive|delete` (the write lives in `write::initiative`).
 
 use super::format::{fields, initiative_status, opt_date, person, project_status_type};
 use super::listing::{paginate, warn_truncated, ListArgs, Session};
@@ -24,6 +24,19 @@ pub enum InitiativeCommand {
     View(ViewCmd),
     /// Create an initiative (the same name returns the existing one instead)
     Create(write::initiative::CreateCmd),
+    /// Archive an initiative (restore it with `initiative unarchive`)
+    ///
+    /// An initiative belongs to the workspace, so no ownership rule applies (as for `create`).
+    Archive(write::initiative::InitiativeTargetCmd),
+    /// Restore an archived initiative
+    ///
+    /// Finds the initiative among the archived ones too. No ownership rule applies.
+    Unarchive(write::initiative::InitiativeTargetCmd),
+    /// Move an initiative to the trash
+    ///
+    /// Linear keeps a deleted initiative for a while before removing it for good. No ownership
+    /// rule applies.
+    Delete(write::initiative::InitiativeTargetCmd),
 }
 
 /// Linear's spelling of initiative statuses, keyed by what a person types.
@@ -58,6 +71,9 @@ pub fn run(ctx: &Ctx, cmd: &InitiativeCommand) -> Result<()> {
         InitiativeCommand::List(args) => list(ctx, args),
         InitiativeCommand::View(args) => view(ctx, args),
         InitiativeCommand::Create(args) => write::initiative::create(ctx, args),
+        InitiativeCommand::Archive(args) => write::initiative::archive(ctx, args),
+        InitiativeCommand::Unarchive(args) => write::initiative::unarchive(ctx, args),
+        InitiativeCommand::Delete(args) => write::initiative::delete(ctx, args),
     }
 }
 
