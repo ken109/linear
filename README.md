@@ -382,6 +382,8 @@ linear audit --cached                           # the last `linear cache refresh
 | `project-without-lead`    | an open project nobody leads                                                                   |
 | `stale-in-progress`       | an In Progress issue with no update for `stale_days` (7)                                       |
 | `status-update-outdated`  | an In Progress project whose latest status update is older than its issues' last state change, or than `status_update_days` (14) |
+| `pr-merged-issue-open`    | an In Progress issue whose GitHub pull request is merged and that has no other one still waiting. Warns only: the pull request never decides the state (see [GitHub](#github)) |
+| `pr-open-too-long`        | an issue whose GitHub pull request (not a draft) has been open for `pr_open_days` (14)         |
 | `template-sections`, `source-attachment`, `label-groups-exclusive` | the workspace's [validator rules](#validator-rules), applied to open issues. An issue does not record its template, so the template whose sections its body shares most is used; a body that shares none follows none |
 | `not-updated-since`       | with `--issues` and `--since`: a named issue not updated since then                            |
 
@@ -399,6 +401,7 @@ The thresholds are per workspace:
 [workspaces.main.audit]
 stale_days = 7
 status_update_days = 14
+pr_open_days = 14
 ```
 
 Projects list only their first 100 issues, so the audit fetches issues from the issue side: every
@@ -419,6 +422,7 @@ linear issue update KK-12 --source https://example.com/a [--source-title ..] [--
 linear issue update KK-12 --labels bug,api                             # exactly these labels
 linear issue update KK-12 --add-labels bug --remove-labels triage      # or edit the set
 linear issue comment KK-12 --body-file comment.md
+linear issue link-pr KK-12 https://github.com/owner/repo/pull/34      # needs the GitHub integration
 linear issue reorder KK-3 KK-1 KK-2                                    # same project; top first
 linear issue reorder KK-3,KK-1,KK-2                                    # the same, comma-separated
 ```
@@ -516,7 +520,8 @@ the flat object Linear lets an attachment carry. Values are strings or numbers, 
 - A key must not be empty or repeated; a pair without `=` is a usage error. The metadata is
   checked before anything is sent.
 - `issue view --json` (and `issue list --json`) include each attachment's `metadata`, `subtitle`
-  and `sourceType`. Attachments made by integrations may nest their metadata; it is shown as is.
+  and `sourceType`. Attachments made by integrations may nest their metadata; it is shown as is
+  (the [GitHub](#github) section says how pull requests are read from it).
 
 Running `issue create` again with the same `--source` and `--meta` that differs from what the
 attachment stores does not create a second issue: it returns the existing one and **replaces**
@@ -529,6 +534,39 @@ sends nothing, and without `--meta` nothing is read or written.
 default view); both are shown by `issue list --json`. The issues you name trade the values they
 already hold, so issues in between keep their place. Linear may adjust `prioritySortOrder` to
 its own liking within a priority, so the exact numbers are not guaranteed, only the order.
+
+### GitHub
+
+Linear's GitHub integration links a pull request to an issue and keeps its state in sync. Three
+things of it reach `linear`:
+
+- **`issue view --json` shows the branch name**: `branchName` is Linear's suggested git branch for
+  the issue (Linear's own field name). A branch named like that, or one that contains the issue
+  identifier, has its pull request linked to the issue by the integration with no command at all.
+- **`issue link-pr <issue> <url>`** links a pull request (`https://github.com/<owner>/<repo>/pull/<n>`;
+  anything after the number, such as `/files`, is dropped) with `attachmentLinkGitHubPR`, which
+  makes the attachment the integration keeps in sync, unlike a plain `--source` link. It follows
+  the same [ownership rules](#ownership-rules) as any change to the issue. It asks Linear first
+  whether the workspace has the GitHub integration installed and refuses with an error, sending
+  nothing, if not; a pull request the issue already has is not linked again (`alreadyLinked`).
+- **`issue view --json` reads the pull requests**: the raw attachments (`sourceType: "github"`
+  and the integration's `metadata`) are under `attachments`, and `pullRequests` is the reading
+  of them: `url`, `number`, `title`, `status` (`open`, `draft`, `merged`, `closed`, or `unknown`
+  when the metadata does not say), `openedAt`, `mergedAt` and `closedAt`. A `github` attachment
+  whose URL is not `.../pull/<n>` (the integration also makes one for a linked GitHub issue) is
+  not a pull request. Only the first 10 attachments of an issue are read.
+
+The audit rules `pr-merged-issue-open` and `pr-open-too-long` only warn, and never change a state:
+a pull request is evidence, not the authority on whether the work is done. A workspace without
+the integration, and an issue without a pull request attachment, give them nothing to look at.
+
+The shape of the integration's `metadata` is the integration's own, not a documented contract,
+and none of the workspaces it was developed against held a pull-request attachment to copy, so
+the reading is deliberately lenient: it uses `status` (or `mergedAt` / `closedAt` / `draft`) when
+they are there, takes the time a pull request was opened from `createdAt` (else from when the
+attachment was made), and reports anything it cannot read as `unknown`, which no rule acts on.
+`issue link-pr` needs a workspace with the integration and so is not covered by the live (sandbox)
+tests; the mock tests cover it, including the refusal when the integration is missing.
 
 ### Projects
 

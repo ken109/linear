@@ -1,4 +1,4 @@
-//! `linear issue create|update|comment|reorder`.
+//! `linear issue create|update|comment|link-pr|reorder`.
 //!
 //! `update` is the write that can touch the most: fields of the issue, its
 //! description, its labels and its source attachment. It sends only what
@@ -22,6 +22,8 @@ use linear_core::inputs::{
 use linear_core::markdown::same_description;
 use linear_core::matching::match_state;
 use linear_core::metadata::AttachmentMetadata;
+use linear_core::pull_request::{parse_pull_request_url, PullRequest};
+use linear_core::queries;
 use linear_core::read::{self, IssueWriteView};
 use linear_core::reorder::{self, OrderRow};
 use linear_core::rules::source_attachment::{self, metadata_needs_update};
@@ -927,6 +929,145 @@ pub fn comment(ctx: &Ctx, cmd: &CommentCmd) -> Result<()> {
         &value,
         || format!("{}  {}", view.issue.identifier, comment.url),
         || comment.url.clone(),
+    );
+    Ok(())
+}
+
+// ---------------------------------------------------------------- link-pr
+
+#[derive(Debug, Args)]
+pub struct LinkPrCmd {
+    /// Issue identifier (such as KK-12) or id
+    pub issue: String,
+    /// The pull request's URL: https://github.com/<owner>/<repo>/pull/<number>
+    pub url: String,
+}
+
+/// What `link-pr` prints.
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct Linked<'a> {
+    workspace: &'a str,
+    issue: &'a str,
+    url: &'a str,
+    /// `true` when the issue already carried this pull request, so nothing was sent.
+    already_linked: bool,
+    /// The attachment Linear holds (absent when nothing was sent).
+    attachment: Option<&'a linear_core::types::Attachment>,
+    /// What the integration reports about the pull request, if the attachment is one.
+    pull_request: Option<PullRequest>,
+}
+
+pub fn link_pr(ctx: &Ctx, cmd: &LinkPrCmd) -> Result<()> {
+    let Some((url, number)) = parse_pull_request_url(&cmd.url) else {
+        return Err(CliError::usage(format!(
+            "{:?} is not a GitHub pull request URL (expected https://<host>/<owner>/<repo>/pull/<number>)",
+            cmd.url
+        )));
+    };
+
+    let ws = ctx.write_session()?;
+    let view = fetch_issue(&ws, &cmd.issue)?;
+    // Linking is a write to the issue: it follows the same ownership as changing it.
+    ws.guard(
+        &Write::update_issue(&view.issue, placement_of(&view)),
+        false,
+    )?;
+    ws.validate(&Draft::new(Operation::IssueUpdate))?;
+    let identifier = view.issue.identifier.as_str();
+
+    // Linking twice would only make Linear answer with the attachment it has.
+    let linked = view
+        .issue
+        .attachments
+        .iter()
+        .find(|a| a.pull_request().is_some_and(|p| p.url == url));
+    if let Some(attachment) = linked {
+        return emit_linked(
+            ctx,
+            &ws.workspace,
+            identifier,
+            &url,
+            number,
+            true,
+            attachment,
+        );
+    }
+
+    // Linear refuses a link the workspace has no GitHub integration for with an error that
+    // says little. Ask first. If that cannot be asked (a key that may not read integrations),
+    // the mutation decides.
+    let integrations: Result<queries::Integrations> = ws.client.execute(&queries::integrations());
+    if let Ok(found) = integrations {
+        if !found.has_github() {
+            return Err(CliError::general(format!(
+                "workspace {:?} has no GitHub integration, so a pull request cannot be linked \
+                 (install it in Linear: Settings > Integrations > GitHub)",
+                ws.workspace
+            )));
+        }
+    }
+
+    let data: inputs::AttachmentLinkGitHubPr = ws.client.execute(
+        &inputs::attachment_link_github_pr(view.issue.id.inner(), &url),
+    )?;
+    let payload = data.attachment_link_git_hub_pr;
+    if !payload.success {
+        return Err(CliError::general(format!(
+            "Linear could not link {url} to {identifier}"
+        )));
+    }
+    if payload.attachment.pull_request().is_none() {
+        eprintln!(
+            "warning: Linear made the attachment but it is not a GitHub pull request one \
+             (sourceType {:?}), so its state will not follow GitHub",
+            payload.attachment.source_type
+        );
+    }
+    emit_linked(
+        ctx,
+        &ws.workspace,
+        identifier,
+        &url,
+        number,
+        false,
+        &payload.attachment,
+    )
+}
+
+fn emit_linked(
+    ctx: &Ctx,
+    workspace: &str,
+    identifier: &str,
+    url: &str,
+    number: u64,
+    already_linked: bool,
+    attachment: &linear_core::types::Attachment,
+) -> Result<()> {
+    let pull_request = attachment.pull_request();
+    let value = Linked {
+        workspace,
+        issue: identifier,
+        url,
+        already_linked,
+        attachment: Some(attachment),
+        pull_request: pull_request.clone(),
+    };
+    ctx.out.emit(
+        &value,
+        || {
+            let state = pull_request
+                .as_ref()
+                .map(|p| format!(", {}", p.status.as_str()))
+                .unwrap_or_default();
+            let how = if already_linked {
+                "already linked, nothing sent"
+            } else {
+                "linked"
+            };
+            format!("{identifier}  #{number}  {url}  ({how}{state})")
+        },
+        || url.to_owned(),
     );
     Ok(())
 }

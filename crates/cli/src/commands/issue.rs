@@ -10,6 +10,7 @@ use chrono::Utc;
 use clap::{Args, Subcommand, ValueEnum};
 use linear_core::filters::{closed_since, IssueQuery};
 use linear_core::matching::label_path;
+use linear_core::pull_request::PullRequest;
 use linear_core::read::{
     self, IssueDetail, IssueList, IssueListVars, IssueView, ISSUE_LIST_PAGE_SIZE,
 };
@@ -32,6 +33,15 @@ pub enum IssueCommand {
     Update(super::write::issue::UpdateCmd),
     /// Write a comment on an issue
     Comment(super::write::issue::CommentCmd),
+    /// Link a GitHub pull request to an issue through the workspace's GitHub integration
+    ///
+    /// Makes the attachment that Linear keeps in sync with the pull request (its status shows
+    /// in `issue view --json` under `pullRequests`, and `linear audit` warns about a merged or
+    /// long-open one). Needs the GitHub integration installed in the workspace; without it
+    /// the command fails and sends nothing. Linking a pull request the issue already has
+    /// sends nothing. A branch named with the issue's `branchName` links its pull request
+    /// without this command.
+    LinkPr(super::write::issue::LinkPrCmd),
     /// Put issues of one project in a given order
     Reorder(super::write::issue::ReorderCmd),
 }
@@ -115,6 +125,7 @@ pub fn run(ctx: &Ctx, cmd: &IssueCommand) -> Result<()> {
         IssueCommand::Create(args) => write::issue::create(ctx, args),
         IssueCommand::Update(args) => write::issue::update(ctx, args),
         IssueCommand::Comment(args) => write::issue::comment(ctx, args),
+        IssueCommand::LinkPr(args) => write::issue::link_pr(ctx, args),
         IssueCommand::Reorder(args) => write::issue::reorder(ctx, args),
     }
 }
@@ -288,6 +299,9 @@ fn list(ctx: &Ctx, args: &ListCmd) -> Result<()> {
 struct IssueViewOut<'a> {
     #[serde(flatten)]
     base: IssueOut<'a>,
+    /// The GitHub pull requests the integration linked: what its attachments say, read
+    /// leniently (the raw `sourceType` and `metadata` are under `attachments`).
+    pull_requests: Vec<PullRequest>,
     /// Absent from the cache, which keeps the list fields only.
     #[serde(flatten)]
     detail: Option<&'a IssueDetail>,
@@ -322,6 +336,7 @@ fn view(ctx: &Ctx, args: &ViewCmd) -> Result<()> {
 fn show(ctx: &Ctx, workspace: &str, i: &Issue, d: Option<&IssueDetail>) -> Result<()> {
     let value = IssueViewOut {
         base: out(workspace, i),
+        pull_requests: i.pull_requests(),
         detail: d,
     };
     ctx.out.emit(
@@ -378,10 +393,23 @@ fn show(ctx: &Ctx, workspace: &str, i: &Issue, d: Option<&IssueDetail>) -> Resul
                             .map_or("-".to_owned(), |p| p.identifier.clone())
                     ),
                     ("Source", opt_text(i.source_url())),
+                    ("Branch", i.branch_name.clone()),
                     ("Created", date_time(&i.created_at)),
                     ("Updated", date_time(&i.updated_at)),
                 ])
             );
+            if !value.pull_requests.is_empty() {
+                text.push_str("\n\nPull requests");
+                for p in &value.pull_requests {
+                    text.push_str(&format!(
+                        "\n  #{}  {}  {}\n    {}",
+                        p.number,
+                        p.status.as_str(),
+                        p.title,
+                        p.url
+                    ));
+                }
+            }
             if let Some(desc) = i.description.as_deref().filter(|s| !s.trim().is_empty()) {
                 text.push_str(&format!("\n\n{}", desc.trim_end()));
             }

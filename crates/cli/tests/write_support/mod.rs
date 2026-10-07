@@ -92,12 +92,13 @@ impl Routed {
 
     /// Nothing was sent that changes anything.
     pub fn assert_read_only(&self) {
-        const MUTATIONS: [&str; 5] = [
+        const MUTATIONS: [&str; 6] = [
             "IssueCreate",
             "IssueUpdate",
             "IssueDelete",
             "AttachmentCreate",
             "CommentCreate",
+            "AttachmentLinkGitHubPr",
         ];
         let ops = self.ops();
         assert!(
@@ -367,6 +368,25 @@ pub fn attachment_ok() -> Reply {
 
 pub fn delete_ok() -> Reply {
     data(json!({ "issueDelete": { "success": true } }))
+}
+
+/// The `n`th attachment of `fixtures/attachments_github.json` (see its README entry).
+pub fn github_attachment(n: usize) -> Value {
+    serde_json::from_str::<Value>(&fixture("attachments_github")).unwrap()["nodes"][n].clone()
+}
+
+/// What `attachmentLinkGitHubPR` answers with this attachment.
+pub fn link_ok(attachment: Value) -> Reply {
+    data(json!({ "attachmentLinkGitHubPR": { "success": true, "attachment": attachment } }))
+}
+
+/// What `integrations` answers for a workspace with these services.
+pub fn integrations_of(services: &[&str]) -> Reply {
+    let nodes: Vec<Value> = services
+        .iter()
+        .map(|s| json!({ "service": s, "archivedAt": null }))
+        .collect();
+    data(json!({ "integrations": { "nodes": nodes } }))
 }
 
 pub fn comment_ok() -> Reply {
