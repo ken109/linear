@@ -1,5 +1,6 @@
 //! `linear project create|update|reorder|status-update|delete|unarchive`.
 
+use super::dry_run::{Plan, Target, NEW_PROJECT_ID};
 use super::{read_text, resolve, retry, ForceArg, Rollback, WriteSession, ATTACH_WAITS};
 use crate::commands::format::{health, person};
 use crate::commands::listing::{paginate, resolve_project};
@@ -109,6 +110,15 @@ pub fn create(ctx: &Ctx, cmd: &CreateCmd) -> Result<()> {
     )?;
     let existing: pw::UnfinishedNamed = ws.client.execute(&pw::unfinished_named(name))?;
     if let Some(found) = existing.projects.nodes.first() {
+        if ws.dry_run {
+            return ws.finish_dry_run(
+                Plan::new(
+                    "project create",
+                    Target::existing("project", &found.name, found.id.inner()),
+                )
+                .reason("an unfinished project with this name already exists, so none is created"),
+            );
+        }
         emit_created(
             &ws,
             found.id.inner(),
@@ -146,6 +156,17 @@ pub fn create(ctx: &Ctx, cmd: &CreateCmd) -> Result<()> {
         lead_id: Some(lead),
         target_date: cmd.target_date,
     };
+    if ws.dry_run {
+        ws.record(&pw::project_create(input));
+        if let Some(initiative) = &initiative {
+            ws.record(&pw::initiative_to_project_create(
+                initiative.id.inner(),
+                NEW_PROJECT_ID,
+            ));
+            ws.record_undo(&pw::project_delete(NEW_PROJECT_ID));
+        }
+        return ws.finish_dry_run(Plan::new("project create", Target::new("project", name)));
+    }
     let data: ProjectCreate = ws.client.execute(&pw::project_create(input))?;
     let project = match data.project_create {
         p if p.success => p
@@ -381,6 +402,25 @@ pub fn update(ctx: &Ctx, cmd: &UpdateCmd) -> Result<()> {
     // Mutate. A failed link puts the other fields back.
     let id = project.id.inner().to_owned();
     let id = id.as_str();
+    if ws.dry_run {
+        if !input.is_empty() {
+            ws.record(&pw::project_update(id, input));
+            if link.is_some() {
+                ws.record_undo(&pw::project_update(id, restore));
+            }
+        }
+        if let Some(initiative) = link {
+            ws.record(&pw::initiative_to_project_create(initiative.id.inner(), id));
+        }
+        return ws.finish_dry_run(
+            Plan::new(
+                "project update",
+                Target::existing("project", &project.name, id),
+            )
+            .changed(changed)
+            .reason("every field is already as asked"),
+        );
+    }
     let mut rollback = Rollback::new();
     if !input.is_empty() {
         let data: ProjectUpdate = ws.client.execute(&pw::project_update(id, input))?;
@@ -493,7 +533,15 @@ pub fn status_update(ctx: &Ctx, cmd: &StatusUpdateCmd) -> Result<()> {
         health: health_type,
         body: body.trim().to_owned(),
     };
-    let data: ProjectUpdateCreate = ws.client.execute(&pw::project_update_create(input))?;
+    let op = pw::project_update_create(input);
+    if ws.dry_run {
+        ws.record(&op);
+        return ws.finish_dry_run(Plan::new(
+            "project status-update",
+            Target::existing("project", &project.name, project.id.inner()),
+        ));
+    }
+    let data: ProjectUpdateCreate = ws.client.execute(&op)?;
     if !data.project_update_create.success {
         return Err(CliError::general(
             "Linear could not write the status update",
@@ -586,6 +634,27 @@ pub fn reorder(ctx: &Ctx, cmd: &ReorderCmd) -> Result<()> {
             .iter()
             .find(|p| p.slug_id == change.identifier)
             .expect("the plan only names the projects given");
+        if ws.dry_run {
+            ws.record(&pw::project_update(
+                project.id.inner(),
+                ProjectUpdateInput {
+                    sort_order: change.sort_order,
+                    priority_sort_order: change.priority_sort_order,
+                    ..Default::default()
+                },
+            ));
+            ws.record_undo(&pw::project_update(
+                project.id.inner(),
+                ProjectUpdateInput {
+                    sort_order: change.sort_order.map(|_| project.sort_order),
+                    priority_sort_order: change
+                        .priority_sort_order
+                        .map(|_| project.priority_sort_order),
+                    ..Default::default()
+                },
+            ));
+            continue;
+        }
         let input = ProjectUpdateInput {
             sort_order: change.sort_order,
             priority_sort_order: change.priority_sort_order,
@@ -622,6 +691,12 @@ pub fn reorder(ctx: &Ctx, cmd: &ReorderCmd) -> Result<()> {
         });
     }
 
+    if ws.dry_run {
+        return ws.finish_dry_run(
+            Plan::new("project reorder", Target::several("project", &wanted))
+                .reason("the projects already sit in that order"),
+        );
+    }
     let value = Reordered {
         workspace: &ws.workspace,
         updated: plan.iter().map(|c| c.identifier.as_str()).collect(),
@@ -671,18 +746,27 @@ struct Restored<'a> {
 
 /// Trash a project. Linear keeps it for a while and `unarchive` brings it back.
 pub fn delete(ctx: &Ctx, cmd: &ProjectTargetCmd) -> Result<()> {
-    change_trash(ctx, cmd, "deleted", false, |ws, id| {
-        let r: ProjectDelete = ws.client.execute(&pw::project_delete(id))?;
-        Ok(r.project_delete.success)
+    change_trash(ctx, cmd, "project delete", "deleted", false, |ws, id| {
+        ws.send_checked(&pw::project_delete(id), |r: ProjectDelete| {
+            r.project_delete.success
+        })
     })
 }
 
 /// Bring back a deleted (trashed) or archived project.
 pub fn unarchive(ctx: &Ctx, cmd: &ProjectTargetCmd) -> Result<()> {
-    change_trash(ctx, cmd, "unarchived", true, |ws, id| {
-        let r: pw::ProjectUnarchive = ws.client.execute(&pw::project_unarchive(id))?;
-        Ok(r.project_unarchive.success)
-    })
+    change_trash(
+        ctx,
+        cmd,
+        "project unarchive",
+        "unarchived",
+        true,
+        |ws, id| {
+            ws.send_checked(&pw::project_unarchive(id), |r: pw::ProjectUnarchive| {
+                r.project_unarchive.success
+            })
+        },
+    )
 }
 
 /// The shared path of the two: find the project (a deleted one too, when
@@ -691,6 +775,7 @@ pub fn unarchive(ctx: &Ctx, cmd: &ProjectTargetCmd) -> Result<()> {
 fn change_trash(
     ctx: &Ctx,
     cmd: &ProjectTargetCmd,
+    command: &'static str,
     action: &'static str,
     include_archived: bool,
     mutate: impl FnOnce(&WriteSession, &str) -> Result<bool>,
@@ -722,6 +807,12 @@ fn change_trash(
             "Linear could not change the project {} ({action})",
             found.name
         )));
+    }
+    if ws.dry_run {
+        return ws.finish_dry_run(Plan::new(
+            command,
+            Target::existing("project", &found.name, found.id.inner()),
+        ));
     }
     let value = Restored {
         workspace: &ws.workspace,
@@ -773,6 +864,13 @@ fn initiative(ws: &WriteSession, reference: &str) -> Result<Initiative> {
 /// Put `project_id` under `initiative`. Linear sometimes needs a moment after
 /// a project is created, so a failure is tried again.
 fn link_initiative(ws: &WriteSession, initiative: &Initiative, project_id: &str) -> Result<()> {
+    if ws.dry_run {
+        ws.record(&pw::initiative_to_project_create(
+            initiative.id.inner(),
+            project_id,
+        ));
+        return Ok(());
+    }
     retry(ws.out, "linking the initiative", &ATTACH_WAITS, || {
         let r: pw::InitiativeToProjectCreate = ws.client.execute(
             &pw::initiative_to_project_create(initiative.id.inner(), project_id),

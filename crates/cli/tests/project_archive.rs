@@ -122,3 +122,34 @@ fn a_refusal_from_linear_is_an_error() {
     let o = run(&sb, &mock, &["project", "delete", "Fixture Project"]);
     assert_eq!(code(&o), 1, "{}", stderr(&o));
 }
+
+#[test]
+fn a_dry_run_plans_the_delete_and_the_restore() {
+    let sb = workspace();
+    for (command, op) in [
+        ("delete", "ProjectDelete"),
+        ("unarchive", "ProjectUnarchive"),
+    ] {
+        let mock = Routed::start(routes(Some(ALICE)));
+        let v = plan(
+            &run(
+                &sb,
+                &mock,
+                &["project", command, "Fixture Project", "--dry-run", "--json"],
+            ),
+            &mock,
+        );
+        assert_eq!(v["command"], format!("project {command}"));
+        assert_eq!(planned(&v), [op]);
+        assert_eq!(v["mutations"][0]["variables"], json!({ "id": PROJECT }));
+    }
+    // Only the lead may.
+    let mock = Routed::start(routes(Some(BOT)));
+    let o = run(
+        &sb,
+        &mock,
+        &["project", "delete", "Fixture Project", "--dry-run"],
+    );
+    assert_eq!(code(&o), 4, "{}", stderr(&o));
+    mock.assert_read_only();
+}

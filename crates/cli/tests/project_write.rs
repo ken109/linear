@@ -1205,3 +1205,232 @@ fn credentials_for_another_workspace_never_write_a_project() {
     assert_eq!(code(&o), 3, "{}", stderr(&o));
     assert_eq!(mock.ops(), ["Whoami"]);
 }
+
+// ------------------------------------------------------------------ --dry-run
+
+#[test]
+fn a_dry_run_of_create_plans_the_project_the_link_and_the_undo() {
+    let sb = workspace_with_rules(&[]);
+    let body = write_file(&sb, "body.md", GOOD_PROJECT_BODY);
+    let mock = Routed::start(create_routes(vec![]));
+    let v = plan(
+        &run(
+            &sb,
+            &mock,
+            &[
+                "project",
+                "create",
+                "--name",
+                "New Thing",
+                "--body-file",
+                &body,
+                "--initiative",
+                "Example Initiative",
+                "--dry-run",
+                "--json",
+            ],
+        ),
+        &mock,
+    );
+    assert_eq!(v["command"], "project create");
+    assert_eq!(
+        v["target"],
+        json!({ "kind": "project", "name": "New Thing", "id": null, "new": true })
+    );
+    assert_eq!(planned(&v), ["ProjectCreate", "InitiativeToProjectCreate"]);
+    assert_eq!(v["mutations"][0]["variables"]["input"]["name"], "New Thing");
+    assert_eq!(v["mutations"][0]["variables"]["input"]["leadId"], ALICE);
+    let link = &v["mutations"][1]["variables"]["input"];
+    assert_eq!(link["initiativeId"], INITIATIVE_EXAMPLE);
+    assert!(
+        link["projectId"].as_str().unwrap().starts_with('<'),
+        "{link}"
+    );
+    assert_eq!(v["rollback"][0]["operation"], "ProjectDelete");
+}
+
+#[test]
+fn a_dry_run_of_create_stops_where_the_real_run_stops() {
+    let sb = workspace_with_rules(&[]);
+    // A twin: nothing is created.
+    let mock = Routed::start(create_routes(vec![(
+        "UnfinishedNamed",
+        vec![unfinished(&[(
+            "11111111-1111-4111-8111-111111111111",
+            "Twin",
+        )])],
+    )]));
+    let v = plan(
+        &run(
+            &sb,
+            &mock,
+            &["project", "create", "--name", "Twin", "--dry-run", "--json"],
+        ),
+        &mock,
+    );
+    assert_eq!(v["mutations"], json!([]));
+    assert_eq!(v["target"]["new"], false);
+
+    // Somebody else as the lead: exit 4.
+    let mock = Routed::start(create_routes(vec![]));
+    let o = run(
+        &sb,
+        &mock,
+        &[
+            "project",
+            "create",
+            "--name",
+            "New",
+            "--lead",
+            "Linear",
+            "--dry-run",
+        ],
+    );
+    assert_eq!(code(&o), 4, "{}", stderr(&o));
+    mock.assert_read_only();
+
+    // The template rule: a project without --template is exit 5.
+    let strict = workspace_with_rules(&TEMPLATE_RULE);
+    let mock = Routed::start(create_routes(vec![]));
+    let o = run(
+        &strict,
+        &mock,
+        &["project", "create", "--name", "New", "--dry-run"],
+    );
+    assert_eq!(code(&o), 5, "{}", stderr(&o));
+    mock.assert_read_only();
+}
+
+#[test]
+fn a_dry_run_of_update_lists_what_differs() {
+    let sb = workspace_with_rules(&[]);
+    let mock = Routed::start(update_routes(vec![]));
+    let v = plan(
+        &run(
+            &sb,
+            &mock,
+            &[
+                "project",
+                "update",
+                "Fixture Project",
+                "--status",
+                "completed",
+                "--initiative",
+                "Example Initiative",
+                "--name",
+                "Fixture Project",
+                "--dry-run",
+                "--json",
+            ],
+        ),
+        &mock,
+    );
+    assert_eq!(v["changed"], json!(["status", "initiative"]));
+    assert_eq!(planned(&v), ["ProjectUpdate", "InitiativeToProjectCreate"]);
+    assert_eq!(
+        v["mutations"][0]["variables"],
+        json!({ "id": PROJECT, "input": { "statusId": STATUS_COMPLETED } })
+    );
+    assert_eq!(v["rollback"][0]["operation"], "ProjectUpdate");
+
+    // Nothing differs: nothing to send.
+    let mock = Routed::start(update_routes(vec![]));
+    let v = plan(
+        &run(
+            &sb,
+            &mock,
+            &[
+                "project",
+                "update",
+                "Fixture Project",
+                "--lead",
+                "me",
+                "--dry-run",
+                "--json",
+            ],
+        ),
+        &mock,
+    );
+    assert_eq!(v["mutations"], json!([]));
+}
+
+#[test]
+fn a_dry_run_of_status_update_and_reorder_plan_their_mutations() {
+    let sb = workspace_with_rules(&[]);
+    let body = write_file(&sb, "update.md", "Where it stands.\n");
+    let mock = Routed::start(status_routes(vec![]));
+    let v = plan(
+        &run(
+            &sb,
+            &mock,
+            &[
+                "project",
+                "status-update",
+                "Fixture Project",
+                "--health",
+                "atRisk",
+                "--body-file",
+                &body,
+                "--dry-run",
+                "--json",
+            ],
+        ),
+        &mock,
+    );
+    assert_eq!(planned(&v), ["ProjectUpdateCreate"]);
+    assert_eq!(
+        v["mutations"][0]["variables"]["input"],
+        json!({ "projectId": PROJECT, "health": "atRisk", "body": "Where it stands." })
+    );
+
+    let mock = Routed::start(status_routes(vec![(
+        "ProjectOwnershipQuery",
+        vec![ownership(PROJECT, Some(BOT))],
+    )]));
+    let o = run(
+        &sb,
+        &mock,
+        &[
+            "project",
+            "status-update",
+            "Fixture Project",
+            "--health",
+            "onTrack",
+            "--body-file",
+            &body,
+            "--dry-run",
+        ],
+    );
+    assert_eq!(code(&o), 4, "{}", stderr(&o));
+    mock.assert_read_only();
+
+    let mock = Routed::start(reorder_routes(
+        vec![
+            order_of(P_A, "aaaaaaaaaaa1", Some(ALICE), 30.0, 3.0),
+            order_of(P_B, "aaaaaaaaaaa2", Some(ALICE), 10.0, 1.0),
+            order_of(P_C, "aaaaaaaaaaa3", Some(ALICE), 20.0, 2.0),
+        ],
+        vec![],
+    ));
+    let v = plan(
+        &run(
+            &sb,
+            &mock,
+            &[
+                "project",
+                "reorder",
+                "Alpha",
+                "Beta",
+                "Gamma",
+                "--dry-run",
+                "--json",
+            ],
+        ),
+        &mock,
+    );
+    assert_eq!(
+        planned(&v),
+        ["ProjectUpdate", "ProjectUpdate", "ProjectUpdate"]
+    );
+    assert_eq!(v["rollback"].as_array().unwrap().len(), 3);
+}
