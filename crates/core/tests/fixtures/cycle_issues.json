@@ -1,0 +1,52 @@
+{
+  "data": {
+    "cycle": {
+      "issues": {
+        "nodes": [
+          {
+            "id": "id-EX-1",
+            "identifier": "EX-1",
+            "title": "Write the fixture issue",
+            "url": "https://linear.app/example/issue/EX-1",
+            "state": {
+              "id": "00000000-0000-4000-8000-000000000005",
+              "name": "In Progress",
+              "type": "started"
+            },
+            "assignee": {
+              "id": "00000000-0000-4000-8000-000000000001",
+              "name": "Alice Example",
+              "displayName": "alice",
+              "email": "alice@example.com",
+              "active": true,
+              "isMe": true
+            }
+          },
+          {
+            "id": "id-EX-2",
+            "identifier": "EX-2",
+            "title": "Second cycle issue",
+            "url": "https://linear.app/example/issue/EX-2",
+            "state": {
+              "id": "00000000-0000-4000-8000-000000000005",
+              "name": "In Progress",
+              "type": "started"
+            },
+            "assignee": {
+              "id": "00000000-0000-4000-8000-000000000001",
+              "name": "Alice Example",
+              "displayName": "alice",
+              "email": "alice@example.com",
+              "active": true,
+              "isMe": true
+            }
+          }
+        ],
+        "pageInfo": {
+          "hasNextPage": false,
+          "endCursor": null
+        }
+      }
+    }
+  }
+}

@@ -27,6 +27,7 @@ Structure, nullability and value formats are exactly Linear's.
 | `attachments_for_url.json`, `attachments_for_url_none.json` | `read::attachments_for_url` | **derived** from `issue.json`; shape verified against the sandbox |
 | `cycles.json`               | `read::cycles`                | **hand-written**: the sandbox team has no cycles. The shape (fields, nullability) was checked against lt-three's real cycles, read-only; cycle #41 is Tue 2026-10-05T15:00Z, a week long |
 | `webhooks.json`             | `read::webhooks`              | **hand-written**: a labelled webhook scoped to a team and an unlabelled, disabled one for all public teams; shape (fields, nullability) from Linear's schema |
+| `cycle_infos.json`, `cycle_issues.json` | `cycle_read::cycle_infos`, `cycle_read::cycle_issues` | **hand-written** from the shape of lt-three's real cycles (read-only): the sandbox team has no cycles. `cycle_infos.json` has #40 past, #41 active (named, with a description), #42 next, #43 upcoming; `cycle_issues.json` is `cycle(id).issues` |
 | `error_unauthenticated.json`| any, with a bad key           | HTTP 401                                           |
 | `error_too_complex.json`    | `projects` at 20 per page     | HTTP 400, `INPUT_ERROR`                            |
 | `initiatives.json`          | `queries::initiatives`        | **hand-written**: the sandbox only ever holds archived test initiatives, so it has no stable one to capture |

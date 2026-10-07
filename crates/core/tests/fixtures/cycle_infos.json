@@ -1,0 +1,88 @@
+{
+  "data": {
+    "cycles": {
+      "nodes": [
+        {
+          "id": "00000000-0000-4000-8000-000000000200",
+          "number": 40,
+          "name": null,
+          "description": null,
+          "startsAt": "2026-09-28T15:00:00.000Z",
+          "endsAt": "2026-10-05T15:00:00.000Z",
+          "completedAt": "2026-10-05T15:00:00.000Z",
+          "isActive": false,
+          "isFuture": false,
+          "isNext": false,
+          "isPast": true,
+          "progress": 0.75,
+          "team": {
+            "id": "00000000-0000-4000-8000-000000000004",
+            "key": "EX",
+            "name": "Example"
+          }
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000201",
+          "number": 41,
+          "name": "Autumn sprint",
+          "description": "Ship the fixtures.",
+          "startsAt": "2026-10-05T15:00:00.000Z",
+          "endsAt": "2026-10-12T15:00:00.000Z",
+          "completedAt": null,
+          "isActive": true,
+          "isFuture": false,
+          "isNext": false,
+          "isPast": false,
+          "progress": 0.25,
+          "team": {
+            "id": "00000000-0000-4000-8000-000000000004",
+            "key": "EX",
+            "name": "Example"
+          }
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000202",
+          "number": 42,
+          "name": null,
+          "description": null,
+          "startsAt": "2026-10-12T15:00:00.000Z",
+          "endsAt": "2026-10-19T15:00:00.000Z",
+          "completedAt": null,
+          "isActive": false,
+          "isFuture": true,
+          "isNext": true,
+          "isPast": false,
+          "progress": 0.0,
+          "team": {
+            "id": "00000000-0000-4000-8000-000000000004",
+            "key": "EX",
+            "name": "Example"
+          }
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000203",
+          "number": 43,
+          "name": null,
+          "description": null,
+          "startsAt": "2026-10-19T15:00:00.000Z",
+          "endsAt": "2026-10-26T15:00:00.000Z",
+          "completedAt": null,
+          "isActive": false,
+          "isFuture": true,
+          "isNext": false,
+          "isPast": false,
+          "progress": 0.0,
+          "team": {
+            "id": "00000000-0000-4000-8000-000000000004",
+            "key": "EX",
+            "name": "Example"
+          }
+        }
+      ],
+      "pageInfo": {
+        "hasNextPage": false,
+        "endCursor": null
+      }
+    }
+  }
+}

@@ -535,11 +535,27 @@ impl ProjectQuery {
 
 // ---------------------------------------------------------------- cycles
 
+/// A comparator on a number (`Float`) field.
 #[derive(cynic::InputObject, Debug, Clone, Default, PartialEq)]
-#[cynic(graphql_type = "CycleFilter")]
+#[cynic(graphql_type = "NumberComparator")]
+pub struct NumberComparator {
+    #[cynic(skip_serializing_if = "Option::is_none")]
+    pub eq: Option<f64>,
+}
+
+#[derive(cynic::InputObject, Debug, Clone, Default, PartialEq)]
+#[cynic(graphql_type = "CycleFilter", rename_all = "camelCase")]
 pub struct CycleFilter {
     #[cynic(skip_serializing_if = "Option::is_none")]
     pub team: Option<TeamFilter>,
+    #[cynic(skip_serializing_if = "Option::is_none")]
+    pub number: Option<NumberComparator>,
+    #[cynic(skip_serializing_if = "Option::is_none")]
+    pub is_active: Option<BooleanComparator>,
+    #[cynic(skip_serializing_if = "Option::is_none")]
+    pub is_future: Option<BooleanComparator>,
+    #[cynic(skip_serializing_if = "Option::is_none")]
+    pub is_past: Option<BooleanComparator>,
 }
 
 /// The cycles of the team with this key (ignoring case).
@@ -548,6 +564,41 @@ pub fn cycles_of_team(key: &str) -> CycleFilter {
         team: Some(TeamFilter {
             key: Some(StringComparator::eq_ignore_case(key)),
         }),
+        ..CycleFilter::default()
+    }
+}
+
+/// Which of a team's cycles `cycle list` shows.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CycleState {
+    /// The cycle that is running now.
+    Active,
+    /// Cycles that have not started.
+    Upcoming,
+    /// Cycles whose end has passed.
+    Past,
+}
+
+/// The cycles of the team with this key, narrowed to one state when given.
+pub fn cycles_in_state(key: &str, state: Option<CycleState>) -> CycleFilter {
+    let yes = || Some(BooleanComparator { eq: Some(true) });
+    let mut filter = cycles_of_team(key);
+    match state {
+        Some(CycleState::Active) => filter.is_active = yes(),
+        Some(CycleState::Upcoming) => filter.is_future = yes(),
+        Some(CycleState::Past) => filter.is_past = yes(),
+        None => {}
+    }
+    filter
+}
+
+/// The cycle of the team with this key that has this number.
+pub fn cycle_numbered(key: &str, number: u32) -> CycleFilter {
+    CycleFilter {
+        number: Some(NumberComparator {
+            eq: Some(f64::from(number)),
+        }),
+        ..cycles_of_team(key)
     }
 }
 

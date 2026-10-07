@@ -483,7 +483,7 @@ pub struct Cycle {
 paged_container!(CycleConnection, "CycleConnection", Cycle);
 
 /// A float that has no fraction as an integer; anything else as it is.
-fn whole_number<S: serde::Serializer>(n: &f64, s: S) -> Result<S::Ok, S::Error> {
+pub(crate) fn whole_number<S: serde::Serializer>(n: &f64, s: S) -> Result<S::Ok, S::Error> {
     if n.fract() == 0.0 && n.abs() < 9e15 {
         s.serialize_i64(*n as i64)
     } else {

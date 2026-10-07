@@ -82,10 +82,10 @@ fields = [
 [[entry]]
 type = "Query"
 status = "implemented"
-via = ["read::cycles"]
-commands = ["cycle", "issue create --held-on"]
+via = ["read::cycles", "cycle_read::cycle_infos", "cycle_read::cycle_issues"]
+commands = ["cycle", "cycle list", "cycle view", "issue create --held-on"]
 fields = [
-  "cycles",
+  "cycle", "cycles",
 ]
 
 [[entry]]
@@ -240,7 +240,7 @@ fields = [
   "archivedIntegrations", "archivedTeams", "attachmentIssue", "attachmentSources",
   "customView", "customViewDetailsSuggestion", "customViewHasSubscribers",
   "customViews", "customer", "customerNeed", "customerNeeds", "customerStatus",
-  "customerStatuses", "customerTier", "customerTiers", "customers", "cycle", "diff",
+  "customerStatuses", "customerTier", "customerTiers", "customers", "diff",
   "document", "documentContentHistory", "documentContentHistoryEntries",
   "documentContentHistoryTimeline", "documents", "emoji", "emojis", "entityExternalLink",
   "favorite", "favorites", "inboxNotifications", "initiativeFilterSuggestion", "initiativeLabel",
