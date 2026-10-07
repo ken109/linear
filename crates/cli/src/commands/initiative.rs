@@ -1,18 +1,21 @@
-//! `linear initiative list|view|create|archive|unarchive|delete` (the write lives in `write::initiative`).
+//! `linear initiative list|view|status-updates|create|update|archive|unarchive|delete|add-project|remove-project|status-update` (the writes live in `write::initiative`).
 
-use super::format::{fields, initiative_status, opt_date, person, project_status_type};
+use super::format::{
+    date_time, fields, first_line, initiative_status, opt_date, person, project_status_type,
+};
 use super::listing::{paginate, warn_truncated, ListArgs, Session};
 use super::{write, Ctx};
 use crate::error::Result;
 use crate::output::table;
 use clap::{Args, Subcommand};
 use linear_core::filters::InitiativeQuery;
+use linear_core::initiative_write::{self, InitiativeStatusUpdatesQuery};
 use linear_core::matching::match_initiative;
 use linear_core::read::{
     self, InitiativeDetail, InitiativeList, InitiativeListVars, InitiativeView,
     INITIATIVE_LIST_PAGE_SIZE,
 };
-use linear_core::types::Initiative;
+use linear_core::types::{Initiative, InitiativeStatusUpdate};
 use linear_core::InWorkspace;
 use serde::Serialize;
 
@@ -24,6 +27,31 @@ pub enum InitiativeCommand {
     View(ViewCmd),
     /// Create an initiative (the same name returns the existing one instead)
     Create(write::initiative::CreateCmd),
+    /// Change an initiative's name, description, status, target date or owner
+    ///
+    /// Only the fields that differ from now are sent; a run that changes nothing sends
+    /// nothing (`changed` is empty with --json). An initiative belongs to the workspace, so no
+    /// ownership rule applies (as for `create`).
+    Update(write::initiative::UpdateCmd),
+    /// Put a project under an initiative
+    ///
+    /// A project already under it is left alone (nothing is sent). Follows the ownership rules
+    /// of changing the project (you may only change a project you lead), as `project update
+    /// --initiative` does; the initiative itself has no ownership rule.
+    AddProject(write::initiative::ProjectLinkCmd),
+    /// Take a project out of an initiative
+    ///
+    /// Only the link goes: the project and the initiative stay, and `add-project` puts it back.
+    /// A project that is not under it is left alone (nothing is sent). Follows the ownership
+    /// rules of changing the project.
+    RemoveProject(write::initiative::ProjectLinkCmd),
+    /// Write a status update on an initiative
+    ///
+    /// The same shape as `project status-update`: `--health` and the text of the update from
+    /// `--body-file`. An initiative belongs to the workspace, so no ownership rule applies.
+    StatusUpdate(write::initiative::StatusUpdateCmd),
+    /// List the status updates of an initiative, newest first
+    StatusUpdates(ViewCmd),
     /// Archive an initiative (restore it with `initiative unarchive`)
     ///
     /// An initiative belongs to the workspace, so no ownership rule applies (as for `create`).
@@ -71,6 +99,11 @@ pub fn run(ctx: &Ctx, cmd: &InitiativeCommand) -> Result<()> {
         InitiativeCommand::List(args) => list(ctx, args),
         InitiativeCommand::View(args) => view(ctx, args),
         InitiativeCommand::Create(args) => write::initiative::create(ctx, args),
+        InitiativeCommand::Update(args) => write::initiative::update(ctx, args),
+        InitiativeCommand::AddProject(args) => write::initiative::add_project(ctx, args),
+        InitiativeCommand::RemoveProject(args) => write::initiative::remove_project(ctx, args),
+        InitiativeCommand::StatusUpdate(args) => write::initiative::status_update(ctx, args),
+        InitiativeCommand::StatusUpdates(args) => status_updates(ctx, args),
         InitiativeCommand::Archive(args) => write::initiative::archive(ctx, args),
         InitiativeCommand::Unarchive(args) => write::initiative::unarchive(ctx, args),
         InitiativeCommand::Delete(args) => write::initiative::delete(ctx, args),
@@ -209,6 +242,60 @@ fn view(ctx: &Ctx, args: &ViewCmd) -> Result<()> {
             text
         },
         || i.slug_id.clone(),
+    );
+    Ok(())
+}
+
+fn status_updates(ctx: &Ctx, args: &ViewCmd) -> Result<()> {
+    let session = ctx.session()?;
+    let all = fetch(&session, &InitiativeQuery::default(), None)?.items;
+    let found = match_initiative(&all, &args.initiative)?;
+    let data: InitiativeStatusUpdatesQuery =
+        session
+            .client
+            .execute(&initiative_write::initiative_status_updates(
+                found.id.inner(),
+            ))?;
+    // Newest first, whatever order Linear answers in.
+    let mut updates: Vec<&InitiativeStatusUpdate> =
+        data.initiative.initiative_updates.iter().collect();
+    updates.sort_by_key(|u| std::cmp::Reverse(u.created_at));
+
+    #[derive(Serialize)]
+    struct Out<'a> {
+        workspace: &'a str,
+        updates: &'a [&'a InitiativeStatusUpdate],
+    }
+    let value = Out {
+        workspace: &session.workspace,
+        updates: &updates,
+    };
+    ctx.out.emit(
+        &value,
+        || {
+            if updates.is_empty() {
+                return "No status updates.".to_owned();
+            }
+            let body: Vec<Vec<String>> = updates
+                .iter()
+                .map(|u| {
+                    vec![
+                        date_time(&u.created_at),
+                        write::initiative::health_word(&u.health),
+                        u.user.name.clone(),
+                        first_line(&u.body, 60),
+                    ]
+                })
+                .collect();
+            table(&["DATE", "HEALTH", "AUTHOR", "UPDATE"], &body)
+        },
+        || {
+            updates
+                .iter()
+                .map(|u| u.url.as_str())
+                .collect::<Vec<_>>()
+                .join("\n")
+        },
     );
     Ok(())
 }

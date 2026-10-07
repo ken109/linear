@@ -45,7 +45,7 @@ pub enum Command {
     /// Read and write project milestones
     #[command(subcommand)]
     Milestone(crate::commands::milestone::MilestoneCommand),
-    /// Read initiatives, and create one
+    /// Read, create and change initiatives, their projects and status updates
     #[command(subcommand)]
     Initiative(crate::commands::initiative::InitiativeCommand),
     /// Read issue and project templates and their sections, and create one
