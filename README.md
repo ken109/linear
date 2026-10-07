@@ -34,10 +34,10 @@ Release archives for macOS (arm64, x86_64) and Linux (x86_64, static musl build)
 to each [GitHub Release](https://github.com/ken109/linear/releases) as
 `linear-<version>-<target>.tar.gz` with a `.sha256` file beside each.
 
-While this repository is private, release assets cannot be downloaded without a token, and the
-Homebrew formula does not send one, so `brew install` works once the repository is public.
-Until then use `cargo install --git` (with git credentials that can read the repository) or
-`gh release download`.
+The Homebrew tap ([ken109/homebrew-tap](https://github.com/ken109/homebrew-tap)) picks up new
+releases automatically: its bump workflow reads the latest GitHub Release of this repository,
+downloads the archives above and commits the formula. It runs every 6 hours; to pick up a release
+right away, run `gh workflow run bump.yml --repo ken109/homebrew-tap`.
 
 `linear --version` prints the workspace version in `Cargo.toml` (`[workspace.package] version`,
 inherited by `crates/cli`), so it equals the release tag without the leading `v`.
@@ -61,9 +61,11 @@ tagged or bumped by hand.
    the changelog as its notes. The same workflow then calls the `Release` workflow
    (`.github/workflows/release.yml`) with that tag. It fails unless the tag equals both versions;
    it never bumps anything. It builds the three binaries, builds the wasm npm tarball
-   (`ken109-linear-wasm-<version>.tgz`), attaches everything with checksums to the Release, and
-   commits a regenerated `Formula/linear.rb` to `ken109/homebrew-tap`. A version with a
-   pre-release suffix (`1.0.0-rc.1`) is marked as a pre-release and leaves the tap alone.
+   (`ken109-linear-wasm-<version>.tgz`) and attaches everything with checksums to the Release. A
+   version with a pre-release suffix (`1.0.0-rc.1`) is marked as a pre-release.
+4. Nothing is pushed to the Homebrew tap from this repository. The tap's bump workflow finds the
+   new Release by itself (every 6 hours, or on demand with
+   `gh workflow run bump.yml --repo ken109/homebrew-tap`) and commits the formula.
 
 The `Release` workflow is called from `release-please.yml` rather than started by the tag,
 because a tag or Release created with the default `GITHUB_TOKEN` does not start other workflows.
@@ -72,8 +74,6 @@ assets.
 
 One-time setup:
 
-- Repository secret `TAP_GITHUB_TOKEN`: a fine-grained personal access token with
-  `Contents: read and write` on `ken109/homebrew-tap`. The tap job needs it.
 - Repository setting "Allow GitHub Actions to create and approve pull requests"
   (Settings > Actions > General). Without it release-please cannot open the release PR.
 - `release-please-config.json` sets `"release-as": "0.1.0"` so that the first release is
@@ -86,9 +86,8 @@ and that `Cargo.lock` is current.
 
 To rehearse the build, run the `Release` workflow by hand with `dry_run` on (the default) from the
 Actions tab or `gh workflow run release.yml -f dry_run=true`. It builds and packages everything
-from the branch you pick and uploads the archives, the wasm tarball and the generated formula to
-the run, without creating a Release or touching the tap. The formula is rendered from
-`packaging/linear.rb.in` by `scripts/release/formula.sh`.
+from the branch you pick and uploads the archives and the wasm tarball to the run, without
+creating a Release.
 
 ## Build
 
