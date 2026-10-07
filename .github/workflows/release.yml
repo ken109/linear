@@ -2,11 +2,13 @@ name: Release
 
 # Called by release-please.yml once its release PR is merged: it passes the tag
 # (vX.Y.Z) that release-please just created. This workflow then builds the `linear`
-# binary for macOS (arm64, x86_64) and Linux (x86_64, static musl), builds the wasm npm
-# tarball, and attaches all of them with their checksums to the GitHub Release that
-# release-please already created. The Homebrew tap (ken109/homebrew-tap) pulls from there:
-# its own workflow reads the latest Release and its linear-<version>-<target>.tar.gz and
-# .sha256 assets, so nothing is pushed to the tap from here.
+# binary for macOS (arm64, x86_64), Linux (x86_64, static musl) and Windows (x86_64, MSVC
+# with a static C runtime), builds the wasm npm tarball, and attaches all of them with
+# their checksums to the GitHub Release that release-please already created. The Homebrew
+# tap (ken109/homebrew-tap) pulls from there: its own workflow reads the latest Release and
+# its linear-<version>-<target>.tar.gz and .sha256 assets, so nothing is pushed to the tap
+# from here. The Windows archive is linear-<version>-x86_64-pc-windows-msvc.zip (with
+# linear.exe in it) and a .sha256 beside it.
 #
 # There is deliberately no `push: tags` trigger. release-please creates the tag with the
 # default GITHUB_TOKEN, which does not start workflows, so a tag trigger would never
@@ -95,10 +97,19 @@ jobs:
             os: macos-latest # cross-compiled on the arm64 runner
           - target: x86_64-unknown-linux-musl
             os: ubuntu-latest
+          - target: x86_64-pc-windows-msvc
+            os: windows-latest
+            # Link the C runtime in, so the .exe runs without the Visual C++ redistributable.
+            rustflags: -C target-feature=+crt-static
     runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        # The steps below are POSIX shell; on Windows that is Git Bash.
+        shell: bash
     env:
       VERSION: ${{ needs.version.outputs.version }}
       CARGO_PROFILE_RELEASE_STRIP: "true"
+      RUSTFLAGS: ${{ matrix.rustflags }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -117,16 +128,25 @@ jobs:
       - name: Smoke test
         run: |
           bin=target/${{ matrix.target }}/release/linear
+          case "${{ matrix.target }}" in
+            *windows*) bin=$bin.exe ;;
+          esac
           if [ "${{ matrix.target }}" = x86_64-apple-darwin ]; then
             run="arch -x86_64 $bin"
           else
             run=$bin
           fi
-          out=$($run --version)
+          out=$($run --version | tr -d '\r')
           echo "$out"
           [ "$out" = "linear $VERSION" ] || { echo "expected 'linear $VERSION'" >&2; exit 1; }
+          $run completions bash > /dev/null
       - name: Package
-        run: sh scripts/release/package.sh "$VERSION" "${{ matrix.target }}" "target/${{ matrix.target }}/release/linear" dist
+        run: |
+          bin=target/${{ matrix.target }}/release/linear
+          case "${{ matrix.target }}" in
+            *windows*) bin=$bin.exe ;;
+          esac
+          sh scripts/release/package.sh "$VERSION" "${{ matrix.target }}" "$bin" dist
       - uses: actions/upload-artifact@v4
         with:
           name: linear-${{ matrix.target }}
