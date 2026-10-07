@@ -20,7 +20,7 @@ A fast, scriptable command-line client for [Linear](https://linear.app), written
 | `crates/cli`    | `linear`      | The `linear` binary: HTTP, config, credentials, output.     |
 | `crates/wasm`   | `linear-wasm` | JSON-in/JSON-out wrapper over the core: the six functions a Worker needs. |
 | `packages/linear-wasm` | `@ken109/linear-wasm` | The wasm as an npm package, with generated TypeScript types and zod schemas. |
-| `schema/`       | -             | Vendored Linear GraphQL SDL used to type-check queries.     |
+| `schema/`       | -             | Vendored Linear GraphQL SDL used to type-check queries, and the JSON Schema of `issue batch` input. |
 
 ## Install
 
@@ -783,6 +783,65 @@ and `file download` change only this machine (a file, the configuration, the cac
 
 A client made for a dry run refuses to send a mutation or upload a file at all ("internal error:
 ... during --dry-run"), so a write that did not record its step fails instead of writing.
+
+### Batch: `issue batch`
+
+```sh
+linear issue batch --file issues.json            # or `--file -` for standard input
+linear issue batch --file issues.json --dry-run  # what would be sent, nothing sent
+linear issue batch --schema                      # the JSON Schema of the file
+```
+
+```json
+{
+  "issues": [
+    { "op": "create", "title": "Fix the thing", "project": "My Project",
+      "body": "Why it matters.", "source": "https://example.com/a", "meta": { "kind": "slack" },
+      "labels": ["bug"], "priority": "high" },
+    { "op": "update", "issue": "KK-12", "state": "In Progress", "addLabels": ["api"] }
+  ]
+}
+```
+
+A batch creates and updates several issues **all or nothing**. An item is one `issue create`
+(`"op": "create"`) or one `issue update` (`"op": "update"`), with the fields of that command
+under the same names in camelCase (`sourceTitle`, `heldOn`, `addLabels`, `allowForeign`). Differences: a
+body is given inline (`body`, markdown text), `meta` is an object of strings and numbers, `labels`
+on a `create` is a list and on an `update` replaces the labels, and `estimate` and `cycle` take a
+number or `"none"` on an `update`. The shape is published as a JSON Schema,
+[`schema/issue-batch.schema.json`](schema/issue-batch.schema.json) (also `linear issue batch
+--schema`, which needs no workspace). At most 50 items; an issue may be written once and a source
+URL named once. Deleting is not part of a batch.
+
+1. **The document is checked alone** (exit 2, every problem listed with its item: `issues[2]
+   (update KK-12): ...`): the shape, unknown fields, an empty or too long list, flags that do not
+   go together, a source used twice.
+2. **Every item is planned before the first is sent.** Each goes through the code of its
+   command in a session that only records (the same as `--dry-run`): names are resolved, the
+   [ownership rules](#ownership-rules) and the [validators](#validator-rules) run, an issue that
+   already exists for a `source` is found. If any item is refused, **nothing is sent**: all the
+   refusals are printed together, each with its item's index, and the exit code is the first
+   one's (4, 5, 2...). Two items that turn out to write the same issue are refused too.
+3. **`--dry-run` stops here** and prints the plan: `items` (each item's command, target,
+   `changed` and the operations it would send), then the same `mutations` and `rollback` as any
+   dry run, in the order they would be sent.
+4. **Then the mutations are sent in order**, and if one fails, the ones before it are undone,
+   newest first (a created issue is deleted, an updated one gets its old values back). The error
+   says which item failed and what was rolled back; an undo that fails is named with `COULD NOT
+   roll back`. A failed batch prints no result. A source attachment is tried three times, as in
+   `issue create`.
+
+With `--json` a batch prints `workspace`, `created`, `updated` and `results`: for each item in
+the order of the file, its `index`, `op`, `identifier`, `id`, `url` (of an issue it created),
+`existing` (a `create` whose source an issue already carries makes nothing and returns that
+issue) and `changed`. `--quiet` prints the identifiers.
+
+What a rollback **cannot** undo: a source attached to an issue that already exists (an `update`
+item's `source`) stays, and an attachment's old title and metadata are not put back. Those
+mutations are sent last, after everything that can be undone, so a failure almost always comes
+before them. An issue a `create` made is moved to Linear's trash (restorable for a while, see
+`issue unarchive`), not erased. Changes made by somebody else while the batch runs are not
+protected; a rollback puts an updated issue back to the values it had when the batch planned it.
 
 ### GitHub
 
