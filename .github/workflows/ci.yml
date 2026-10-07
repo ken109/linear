@@ -46,7 +46,8 @@ jobs:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
-      - run: cargo test --workspace
+      # --no-fail-fast: one run shows every failing test binary, not only the first.
+      - run: cargo test --workspace --no-fail-fast
 
   # The scripts are generated from the command definition at run time, so they cannot
   # drift from the commands; this checks that what is generated still works: it parses in
