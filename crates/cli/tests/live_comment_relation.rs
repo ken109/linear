@@ -153,8 +153,17 @@ fn scenario(live: &Live, ids: &[String], stamp: &str) {
     let vc = live.json(&["issue", "view", c]);
     assert_eq!(vc["state"]["type"], "duplicate");
     live.json(&["issue", "unrelate", c, "--duplicate", a]);
-    let vc = live.json(&["issue", "view", c]);
-    assert_ne!(vc["state"]["type"], "duplicate");
+    // Linear moves it back a moment later, not always before the next read.
+    let mut seen = Vec::new();
+    for _ in 0..15 {
+        let vc = live.json(&["issue", "view", c]);
+        seen.push(vc["state"]["type"].as_str().unwrap().to_owned());
+        if seen.last().unwrap() != "duplicate" {
+            break;
+        }
+        std::thread::sleep(std::time::Duration::from_secs(2));
+    }
+    assert_ne!(seen.last().unwrap(), "duplicate", "states seen: {seen:?}");
 
     // unrelate: removed once, then there is nothing to remove.
     let removed = live.json(&["issue", "unrelate", a, "--blocks", b]);
