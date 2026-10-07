@@ -48,6 +48,9 @@ pub enum Command {
     /// Read, create and change initiatives, their projects and status updates
     #[command(subcommand)]
     Initiative(crate::commands::initiative::InitiativeCommand),
+    /// Upload files to Linear and download them
+    #[command(subcommand)]
+    File(crate::commands::file::FileCommand),
     /// Read issue and project templates and their sections, and create one
     #[command(subcommand)]
     Template(crate::commands::template::TemplateCommand),

@@ -42,6 +42,15 @@ pub enum IssueCommand {
     /// sends nothing. A branch named with the issue's `branchName` links its pull request
     /// without this command.
     LinkPr(super::write::issue::LinkPrCmd),
+    /// Upload a file and attach it to an issue (a screenshot, a log, a document)
+    ///
+    /// Stores the file in the workspace (at most 25 MiB; a larger, empty or unreadable file is
+    /// refused before anything is sent) and attaches its URL to the issue, with the file's name
+    /// as the title unless --title says otherwise. The URL and the markdown that embeds the file
+    /// in a description or comment are printed too. If attaching fails after the file was
+    /// stored, the stored file is deleted again (or named in the error when that is not safe or
+    /// not possible). Follows the ownership rules of changing the issue.
+    AttachFile(super::write::file::AttachFileCmd),
     /// Delete the attachment of an issue that has a given URL (needs --yes)
     ///
     /// Looks the attachment up on the issue by its exact URL; an issue without one is left
@@ -147,6 +156,7 @@ pub fn run(ctx: &Ctx, cmd: &IssueCommand) -> Result<()> {
         IssueCommand::Update(args) => write::issue::update(ctx, args),
         IssueCommand::Comment(args) => write::issue::comment(ctx, args),
         IssueCommand::LinkPr(args) => write::issue::link_pr(ctx, args),
+        IssueCommand::AttachFile(args) => write::file::attach_file(ctx, args),
         IssueCommand::Unlink(args) => write::issue::unlink(ctx, args),
         IssueCommand::Delete(args) => write::issue::delete(ctx, args),
         IssueCommand::Archive(args) => write::issue::archive(ctx, args),

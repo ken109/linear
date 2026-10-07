@@ -7,6 +7,7 @@ pub mod cache;
 pub mod cached;
 pub mod completions;
 pub mod cycle;
+pub mod file;
 mod format;
 pub mod initiative;
 pub mod issue;
@@ -61,6 +62,7 @@ pub fn run(cli: &Cli, out: Output) -> Result<()> {
         Command::Project(cmd) => project::run(&ctx, cmd),
         Command::Milestone(cmd) => milestone::run(&ctx, cmd),
         Command::Initiative(cmd) => initiative::run(&ctx, cmd),
+        Command::File(cmd) => file::run(&ctx, cmd),
         Command::Template(cmd) => template::run(&ctx, cmd),
         Command::Label(cmd) => label::run(&ctx, cmd),
         Command::Team(cmd) => team::run(&ctx, cmd),

@@ -21,6 +21,8 @@ use serde::Serialize;
 use std::sync::{Mutex, OnceLock};
 use std::time::Duration;
 
+mod files;
+
 /// Overrides the API endpoint (used by tests and proxies).
 pub const API_URL_ENV: &str = "LINEAR_API_URL";
 /// Overrides Linear's token endpoint (used by tests and proxies).

@@ -23,6 +23,7 @@
 //! `issue` holds the issue commands built on this path; the project,
 //! milestone, initiative and template writes use the same pieces.
 
+pub mod file;
 pub mod initiative;
 pub mod issue;
 pub mod milestone;

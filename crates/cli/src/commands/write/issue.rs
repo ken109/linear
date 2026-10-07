@@ -1377,11 +1377,11 @@ pub fn reorder(ctx: &Ctx, cmd: &ReorderCmd) -> Result<()> {
 // ---------------------------------------------------------------- shared
 
 /// The issue as a write needs to see it: its fields, its team's states and its project's lead.
-fn fetch_issue(ws: &WriteSession, reference: &str) -> Result<IssueWriteView> {
+pub(super) fn fetch_issue(ws: &WriteSession, reference: &str) -> Result<IssueWriteView> {
     ws.client.execute(&read::issue_write_view(reference.trim()))
 }
 
-fn placement_of(view: &IssueWriteView) -> Placement<'_> {
+pub(super) fn placement_of(view: &IssueWriteView) -> Placement<'_> {
     match &view.write.project {
         Some(project) => project.placement(),
         None => Placement::NoProject,
