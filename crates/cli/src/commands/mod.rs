@@ -8,6 +8,7 @@ pub mod cached;
 pub mod comment;
 pub mod completions;
 pub mod cycle;
+pub mod document;
 pub mod file;
 mod format;
 pub mod initiative;
@@ -70,6 +71,7 @@ pub fn run(cli: &Cli, out: Output) -> Result<()> {
         Command::Team(cmd) => team::run(&ctx, cmd),
         Command::User(cmd) => user::run(&ctx, cmd),
         Command::Cycle(args) => cycle::run(&ctx, args),
+        Command::Document(cmd) => document::run(&ctx, cmd),
         Command::Audit(args) => audit::run(&ctx, args),
         Command::Cache(cmd) => cache::run(&ctx, cmd),
         Command::Status(args) => status::run(&ctx, args),

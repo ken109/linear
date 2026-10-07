@@ -239,6 +239,8 @@ linear template list
 linear template skeleton "Bug report"                       # the sections, read from Linear
 linear template skeleton "Project" --type project           # the same for a project template
 linear label list                                           # groups first, each followed by its labels
+linear document list --project "My Project"                 # or --initiative, --title
+linear document view design-notes-1a2b3c4d5e6f              # id, slug id or URL; prints the body
 linear team list
 linear user view me
 linear brief                                                # where each unfinished project stands
@@ -770,8 +772,8 @@ is refused (exit 5), and `audit` reports an issue that has no http(s) attachment
 `metadata.kind` is in the list, naming the issue. Unset, metadata is not looked at. An empty
 list or an empty kind is a configuration error.
 
-By default `template-sections` covers all four writes, `issue_create`, `issue_update`,
-`project_create` and `project_update`: while the rule is on, `issue create`, `project create`, `issue update --body-file`
+By default `template-sections` covers every write it supports, `issue_create`, `issue_update`,
+`project_create`, `project_update`, `document_create` and `document_update`: while the rule is on, `issue create`, `project create`, `issue update --body-file`
 and `project update --body-file` are refused (exit 5) unless `--template` names the Linear
 template to hold the body to. An update that leaves the body alone is not checked. Replacing a body without a template is refused, not skipped, because an
 issue or a project does not record which template it came from. There is no flag to opt out of one
@@ -986,6 +988,40 @@ linear label update "area/ship" [--new-name "released"] [--color "#4EA7FC"] [--d
   creation has nothing to hold against the rule, and a multi-select group never conflicts.
 - No ownership rule applies (a label belongs to a team or the workspace, not to a project or an
   issue); Linear decides who may add workspace labels. Deleting a label is not supported.
+
+### Documents
+
+```sh
+linear document create --title "Design notes" --project "My Project" --body-file notes.md [--template "Plan"]
+linear document create --title "Roadmap" --initiative "Long effort" --body-file roadmap.md
+linear document update design-notes-1a2b3c4d5e6f [--title "Notes"] [--body-file notes.md] [--template "Plan"]
+```
+
+- `document list` (`--project`, `--initiative`, `--title`, `--limit`, `--all`) shows the documents
+  of the workspace, or of one project or initiative, with what each hangs off. `document view`
+  takes an id, a slug id or a document URL and prints the document with its body (`--json` has the
+  body as `content`; `--quiet` prints the slug id). Documents of an issue, a team or a cycle are
+  read like any other.
+- Writing is limited to the documents **of a project you lead or an initiative you own** (exit 4
+  otherwise, before anything is sent). `create` needs exactly one of `--project` and
+  `--initiative`. An initiative that has no owner is nobody's: a new one made with
+  `initiative create` has to get an owner in Linear before the CLI writes under it. Lenient
+  ownership relaxes issue writes only, so it changes nothing here. `update` works out the parent
+  from the document itself, and refuses (exit 2) one whose parent is neither a project nor an
+  initiative.
+- `create` with a title the parent already has returns that document (`"existing": true` with
+  `--json`) and creates nothing; `update` sends only what differs (`"changed": false` when nothing
+  does). A body file that is empty is not sent (it is a usage error for `update`: a body is not
+  cleared this way). `--body-file -` reads standard input.
+- **The body is checked by `template-sections`**, like an issue's or a project's: with the rule
+  on, `--template` names a Linear *document* template (made in Linear; `linear template create`
+  makes issue and project templates only) and the body has to fill every section of it, otherwise
+  the write is refused (exit 5). `document create` always needs a template then, `document update`
+  only when it replaces the body (`--body-file`); a rename is not checked. Without the rule,
+  `--template` is ignored with a note. To leave documents out of the rule, name the other
+  operations in `rule_operations` (`document_create` and `document_update` are the two it
+  knows for documents). `source-attachment` and `label-groups-exclusive` are about issues and
+  do not apply.
 
 ## Output and exit codes
 

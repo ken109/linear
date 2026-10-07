@@ -75,6 +75,9 @@ pub enum Command {
     /// `linear cycle list` and `linear cycle view <NUMBER>` read a team's cycles and the issues
     /// in one; they are separate subcommands and do not change the date form.
     Cycle(crate::commands::cycle::CycleArgs),
+    /// Read documents, and write the ones under a project you lead or an initiative you own
+    #[command(subcommand)]
+    Document(crate::commands::document::DocumentCommand),
     /// Find Linear data that has drifted: stale work, outdated status updates, inconsistent states
     ///
     /// Without --workspace (or LINEAR_WORKSPACE, or a .linear.toml) every configured
