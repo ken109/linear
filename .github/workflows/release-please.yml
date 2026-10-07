@@ -5,7 +5,7 @@ name: Release Please
 # the Conventional Commits since the last release. Merging that PR makes
 # release-please tag vX.Y.Z and create the GitHub Release (with the changelog as its
 # notes); this workflow then calls release.yml to build and attach the binaries, the wasm
-# tarball and the checksums, and to commit the Homebrew formula.
+# tarball and the checksums. The Homebrew tap picks the Release up on its own.
 #
 # Why release.yml is called from here instead of being triggered by the tag: a tag or
 # Release created with the default GITHUB_TOKEN does not start other workflows, and this
@@ -74,4 +74,3 @@ jobs:
     uses: ./.github/workflows/release.yml
     with:
       tag: ${{ needs.release-please.outputs.tag_name }}
-    secrets: inherit
