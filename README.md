@@ -423,6 +423,9 @@ linear issue reorder KK-3 KK-1 KK-2                                    # same pr
 linear issue reorder KK-3,KK-1,KK-2                                    # the same, comma-separated
 ```
 
+A date that is not on the calendar (`2027-02-30`) is refused as a usage error (exit 2) in `--due`
+and `--target-date`; it is not rolled over to the next valid day.
+
 `--body-file -` reads standard input. Names (states, projects, milestones, labels, users, teams)
 are resolved before anything is sent; one that matches nothing, or more than one thing, is a
 usage error (exit 2) that lists the candidates. Every write goes through the same steps, and
@@ -602,6 +605,10 @@ the kind of the source: `issue create` must pass `--meta kind=<one of the list>`
 is refused (exit 5), and `audit` reports an issue that has no http(s) attachment whose
 `metadata.kind` is in the list, naming the issue. Unset, metadata is not looked at. An empty
 list or an empty kind is a configuration error.
+
+By default `template-sections` also covers project bodies: `project create --body-file` without
+`--template` is refused (exit 5) while the rule is on. To check issues only, narrow it with
+`rule_operations = { "template-sections" = ["issue_create"] }`.
 
 Without a rule, its flag is optional (`--template` with no `template-sections` rule is ignored,
 with a note). Whatever the rules, an unknown name, an empty update or comment, a `--source`
