@@ -687,3 +687,221 @@ fn the_template_body_can_come_from_standard_input() {
         "One"
     );
 }
+
+// ------------------------------------------------------------------ project template
+
+/// The fixture's templates plus a project template named `name` with one section, `Done`.
+fn templates_with_project(name: &str) -> Reply {
+    let mut v: Value = serde_json::from_str(&fixture("templates_sections")).unwrap();
+    let doc = json!({ "descriptionData": { "type": "doc", "content": [
+        { "type": "heading", "attrs": { "level": 2 },
+          "content": [{ "type": "text", "text": "Done" }] },
+    ]}});
+    v["data"]["templates"].as_array_mut().unwrap().push(json!({
+        "id": "00000000-0000-4000-8000-0000000000c1",
+        "name": name,
+        "description": null,
+        "type": "project",
+        "team": null,
+        "templateData": doc.to_string(),
+        "updatedAt": "2026-10-06T13:35:53.246Z",
+    }));
+    ok(&v.to_string())
+}
+
+fn project_template_created(name: &str) -> Reply {
+    data(json!({ "templateCreate": { "success": true, "template": {
+        "id": "00000000-0000-4000-8000-0000000000b2", "name": name, "description": null,
+        "type": "project", "team": null,
+        "templateData": "{}", "updatedAt": "2026-10-06T13:35:53.246Z"
+    }}}))
+}
+
+#[test]
+fn a_project_template_has_no_team_and_no_title() {
+    let sb = workspace();
+    let body = write_file(&sb, "tpl.md", TEMPLATE_BODY);
+    let mock = Routed::start(vec![
+        ("Whoami", vec![whoami()]),
+        ("Templates", vec![templates()]),
+        ("TemplateCreate", vec![project_template_created("Survey")]),
+    ]);
+    let o = run(
+        &sb,
+        &mock,
+        &[
+            "template",
+            "create",
+            "--type",
+            "project",
+            "--name",
+            "Survey",
+            "--body-file",
+            &body,
+            "--json",
+        ],
+    );
+    assert_eq!(code(&o), 0, "{}", stderr(&o));
+    let v = stdout_json(&o);
+    assert_eq!(v["existing"], false);
+    assert_eq!(v["type"], "project");
+    assert_eq!(v["team"], Value::Null);
+    assert_eq!(v["sections"], json!(["Summary", "Steps"]));
+
+    let input = &mock.of("TemplateCreate")[0]["input"];
+    assert_eq!(input["type"], "project");
+    assert_eq!(input["name"], "Survey");
+    assert!(input.get("teamId").is_none(), "{input}");
+    let template_data = input["templateData"].as_object().unwrap();
+    assert_eq!(
+        template_data.keys().collect::<Vec<_>>(),
+        vec!["descriptionData"]
+    );
+    let doc = &template_data["descriptionData"];
+    assert_eq!(doc["type"], "doc");
+    assert_eq!(doc["content"][0]["content"][0]["text"], "Summary");
+}
+
+#[test]
+fn a_project_template_with_the_same_name_is_returned_not_created() {
+    let sb = workspace();
+    let body = write_file(&sb, "tpl.md", TEMPLATE_BODY);
+    let mock = Routed::start(vec![
+        ("Whoami", vec![whoami()]),
+        (
+            "Templates",
+            vec![templates_with_project("Definition of done")],
+        ),
+    ]);
+    let o = run(
+        &sb,
+        &mock,
+        &[
+            "template",
+            "create",
+            "--type",
+            "project",
+            "--name",
+            "Definition of done",
+            "--body-file",
+            &body,
+            "--json",
+        ],
+    );
+    assert_eq!(code(&o), 0, "{}", stderr(&o));
+    let v = stdout_json(&o);
+    assert_eq!(v["existing"], true);
+    assert_eq!(v["type"], "project");
+    assert_eq!(v["sections"], json!(["Done"]));
+    assert_nothing_written(&mock);
+}
+
+#[test]
+fn an_issue_template_of_the_same_name_does_not_stop_a_project_template() {
+    let sb = workspace();
+    let body = write_file(&sb, "tpl.md", TEMPLATE_BODY);
+    let mock = Routed::start(vec![
+        ("Whoami", vec![whoami()]),
+        ("Templates", vec![templates()]),
+        (
+            "TemplateCreate",
+            vec![project_template_created("Sectioned Template")],
+        ),
+    ]);
+    let o = run(
+        &sb,
+        &mock,
+        &[
+            "template",
+            "create",
+            "--type",
+            "project",
+            "--name",
+            "Sectioned Template",
+            "--body-file",
+            &body,
+            "--json",
+        ],
+    );
+    assert_eq!(code(&o), 0, "{}", stderr(&o));
+    assert_eq!(stdout_json(&o)["existing"], false);
+    assert_eq!(mock.of("TemplateCreate").len(), 1);
+}
+
+#[test]
+fn a_project_template_of_the_same_name_does_not_stop_an_issue_template() {
+    let sb = workspace();
+    let body = write_file(&sb, "tpl.md", TEMPLATE_BODY);
+    let mock = Routed::start(vec![
+        ("Whoami", vec![whoami()]),
+        ("Teams", vec![teams()]),
+        ("Templates", vec![templates_with_project("Shared name")]),
+        ("TemplateCreate", vec![template_created("Shared name")]),
+    ]);
+    let o = run(
+        &sb,
+        &mock,
+        &[
+            "template",
+            "create",
+            "--name",
+            "Shared name",
+            "--body-file",
+            &body,
+            "--json",
+        ],
+    );
+    assert_eq!(code(&o), 0, "{}", stderr(&o));
+    assert_eq!(stdout_json(&o)["existing"], false);
+    assert_eq!(mock.of("TemplateCreate")[0]["input"]["type"], "issue");
+}
+
+#[test]
+fn a_project_template_refuses_a_team_before_anything_is_sent() {
+    let sb = workspace();
+    let body = write_file(&sb, "tpl.md", TEMPLATE_BODY);
+    let mock = Routed::start(vec![]);
+    let o = run(
+        &sb,
+        &mock,
+        &[
+            "template",
+            "create",
+            "--type",
+            "project",
+            "--name",
+            "Survey",
+            "--body-file",
+            &body,
+            "--team",
+            "EX",
+        ],
+    );
+    assert_eq!(code(&o), 2, "{}", stderr(&o));
+    assert!(stderr(&o).contains("--team"), "{}", stderr(&o));
+    assert!(mock.ops().is_empty());
+}
+
+#[test]
+fn a_project_template_body_without_a_heading_is_refused() {
+    let sb = workspace();
+    let body = write_file(&sb, "tpl.md", "Just a sentence.\n");
+    let mock = Routed::start(vec![]);
+    let o = run(
+        &sb,
+        &mock,
+        &[
+            "template",
+            "create",
+            "--type",
+            "project",
+            "--name",
+            "Flat",
+            "--body-file",
+            &body,
+        ],
+    );
+    assert_eq!(code(&o), 2, "{}", stderr(&o));
+    assert!(stderr(&o).contains("no sections"), "{}", stderr(&o));
+    assert!(mock.ops().is_empty());
+}

@@ -429,3 +429,42 @@ fn user_list_marks_me_and_includes_disabled_only_when_asked() {
     );
     assert_eq!(stdout(&o), "alice@example.com\n");
 }
+
+#[test]
+fn skeleton_of_a_project_template_is_read_with_type_project() {
+    let sb = workspace();
+    let mut v: serde_json::Value = serde_json::from_str(&fixture("templates_sections")).unwrap();
+    let doc = serde_json::json!({ "descriptionData": { "type": "doc", "content": [
+        { "type": "heading", "attrs": { "level": 2 },
+          "content": [{ "type": "text", "text": "Definition of done" }] },
+    ]}});
+    v["data"]["templates"][2]["templateData"] = doc.to_string().into();
+    let mock = Mock::start(vec![ok(&v.to_string()), ok(&v.to_string())]);
+    let o = linear(
+        &sb,
+        &mock,
+        &[
+            "template",
+            "skeleton",
+            "A project template",
+            "--type",
+            "project",
+        ],
+    );
+    assert_eq!(code(&o), 0, "{}", stderr(&o));
+    assert_eq!(stdout(&o), "## Definition of done\n");
+    // An issue template is not found among the project templates.
+    let o = linear(
+        &sb,
+        &mock,
+        &[
+            "template",
+            "skeleton",
+            "Sectioned Template",
+            "--type",
+            "project",
+        ],
+    );
+    assert_eq!(code(&o), 2);
+    assert!(stderr(&o).contains("no template"), "{}", stderr(&o));
+}
