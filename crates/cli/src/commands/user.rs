@@ -13,6 +13,8 @@ use linear_core::InWorkspace;
 
 #[derive(Debug, Subcommand)]
 pub enum UserCommand {
+    /// Show how to use these commands, briefly, for an AI agent
+    Usage,
     /// List users
     List(ListCmd),
     /// Show one user
@@ -36,6 +38,7 @@ pub struct ViewCmd {
 
 pub fn run(ctx: &Ctx, cmd: &UserCommand) -> Result<()> {
     match cmd {
+        UserCommand::Usage => unreachable!("handled before the context is built"),
         UserCommand::List(args) => list(ctx, args),
         UserCommand::View(args) => view(ctx, args),
     }

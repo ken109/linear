@@ -8,6 +8,8 @@ use clap::Subcommand;
 
 #[derive(Debug, Subcommand)]
 pub enum CommentCommand {
+    /// Show how to use these commands, briefly, for an AI agent
+    Usage,
     /// Replace the text of a comment you wrote
     ///
     /// The comment is named by its id (the `id` that `issue comment --json` and
@@ -25,6 +27,7 @@ pub enum CommentCommand {
 
 pub fn run(ctx: &Ctx, cmd: &CommentCommand) -> Result<()> {
     match cmd {
+        CommentCommand::Usage => unreachable!("handled before the context is built"),
         CommentCommand::Update(args) => write::comment::update(ctx, args),
         CommentCommand::Delete(args) => write::comment::delete(ctx, args),
     }

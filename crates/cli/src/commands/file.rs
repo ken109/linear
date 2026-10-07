@@ -14,6 +14,8 @@ use std::path::{Path, PathBuf};
 
 #[derive(Debug, Subcommand)]
 pub enum FileCommand {
+    /// Show how to use these commands, briefly, for an AI agent
+    Usage,
     /// Upload a file to Linear and print its URL and the markdown that embeds it
     ///
     /// The file is stored in the workspace and visible only to people who can sign in to it.
@@ -47,6 +49,7 @@ pub struct DownloadCmd {
 
 pub fn run(ctx: &Ctx, cmd: &FileCommand) -> Result<()> {
     match cmd {
+        FileCommand::Usage => unreachable!("handled before the context is built"),
         FileCommand::Upload(args) => write::file::upload(ctx, args),
         FileCommand::Download(args) => download(ctx, args),
     }

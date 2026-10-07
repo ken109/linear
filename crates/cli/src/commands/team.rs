@@ -13,6 +13,8 @@ use linear_core::InWorkspace;
 
 #[derive(Debug, Subcommand)]
 pub enum TeamCommand {
+    /// Show how to use these commands, briefly, for an AI agent
+    Usage,
     /// List teams
     List(ListCmd),
     /// Show one team
@@ -33,6 +35,7 @@ pub struct ViewCmd {
 
 pub fn run(ctx: &Ctx, cmd: &TeamCommand) -> Result<()> {
     match cmd {
+        TeamCommand::Usage => unreachable!("handled before the context is built"),
         TeamCommand::List(args) => list(ctx, args),
         TeamCommand::View(args) => view(ctx, args),
     }

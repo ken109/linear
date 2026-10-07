@@ -21,6 +21,8 @@ use serde::Serialize;
 
 #[derive(Debug, Subcommand)]
 pub enum InitiativeCommand {
+    /// Show how to use these commands, briefly, for an AI agent
+    Usage,
     /// List initiatives
     List(ListCmd),
     /// Show one initiative with its projects
@@ -96,6 +98,7 @@ pub struct ViewCmd {
 
 pub fn run(ctx: &Ctx, cmd: &InitiativeCommand) -> Result<()> {
     match cmd {
+        InitiativeCommand::Usage => unreachable!("handled before the context is built"),
         InitiativeCommand::List(args) => list(ctx, args),
         InitiativeCommand::View(args) => view(ctx, args),
         InitiativeCommand::Create(args) => write::initiative::create(ctx, args),

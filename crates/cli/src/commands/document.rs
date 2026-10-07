@@ -18,6 +18,8 @@ use serde::Serialize;
 
 #[derive(Debug, Subcommand)]
 pub enum DocumentCommand {
+    /// Show how to use these commands, briefly, for an AI agent
+    Usage,
     /// List documents, of a project or an initiative or all of them
     List(ListCmd),
     /// Show one document with its body
@@ -51,6 +53,7 @@ pub struct ViewCmd {
 
 pub fn run(ctx: &Ctx, cmd: &DocumentCommand) -> Result<()> {
     match cmd {
+        DocumentCommand::Usage => unreachable!("handled before the context is built"),
         DocumentCommand::List(args) => list(ctx, args),
         DocumentCommand::View(args) => view(ctx, args),
         DocumentCommand::Create(args) => write::document::create(ctx, args),

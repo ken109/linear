@@ -16,6 +16,8 @@ use serde::Serialize;
 
 #[derive(Debug, Subcommand)]
 pub enum TemplateCommand {
+    /// Show how to use these commands, briefly, for an AI agent
+    Usage,
     /// List templates
     List(ListCmd),
     /// Show one template and its sections
@@ -55,6 +57,7 @@ pub struct SkeletonCmd {
 
 pub fn run(ctx: &Ctx, cmd: &TemplateCommand) -> Result<()> {
     match cmd {
+        TemplateCommand::Usage => unreachable!("handled before the context is built"),
         TemplateCommand::List(args) => list(ctx, args),
         TemplateCommand::View(args) => view(ctx, args),
         TemplateCommand::Skeleton(args) => skeleton(ctx, args),

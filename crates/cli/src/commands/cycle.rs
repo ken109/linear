@@ -41,6 +41,8 @@ pub struct CycleArgs {
 
 #[derive(Debug, Subcommand)]
 pub enum CycleCommand {
+    /// Show how to use these commands, briefly, for an AI agent
+    Usage,
     /// List a team's cycles, newest first
     List(ListCmd),
     /// Show one cycle by its number, with the issues in it
@@ -120,6 +122,7 @@ struct CycleOut<'a> {
 
 pub fn run(ctx: &Ctx, args: &CycleArgs) -> Result<()> {
     match (&args.command, args.held_on) {
+        (Some(CycleCommand::Usage), _) => unreachable!("handled before the context is built"),
         (Some(CycleCommand::List(cmd)), _) => list(ctx, cmd),
         (Some(CycleCommand::View(cmd)), _) => view(ctx, cmd),
         (None, Some(held_on)) => by_date(ctx, args.team.as_deref(), held_on),

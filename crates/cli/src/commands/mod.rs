@@ -20,6 +20,7 @@ pub mod project;
 pub mod status;
 pub mod team;
 pub mod template;
+pub mod usage;
 pub mod user;
 pub mod webhook;
 mod workspace;
@@ -112,6 +113,9 @@ pub fn run(cli: &Cli, out: Output) -> Result<()> {
     check_selection(cli)?;
     // These touch neither the configuration nor Linear, so they must work on a
     // machine that has no config directory and no network.
+    if let Some(group) = usage::requested(&cli.command) {
+        return usage::run(out, group);
+    }
     match &cli.command {
         Command::Completions(args) => return completions::run(args),
         Command::Webhook(webhook::WebhookCommand::Verify(args)) => {
@@ -141,7 +145,9 @@ pub fn run(cli: &Cli, out: Output) -> Result<()> {
         Command::Status(args) => status::run(&ctx, args),
         Command::Brief(args) => brief::run(&ctx, args),
         Command::Webhook(cmd) => webhook::run(&ctx, cmd),
-        Command::Completions(_) => unreachable!("handled before the context is built"),
+        Command::Completions(_) | Command::Usage => {
+            unreachable!("handled before the context is built")
+        }
     }
 }
 

@@ -27,6 +27,8 @@ const SECRET_ENV: &str = "LINEAR_WEBHOOK_SECRET";
 
 #[derive(Debug, Subcommand)]
 pub enum WebhookCommand {
+    /// Show how to use these commands, briefly, for an AI agent
+    Usage,
     /// List the webhooks of the workspace (never their signing secrets)
     List(ListCmd),
     /// Create a webhook; prints its signing secret, which Linear generates
@@ -97,6 +99,7 @@ pub struct VerifyCmd {
 
 pub fn run(ctx: &Ctx, cmd: &WebhookCommand) -> Result<()> {
     match cmd {
+        WebhookCommand::Usage => unreachable!("handled before the context is built"),
         WebhookCommand::List(args) => list(ctx, args),
         WebhookCommand::Create(args) => create(ctx, args),
         WebhookCommand::Delete(args) => delete(ctx, args),

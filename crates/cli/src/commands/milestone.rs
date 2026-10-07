@@ -14,6 +14,8 @@ use serde::Serialize;
 
 #[derive(Debug, Subcommand)]
 pub enum MilestoneCommand {
+    /// Show how to use these commands, briefly, for an AI agent
+    Usage,
     /// List the milestones of a project
     List(ListCmd),
     /// Show one milestone with its issues
@@ -44,6 +46,7 @@ pub struct ViewCmd {
 
 pub fn run(ctx: &Ctx, cmd: &MilestoneCommand) -> Result<()> {
     match cmd {
+        MilestoneCommand::Usage => unreachable!("handled before the context is built"),
         MilestoneCommand::List(args) => list(ctx, args),
         MilestoneCommand::View(args) => view(ctx, args),
         MilestoneCommand::Create(args) => write::milestone::create(ctx, args),

@@ -12,6 +12,8 @@ use linear_core::InWorkspace;
 
 #[derive(Debug, Subcommand)]
 pub enum LabelCommand {
+    /// Show how to use these commands, briefly, for an AI agent
+    Usage,
     /// List labels, with the group each one belongs to
     List(ListCmd),
     /// Show the label(s) with a name or id
@@ -36,6 +38,7 @@ pub struct ViewCmd {
 
 pub fn run(ctx: &Ctx, cmd: &LabelCommand) -> Result<()> {
     match cmd {
+        LabelCommand::Usage => unreachable!("handled before the context is built"),
         LabelCommand::List(args) => list(ctx, args),
         LabelCommand::View(args) => view(ctx, args),
         LabelCommand::Create(args) => write::label::create(ctx, args),

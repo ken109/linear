@@ -22,14 +22,14 @@ pub struct Cli {
     #[arg(short, long, global = true)]
     pub quiet: bool,
 
-    /// With --json on a list or view command: print only these keys of each object, comma-separated
-    /// (the camelCase names --json shows, top level only; an unknown name is a usage error that
-    /// lists the valid ones)
+    /// Print only these keys of each JSON object, comma-separated (list and view commands, with
+    /// --json). The names are the camelCase keys --json shows, at the top level; an unknown name is
+    /// a usage error that lists the valid ones
     #[arg(long, global = true, value_name = "A,B,C", value_delimiter = ',')]
     pub fields: Vec<String>,
 
-    /// On a list or view command: print only each item's id (Linear's uuid), one per line (a JSON
-    /// array with --json). --quiet prints the short reference (KK-12) instead
+    /// Print only each item's id (Linear's uuid), one per line (list and view commands; a JSON array
+    /// with --json). --quiet prints the short reference (KK-12) instead
     #[arg(long, global = true)]
     pub id_only: bool,
 
@@ -44,6 +44,13 @@ pub struct Cli {
 
 #[derive(Debug, Subcommand)]
 pub enum Command {
+    /// Print this overview of the commands, for an AI agent
+    ///
+    /// Lists every command group, the global flags, the exit codes and the safety model in under
+    /// 1000 tokens, for an AI agent to read first. It is generated from the command definition.
+    /// `linear <group> usage` (for example `linear issue usage`) lists one group's commands with
+    /// their flags. Needs no configuration, credentials or network.
+    Usage,
     /// Manage workspaces and credentials
     #[command(subcommand)]
     Workspace(WorkspaceCommand),
@@ -163,6 +170,8 @@ pub struct ApiArgs {
 
 #[derive(Debug, Subcommand)]
 pub enum WorkspaceCommand {
+    /// Show how to use these commands, briefly, for an AI agent
+    Usage,
     /// List configured workspaces
     List,
     /// Add a workspace to the configuration

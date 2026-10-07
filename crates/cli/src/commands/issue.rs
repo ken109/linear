@@ -20,6 +20,8 @@ use serde::Serialize;
 
 #[derive(Debug, Subcommand)]
 pub enum IssueCommand {
+    /// Show how to use these commands, briefly, for an AI agent
+    Usage,
     /// List issues, optionally narrowed by assignee, state, project, label, priority, parent, cycle or origin URL
     List(ListCmd),
     /// Search issues by their title and description (and comments), best match first
@@ -225,6 +227,7 @@ pub struct ViewCmd {
 
 pub fn run(ctx: &Ctx, cmd: &IssueCommand) -> Result<()> {
     match cmd {
+        IssueCommand::Usage => unreachable!("handled before the context is built"),
         IssueCommand::List(args) => list(ctx, args),
         IssueCommand::Search(args) => search(ctx, args),
         IssueCommand::View(args) => view(ctx, args),

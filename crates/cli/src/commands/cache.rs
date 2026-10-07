@@ -22,6 +22,8 @@ use serde::Serialize;
 
 #[derive(Debug, Subcommand)]
 pub enum CacheCommand {
+    /// Show how to use these commands, briefly, for an AI agent
+    Usage,
     /// Fetch what the viewer has in progress and the audit result, and store them
     ///
     /// Without --workspace (or LINEAR_WORKSPACE, or a .linear.toml) every
@@ -44,6 +46,7 @@ pub struct ShowArgs {
 
 pub fn run(ctx: &Ctx, cmd: &CacheCommand) -> Result<()> {
     match cmd {
+        CacheCommand::Usage => unreachable!("handled before the context is built"),
         CacheCommand::Refresh => refresh(ctx),
         CacheCommand::Show(args) => show(ctx, args),
         CacheCommand::Clear => clear(ctx),

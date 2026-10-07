@@ -21,6 +21,8 @@ use serde::Serialize;
 
 #[derive(Debug, Subcommand)]
 pub enum ProjectCommand {
+    /// Show how to use these commands, briefly, for an AI agent
+    Usage,
     /// List projects with lead, status, target date and the latest status update
     List(ListCmd),
     /// Show one project: milestones, issue counts and status updates
@@ -87,6 +89,7 @@ pub struct ViewCmd {
 
 pub fn run(ctx: &Ctx, cmd: &ProjectCommand) -> Result<()> {
     match cmd {
+        ProjectCommand::Usage => unreachable!("handled before the context is built"),
         ProjectCommand::List(args) => list(ctx, args),
         ProjectCommand::View(args) => view(ctx, args),
         ProjectCommand::Create(args) => write::project::create(ctx, args),

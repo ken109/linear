@@ -16,6 +16,7 @@ use std::io::{IsTerminal, Read};
 
 pub fn run(ctx: &Ctx, cmd: &WorkspaceCommand) -> Result<()> {
     match cmd {
+        WorkspaceCommand::Usage => unreachable!("handled before the context is built"),
         WorkspaceCommand::List => list(ctx),
         WorkspaceCommand::Add(args) => add(ctx, args),
         WorkspaceCommand::Login(args) => login(ctx, args),
