@@ -17,7 +17,8 @@ pub struct Dirs {
 }
 
 impl Dirs {
-    /// `$LINEAR_CONFIG_DIR`, else `$XDG_CONFIG_HOME/linear`, else `~/.config/linear`.
+    /// `$LINEAR_CONFIG_DIR`, else `$XDG_CONFIG_HOME/linear`, else `~/.config/linear`
+    /// (on Windows, `%APPDATA%\linear`).
     pub fn from_env() -> Result<Self> {
         let var = |k: &str| {
             std::env::var_os(k)
@@ -28,12 +29,13 @@ impl Dirs {
             d
         } else if let Some(x) = var("XDG_CONFIG_HOME") {
             x.join("linear")
-        } else if let Some(h) = var("HOME") {
-            h.join(".config").join("linear")
+        } else if let Some(d) = default_config_dir(var) {
+            d
         } else {
-            return Err(CliError::general(
-                "cannot locate the config directory: set HOME or LINEAR_CONFIG_DIR",
-            ));
+            return Err(CliError::general(format!(
+                "cannot locate the config directory: set {} or LINEAR_CONFIG_DIR",
+                if cfg!(windows) { "APPDATA" } else { "HOME" }
+            )));
         };
         Ok(Self { root })
     }
@@ -50,6 +52,19 @@ impl Dirs {
             .join("credentials")
             .join(format!("{workspace}.json")))
     }
+}
+
+/// Where the configuration lives when no variable says: `~/.config/linear`.
+#[cfg(not(windows))]
+fn default_config_dir(var: impl Fn(&str) -> Option<PathBuf>) -> Option<PathBuf> {
+    var("HOME").map(|h| h.join(".config").join("linear"))
+}
+
+/// Where the configuration lives when no variable says: `%APPDATA%\linear`,
+/// the per-user folder Windows programs keep their settings in.
+#[cfg(windows)]
+fn default_config_dir(var: impl Fn(&str) -> Option<PathBuf>) -> Option<PathBuf> {
+    var("APPDATA").map(|d| d.join("linear"))
 }
 
 /// Read `workspaces.toml`. A missing file is an empty config.

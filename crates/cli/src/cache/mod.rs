@@ -42,6 +42,19 @@ impl Loaded {
     }
 }
 
+/// Where the cache lives when no variable says: `~/.cache/linear`.
+#[cfg(not(windows))]
+fn default_cache_dir(var: impl Fn(&str) -> Option<PathBuf>) -> Option<PathBuf> {
+    var("HOME").map(|h| h.join(".cache").join("linear"))
+}
+
+/// Where the cache lives when no variable says: `%LOCALAPPDATA%\linear`, the
+/// per-user folder for data that need not roam (and can be deleted).
+#[cfg(windows)]
+fn default_cache_dir(var: impl Fn(&str) -> Option<PathBuf>) -> Option<PathBuf> {
+    var("LOCALAPPDATA").map(|d| d.join("linear"))
+}
+
 impl CacheDir {
     pub fn from_env() -> Result<Self> {
         let var = |k: &str| {
@@ -53,12 +66,17 @@ impl CacheDir {
             d
         } else if let Some(x) = var("XDG_CACHE_HOME") {
             x.join("linear")
-        } else if let Some(h) = var("HOME") {
-            h.join(".cache").join("linear")
+        } else if let Some(d) = default_cache_dir(var) {
+            d
         } else {
-            return Err(CliError::general(
-                "cannot locate the cache directory: set HOME or LINEAR_CACHE_DIR",
-            ));
+            return Err(CliError::general(format!(
+                "cannot locate the cache directory: set {} or LINEAR_CACHE_DIR",
+                if cfg!(windows) {
+                    "LOCALAPPDATA"
+                } else {
+                    "HOME"
+                }
+            )));
         };
         Ok(Self { root })
     }
