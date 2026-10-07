@@ -44,6 +44,8 @@ pub struct Ctx {
     pub dirs: Dirs,
     pub out: Output,
     pub workspace_flag: Option<String>,
+    /// `--dry-run`: a write records its mutations and prints them instead of sending.
+    pub dry_run: bool,
     /// Where credentials set to the OS keyring are kept.
     pub keyring: Box<dyn Keyring>,
 }
@@ -111,6 +113,14 @@ fn check_selection(cli: &Cli) -> Result<()> {
 
 pub fn run(cli: &Cli, out: Output) -> Result<()> {
     check_selection(cli)?;
+    if cli.dry_run {
+        if let Some(command) = no_dry_run(&cli.command) {
+            return Err(CliError::usage(format!(
+                "--dry-run is for the commands that write to Linear; `{command}` does not, \
+                 or changes only this machine, so it is refused rather than run"
+            )));
+        }
+    }
     // These touch neither the configuration nor Linear, so they must work on a
     // machine that has no config directory and no network.
     if let Some(group) = usage::requested(&cli.command) {
@@ -124,7 +134,8 @@ pub fn run(cli: &Cli, out: Output) -> Result<()> {
         _ => {}
     }
     crate::http::configure(crate::http::Settings::resolve(cli.timeout)?);
-    let ctx = Ctx::new(Dirs::from_env()?, out, cli.workspace.clone());
+    let mut ctx = Ctx::new(Dirs::from_env()?, out, cli.workspace.clone());
+    ctx.dry_run = cli.dry_run;
     match &cli.command {
         Command::Workspace(cmd) => workspace::run(&ctx, cmd),
         Command::Api(args) => api::run(&ctx, args),
@@ -151,12 +162,134 @@ pub fn run(cli: &Cli, out: Output) -> Result<()> {
     }
 }
 
+/// The command (as typed) when it does not take `--dry-run`: everything that does not write
+/// to Linear. Exhaustive on purpose, so a new command has to say which it is.
+fn no_dry_run(command: &Command) -> Option<&'static str> {
+    use crate::cli::WorkspaceCommand as Workspace;
+    use crate::commands::{
+        cache::CacheCommand as Cache, comment::CommentCommand as Comment,
+        document::DocumentCommand as Doc, file::FileCommand as File,
+        initiative::InitiativeCommand as Init, issue::IssueCommand as Issue,
+        label::LabelCommand as Label, milestone::MilestoneCommand as Milestone,
+        project::ProjectCommand as Project, template::TemplateCommand as Template,
+        webhook::WebhookCommand as Webhook,
+    };
+    match command {
+        Command::Usage => Some("usage"),
+        Command::Workspace(Workspace::Usage) => Some("workspace usage"),
+        Command::Workspace(Workspace::List) => Some("workspace list"),
+        Command::Workspace(Workspace::Add(_)) => Some("workspace add"),
+        Command::Workspace(Workspace::Login(_)) => Some("workspace login"),
+        Command::Workspace(Workspace::Migrate(_)) => Some("workspace migrate"),
+        Command::Workspace(Workspace::Whoami) => Some("workspace whoami"),
+        Command::Issue(cmd) => match cmd {
+            Issue::Usage => Some("issue usage"),
+            Issue::List(_) => Some("issue list"),
+            Issue::Search(_) => Some("issue search"),
+            Issue::View(_) => Some("issue view"),
+            Issue::Create(_)
+            | Issue::Update(_)
+            | Issue::Comment(_)
+            | Issue::LinkPr(_)
+            | Issue::AttachFile(_)
+            | Issue::Unlink(_)
+            | Issue::Delete(_)
+            | Issue::Archive(_)
+            | Issue::Unarchive(_)
+            | Issue::Relate(_)
+            | Issue::Unrelate(_)
+            | Issue::Reorder(_) => None,
+        },
+        Command::Comment(cmd) => match cmd {
+            Comment::Usage => Some("comment usage"),
+            Comment::Update(_) | Comment::Delete(_) => None,
+        },
+        Command::Project(cmd) => match cmd {
+            Project::Usage => Some("project usage"),
+            Project::List(_) => Some("project list"),
+            Project::View(_) => Some("project view"),
+            Project::Create(_)
+            | Project::Update(_)
+            | Project::Reorder(_)
+            | Project::StatusUpdate(_)
+            | Project::Delete(_)
+            | Project::Unarchive(_) => None,
+        },
+        Command::Milestone(cmd) => match cmd {
+            Milestone::Usage => Some("milestone usage"),
+            Milestone::List(_) => Some("milestone list"),
+            Milestone::View(_) => Some("milestone view"),
+            Milestone::Create(_) | Milestone::Update(_) | Milestone::Delete(_) => None,
+        },
+        Command::Initiative(cmd) => match cmd {
+            Init::Usage => Some("initiative usage"),
+            Init::List(_) => Some("initiative list"),
+            Init::View(_) => Some("initiative view"),
+            Init::StatusUpdates(_) => Some("initiative status-updates"),
+            Init::Create(_)
+            | Init::Update(_)
+            | Init::AddProject(_)
+            | Init::RemoveProject(_)
+            | Init::StatusUpdate(_)
+            | Init::Archive(_)
+            | Init::Unarchive(_)
+            | Init::Delete(_) => None,
+        },
+        Command::File(cmd) => match cmd {
+            File::Usage => Some("file usage"),
+            File::Upload(_) => None,
+            File::Download(_) => Some("file download"),
+        },
+        Command::Template(cmd) => match cmd {
+            Template::Usage => Some("template usage"),
+            Template::List(_) => Some("template list"),
+            Template::View(_) => Some("template view"),
+            Template::Skeleton(_) => Some("template skeleton"),
+            Template::Create(_) => None,
+        },
+        Command::Label(cmd) => match cmd {
+            Label::Usage => Some("label usage"),
+            Label::List(_) => Some("label list"),
+            Label::View(_) => Some("label view"),
+            Label::Create(_) | Label::Update(_) => None,
+        },
+        Command::Team(_) => Some("team"),
+        Command::User(_) => Some("user"),
+        Command::Cycle(_) => Some("cycle"),
+        Command::Document(cmd) => match cmd {
+            Doc::Usage => Some("document usage"),
+            Doc::List(_) => Some("document list"),
+            Doc::View(_) => Some("document view"),
+            Doc::Create(_) | Doc::Update(_) => None,
+        },
+        Command::Audit(_) => Some("audit"),
+        Command::Cache(cmd) => match cmd {
+            Cache::Usage => Some("cache usage"),
+            Cache::Refresh => Some("cache refresh"),
+            Cache::Show(_) => Some("cache show"),
+            Cache::Clear => Some("cache clear"),
+        },
+        Command::Status(_) => Some("status"),
+        Command::Brief(_) => Some("brief"),
+        Command::Webhook(cmd) => match cmd {
+            Webhook::Usage => Some("webhook usage"),
+            Webhook::List(_) => Some("webhook list"),
+            Webhook::Create(_) | Webhook::Delete(_) => None,
+            Webhook::Verify(_) => Some("webhook verify"),
+        },
+        Command::Completions(_) => Some("completions"),
+        // A query is a read; only `--mutation` writes.
+        Command::Api(args) => (!args.mutation).then_some("api (without --mutation)"),
+    }
+}
+
 impl Ctx {
     pub fn new(dirs: Dirs, out: Output, workspace_flag: Option<String>) -> Self {
         Self {
             dirs,
             out,
             workspace_flag,
+            dry_run: false,
             keyring: keystore::from_env(),
         }
     }

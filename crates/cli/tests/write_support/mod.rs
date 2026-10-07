@@ -15,6 +15,8 @@ use std::thread;
 pub struct Call {
     pub op: String,
     pub variables: Value,
+    /// The document is a mutation (judged from the document, not from its name).
+    pub mutation: bool,
 }
 
 /// A mock Linear that answers each request from a queue keyed by its
@@ -48,6 +50,9 @@ impl Routed {
                 log.lock().unwrap().push(Call {
                     op: op.clone(),
                     variables: parsed["variables"].clone(),
+                    mutation: parsed["query"]
+                        .as_str()
+                        .is_some_and(|q| q.trim_start().starts_with("mutation")),
                 });
                 let reply = match routes.get_mut(&op) {
                     Some(queue) if queue.len() > 1 => queue.remove(0),
@@ -90,25 +95,55 @@ impl Routed {
             .collect()
     }
 
-    /// Nothing was sent that changes anything.
+    /// Nothing was sent that changes anything: no request whose document is a mutation.
+    /// (Judged from the document, so a mutation added later is caught without a list.)
     pub fn assert_read_only(&self) {
-        const MUTATIONS: [&str; 9] = [
-            "IssueCreate",
-            "IssueUpdate",
-            "IssueDelete",
-            "IssueArchive",
-            "IssueUnarchive",
-            "AttachmentCreate",
-            "AttachmentDelete",
-            "CommentCreate",
-            "AttachmentLinkGitHubPr",
-        ];
-        let ops = self.ops();
+        let sent: Vec<String> = self
+            .calls()
+            .into_iter()
+            .filter(|c| c.mutation)
+            .map(|c| c.op)
+            .collect();
+        assert!(sent.is_empty(), "a mutation was sent: {sent:?}");
+    }
+}
+
+/// What a `--dry-run --json` printed, after checking what every dry run promises: it
+/// succeeded, no mutation reached the mock, and the plan has its stable shape.
+pub fn plan(o: &std::process::Output, mock: &Routed) -> Value {
+    assert_eq!(code(o), 0, "{}", stderr(o));
+    mock.assert_read_only();
+    let v = stdout_json(o);
+    assert_eq!(v["dryRun"], true, "{v}");
+    for key in [
+        "workspace",
+        "command",
+        "target",
+        "changed",
+        "mutations",
+        "rollback",
+        "notes",
+        "reason",
+    ] {
+        assert!(v.get(key).is_some(), "the plan has no {key}: {v}");
+    }
+    for key in ["kind", "name", "id", "new"] {
         assert!(
-            ops.iter().all(|o| !MUTATIONS.contains(&o.as_str())),
-            "a mutation was sent: {ops:?}"
+            v["target"].get(key).is_some(),
+            "the target has no {key}: {v}"
         );
     }
+    v
+}
+
+/// The operation names of a plan's mutations, in order.
+pub fn planned(plan: &Value) -> Vec<String> {
+    plan["mutations"]
+        .as_array()
+        .expect("mutations is a list")
+        .iter()
+        .map(|m| m["operation"].as_str().expect("operation").to_owned())
+        .collect()
 }
 
 /// Run `linear <args>` against a routed mock with the test key.

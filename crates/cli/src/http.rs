@@ -109,6 +109,8 @@ pub struct Client {
     /// needed, kept for the run, and replaced when it is about to expire or
     /// Linear refuses it. Never written anywhere.
     token: Mutex<Option<AccessToken>>,
+    /// For `--dry-run`: this client may read but never write.
+    dry_run: bool,
 }
 
 fn build_agent(timeout: Duration) -> ureq::Agent {
@@ -176,7 +178,24 @@ impl Client {
             credential,
             retry: settings.retry,
             token: Mutex::new(None),
+            dry_run: false,
         }
+    }
+
+    /// A client for `--dry-run` refuses to send a mutation or to upload a file: whatever a
+    /// command forgot to record, the run fails instead of writing.
+    pub fn dry_run(mut self, on: bool) -> Self {
+        self.dry_run = on;
+        self
+    }
+
+    fn refuse_write(&self, what: &str) -> Result<()> {
+        if self.dry_run {
+            return Err(CliError::general(format!(
+                "internal error: {what} during --dry-run; nothing was sent"
+            )));
+        }
+        Ok(())
     }
 
     fn is_app(&self) -> bool {
@@ -267,6 +286,9 @@ impl Client {
     /// Send an already-built request and decode its data. A read that fails
     /// transiently is retried (see the module docs); anything else is not.
     pub fn execute_request<T: DeserializeOwned>(&self, request: &Request) -> Result<T> {
+        if !is_read(request) {
+            self.refuse_write("a mutation was about to be sent")?;
+        }
         let policy = if is_read(request) {
             self.retry
         } else {
@@ -368,4 +390,51 @@ fn transport(e: ureq::Error) -> Attempt {
 
 fn short(e: &ureq::Error) -> String {
     e.to_string().chars().take(200).collect()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use linear_core::auth::Secret;
+
+    fn client() -> Client {
+        // A request that escaped the check would fail on the network (or worse), not with the
+        // message asserted below.
+        Client::new(Credential::ApiKey {
+            api_key: Secret::new("lin_api_test"),
+        })
+        .dry_run(true)
+    }
+
+    fn request(query: &str) -> Request {
+        Request {
+            query: query.to_owned(),
+            variables: serde_json::Value::Null,
+            operation_name: None,
+        }
+    }
+
+    #[test]
+    fn a_dry_run_client_never_sends_a_mutation() {
+        let c = client();
+        let e = c
+            .execute_request::<serde_json::Value>(&request(
+                "mutation M { issueDelete(id: \"x\") { success } }",
+            ))
+            .unwrap_err();
+        assert!(e.message.contains("during --dry-run"), "{}", e.message);
+        // A document that cannot be read counts as a write, here as everywhere.
+        let e = c
+            .execute_request::<serde_json::Value>(&request("not graphql ("))
+            .unwrap_err();
+        assert!(e.message.contains("during --dry-run"), "{}", e.message);
+    }
+
+    #[test]
+    fn a_dry_run_client_never_uploads_a_file() {
+        let e = client()
+            .put_file("http://127.0.0.1:9/upload", &[], b"bytes")
+            .unwrap_err();
+        assert!(e.message.contains("during --dry-run"), "{}", e.message);
+    }
 }

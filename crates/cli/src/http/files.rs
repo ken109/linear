@@ -22,6 +22,7 @@ const FILE_HOST: &str = "uploads.linear.app";
 impl Client {
     /// PUT `body` to a signed upload URL, with exactly the headers Linear named.
     pub fn put_file(&self, url: &str, headers: &[(String, String)], body: &[u8]) -> Result<()> {
+        self.refuse_write("a file was about to be uploaded")?;
         let mut request = self.agent.put(url);
         for (key, value) in headers {
             request = request.header(key.as_str(), value.as_str());

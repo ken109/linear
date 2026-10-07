@@ -41,7 +41,7 @@ impl Ctx {
         Ok(Session {
             workspace: name.to_owned(),
             config: workspace.clone(),
-            client: Client::new(credential),
+            client: Client::new(credential).dry_run(self.dry_run),
         })
     }
 }

@@ -19,6 +19,9 @@
 //!    how to undo each step on a [`Rollback`], so a failure part way leaves
 //!    nothing half done.
 //!
+//! With `--dry-run` step 4 records the mutations instead of sending them and prints
+//! them ([`dry_run`]); steps 1 to 3 are the same, so a refusal is the same refusal.
+//!
 //! Everything before step 4 only reads: a refused write sends no mutation.
 //! Resolving names (`resolve`) is part of that: an unknown name is a usage
 //! error, never silently dropped.
@@ -28,6 +31,7 @@
 
 pub mod comment;
 pub mod document;
+pub mod dry_run;
 pub mod file;
 pub mod initiative;
 pub mod issue;
@@ -107,6 +111,10 @@ pub struct WriteSession {
     /// The ownership refusals `--force` has overridden so far in this run.
     forced: RefCell<Vec<Overridden>>,
     pub out: Output,
+    /// `--dry-run`: mutations are recorded, never sent (see [`dry_run`]).
+    pub dry_run: bool,
+    /// What a dry run has recorded so far.
+    pub recorded: dry_run::Recorder,
 }
 
 impl Ctx {
@@ -149,6 +157,8 @@ impl Ctx {
             workspace,
             client,
             out: self.out,
+            dry_run: self.dry_run,
+            recorded: Default::default(),
         })
     }
 }
