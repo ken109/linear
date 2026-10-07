@@ -786,6 +786,43 @@ among the deleted ones too (by id, slug id, URL or name); the other commands onl
 has deprecated `projectArchive` in favour of `projectDelete`. Deleting comments,
 labels or relations, and deleting in bulk, is not supported.
 
+## Webhooks
+
+```sh
+linear webhook list [--limit N | --all]
+linear webhook create --url https://example.com/linear --resource-types Issue,Comment \
+  (--team ENG | --all-public-teams) [--label "CI"]
+linear webhook delete "CI"          # an id, a label or a URL
+linear webhook verify --signature <hex> [--body-file body.json] [--secret-file secret] [--at <ms>]
+```
+
+- `list` shows the id, label, URL, scope (a team key, `all public teams`), resource types and
+  whether the webhook is enabled. It never selects the signing secret.
+- `create` needs a URL, at least one resource type (`Issue`, `Comment`, `Project`, ...) and
+  either `--team` (a key, name or id, resolved before anything is created; an unknown team is
+  exit 2) or `--all-public-teams`. Linear generates the signing secret and `create` prints it
+  (`secret` with `--json`; `--quiet` prints only the id); no other command does, so keep it. Who
+  may manage webhooks is Linear's decision (an admin); its refusal is passed on (exit 1). No
+  ownership rule or validator applies: a webhook belongs to the workspace, not to a project.
+- `delete` looks the argument up among the workspace's webhooks (an id, or a label or URL, ignoring
+  case) and deletes that one. A name that matches nothing, or several (two webhooks can deliver
+  to one URL), is exit 2 and deletes nothing.
+- `verify` is offline (no workspace, no credentials, no network). It checks a delivery you received:
+  the HMAC-SHA256 signature of the body (the `Linear-Signature` header, `--signature`) and that
+  its `webhookTimestamp` is within a minute of now. It is the same check as `verify_webhook` in the
+  WebAssembly package. The body is read byte for byte from `--body-file` or standard input (not a
+  re-serialization: one changed byte is another signature), and the secret from `--secret-file` or
+  the `LINEAR_WEBHOOK_SECRET` environment variable, never from an argument, which other users of
+  the machine can see. A valid delivery exits 0 and prints the action and resource type (`--json`:
+  `{"status":"valid","event":{...}}`). A rejected one exits 1 and says why: `malformed-signature`,
+  `signature-mismatch`, `malformed-body`, `missing-timestamp` or `stale-timestamp` (`--json` prints
+  `{"status":"invalid","reason":...}` on standard output, and the usual error object on standard
+  error). A missing or empty secret is exit 2. `--at <epoch ms>` judges the timestamp against
+  another time, to check a saved delivery.
+
+There is no listener: receiving deliveries is your server's job; `verify` is for the check it makes
+(or for trying one by hand).
+
 ## Output and exit codes
 
 `--json` prints machine-readable output; errors then go to stderr as
