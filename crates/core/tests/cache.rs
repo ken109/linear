@@ -197,6 +197,29 @@ fn a_time_in_the_future_counts_as_just_fetched() {
     assert_eq!(c.freshness(now(), 300), Freshness::Fresh { age_secs: 0 });
 }
 
+/// `decide_refresh` (what a Worker and `cache refresh` ask) and the entry's own
+/// `freshness` (what `--cached` reads ask) are one calculation: they agree at
+/// every age, around the TTL and under clock skew.
+#[test]
+fn the_entry_and_the_refresh_decision_agree_on_freshness() {
+    use linear_core::refresh::{decide_refresh, RefreshEvent, RefreshMeta};
+    let c = WorkspaceCache::refreshed(None, WS, fetched(vec![]), now());
+    for ttl in [30, 300] {
+        for secs in [-120, 0, 29, 30, 31, 299, 300, 301, 100_000] {
+            let at = now() + Duration::seconds(secs);
+            let meta = RefreshMeta {
+                ttl_secs: Some(ttl),
+                ..RefreshMeta::from(&c)
+            };
+            assert_eq!(
+                decide_refresh(&meta, &RefreshEvent::Read, at).freshness,
+                c.freshness(at, ttl),
+                "ttl {ttl}, {secs}s later"
+            );
+        }
+    }
+}
+
 // ----------------------------------------------------------------------- shape
 
 #[test]

@@ -174,14 +174,9 @@ pub fn decide_refresh(
         return decide(true, RefreshReason::NeverFetched, Freshness::Missing);
     };
 
-    // A snapshot dated in the future (clock skew) counts as just fetched.
-    let age_secs = (now - fetched_at).num_seconds().max(0) as u64;
     let ttl = meta.ttl();
-    let freshness = if age_secs <= ttl {
-        Freshness::Fresh { age_secs }
-    } else {
-        Freshness::Expired { age_secs }
-    };
+    let freshness = Freshness::of_age(fetched_at, now, ttl);
+    let age_secs = freshness.age_secs().unwrap_or_default();
 
     if *event == RefreshEvent::Manual {
         return decide(true, RefreshReason::Manual, freshness);

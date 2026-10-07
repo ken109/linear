@@ -16,6 +16,7 @@ use linear_core::cache::{
     Fetched, Freshness, Mine, RefreshStatus, WorkspaceCache, DEFAULT_TTL_SECS,
 };
 use linear_core::config::{Config, WorkspaceConfig};
+use linear_core::refresh::{decide_refresh, RefreshEvent, RefreshMeta};
 use linear_core::types::{Issue, StateType};
 use serde::Serialize;
 
@@ -275,6 +276,18 @@ fn refresh_workspace(
     };
     // A file that cannot be read is replaced, not kept: there is nothing in it to keep.
     let previous = dir.load(name).ok().and_then(Loaded::into_entry);
+
+    // Whether to fetch is core's decision, the one a Worker makes too. This
+    // command is a person asking, which always refreshes (backing off and the
+    // TTL are for readers and schedules); an unusable file counts as no cache.
+    let meta = previous
+        .as_ref()
+        .map_or_else(RefreshMeta::empty, RefreshMeta::from);
+    if !decide_refresh(&meta, &RefreshEvent::Manual, now).refresh {
+        if let Some(entry) = &previous {
+            return row_of(entry);
+        }
+    }
 
     let entry = match session.and_then(|s| fetch(&s.client, name, config, now)) {
         Ok(fetched) => WorkspaceCache::refreshed(previous.as_ref(), name, fetched, now),

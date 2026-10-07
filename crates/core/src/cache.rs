@@ -109,6 +109,26 @@ impl Freshness {
     pub fn is_fresh(&self) -> bool {
         matches!(self, Self::Fresh { .. })
     }
+
+    /// How old the snapshot is, when there is one.
+    pub fn age_secs(&self) -> Option<u64> {
+        match self {
+            Self::Fresh { age_secs } | Self::Expired { age_secs } => Some(*age_secs),
+            Self::Missing => None,
+        }
+    }
+
+    /// The freshness of a snapshot fetched at `fetched_at`: the one place the
+    /// age and the TTL are compared. A snapshot dated in the future (clock
+    /// skew) counts as just fetched.
+    pub(crate) fn of_age(fetched_at: DateTime<Utc>, now: DateTime<Utc>, ttl_secs: u64) -> Self {
+        let age_secs = (now - fetched_at).num_seconds().max(0) as u64;
+        if age_secs <= ttl_secs {
+            Self::Fresh { age_secs }
+        } else {
+            Self::Expired { age_secs }
+        }
+    }
 }
 
 impl WorkspaceCache {
@@ -172,12 +192,7 @@ impl WorkspaceCache {
         let (Some(fetched_at), Some(_)) = (self.fetched_at, self.data.as_ref()) else {
             return Freshness::Missing;
         };
-        let age_secs = (now - fetched_at).num_seconds().max(0) as u64;
-        if age_secs <= ttl_secs {
-            Freshness::Fresh { age_secs }
-        } else {
-            Freshness::Expired { age_secs }
-        }
+        Freshness::of_age(fetched_at, now, ttl_secs)
     }
 
     /// The snapshot, only while it is fresh. `None` means unknown.
