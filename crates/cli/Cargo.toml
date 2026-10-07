@@ -24,6 +24,18 @@ ureq = "3"
 toml_edit = "0.22"
 rpassword = "7"
 
+# The OS keyring (`credential_store = "keyring"`). Optional: build with
+# `--no-default-features` for a binary that only knows the credentials file. macOS uses
+# the Keychain through the `keyring` crate (one extra crate, security-framework). Linux
+# needs no dependency at all: it calls libsecret's `secret-tool` when that is installed.
+# Elsewhere (and wherever there is no keyring) the file is used.
+[target.'cfg(target_os = "macos")'.dependencies]
+keyring = { version = "3.6", default-features = false, features = ["apple-native"], optional = true }
+
+[features]
+default = ["keyring"]
+keyring = ["dep:keyring"]
+
 [dev-dependencies]
 tiny_http = "0.12"
 tempfile = "3"

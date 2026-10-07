@@ -134,11 +134,7 @@ fn session(ctx: &Ctx, args: &BriefArgs) {
     let (tx, rx) = mpsc::channel();
     std::thread::spawn(move || {
         let result = Dirs::from_env().and_then(|dirs| {
-            let ctx = Ctx {
-                dirs,
-                out,
-                workspace_flag,
-            };
+            let ctx = Ctx::new(dirs, out, workspace_flag);
             fetch(&ctx, stale_days)
         });
         let _ = tx.send(result);

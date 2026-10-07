@@ -7,6 +7,7 @@ mod cli;
 mod commands;
 mod error;
 mod http;
+mod keystore;
 mod output;
 mod store;
 

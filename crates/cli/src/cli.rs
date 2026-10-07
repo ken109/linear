@@ -158,6 +158,8 @@ pub enum WorkspaceCommand {
     Add(AddArgs),
     /// Store credentials for a workspace and verify them
     Login(LoginArgs),
+    /// Move a workspace's stored credential between the credentials file and the OS keyring
+    Migrate(MigrateArgs),
     /// Show who the stored credentials authenticate as
     Whoami,
 }
@@ -191,6 +193,25 @@ pub struct LoginArgs {
     /// Read the API key from standard input instead of prompting
     #[arg(long)]
     pub with_token: bool,
+    /// Keep the credential in the OS keyring instead of a file, and make that the
+    /// workspace's `credential_store`. Where there is no keyring (WSL, CI) the file is used
+    #[arg(long)]
+    pub keyring: bool,
+}
+
+#[derive(Debug, Args)]
+pub struct MigrateArgs {
+    /// Workspace whose credential to move (defaults to the resolved workspace)
+    pub name: Option<String>,
+    /// Where the credential should live from now on
+    #[arg(long, value_enum, default_value_t = StoreArg::Keyring)]
+    pub to: StoreArg,
+}
+
+#[derive(Debug, Clone, Copy, ValueEnum)]
+pub enum StoreArg {
+    File,
+    Keyring,
 }
 
 #[derive(Debug, Clone, Copy, ValueEnum)]

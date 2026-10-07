@@ -1,13 +1,15 @@
 //! `linear workspace list|add|login|whoami`.
 
 use super::{verify, Ctx};
-use crate::cli::{AddArgs, AuthArg, LoginArgs, WorkspaceCommand};
+use crate::cli::{AddArgs, AuthArg, LoginArgs, MigrateArgs, StoreArg, WorkspaceCommand};
 use crate::error::{CliError, Result};
 use crate::http::Client;
 use crate::output::table;
-use crate::store::{self, CredentialSource};
+use crate::store;
 use linear_core::auth::{api_key_env_var, AuthMethod, Credential, Secret};
-use linear_core::config::{validate_workspace_name, Config, Ownership};
+use linear_core::config::{
+    validate_workspace_name, Config, CredentialStore, Ownership, WorkspaceConfig,
+};
 use serde::Serialize;
 use std::io::{IsTerminal, Read};
 
@@ -16,6 +18,7 @@ pub fn run(ctx: &Ctx, cmd: &WorkspaceCommand) -> Result<()> {
         WorkspaceCommand::List => list(ctx),
         WorkspaceCommand::Add(args) => add(ctx, args),
         WorkspaceCommand::Login(args) => login(ctx, args),
+        WorkspaceCommand::Migrate(args) => migrate(ctx, args),
         WorkspaceCommand::Whoami => whoami(ctx),
     }
 }
@@ -31,7 +34,7 @@ struct WorkspaceRow {
     auth: AuthMethod,
     ownership: Ownership,
     default: bool,
-    /// `"env"`, `"file"` or null. Never the credential itself.
+    /// `"env"`, `"file"`, `"keyring"` or null. Never the credential itself.
     credentials: Option<&'static str>,
 }
 
@@ -47,7 +50,7 @@ fn list(ctx: &Ctx) -> Result<()> {
             auth: ws.auth,
             ownership: ws.ownership,
             default: config.default.as_deref() == Some(name),
-            credentials: credential_kind(ctx, name, ws.auth),
+            credentials: credential_kind(ctx, name, ws),
         })
         .collect();
 
@@ -90,14 +93,20 @@ fn list(ctx: &Ctx) -> Result<()> {
     Ok(())
 }
 
-/// Whether credentials exist, and where, without reading them.
-fn credential_kind(ctx: &Ctx, name: &str, auth: AuthMethod) -> Option<&'static str> {
+/// Whether credentials exist, and where. The credential itself is not looked at: the
+/// keyring is only asked whether an entry exists, and only for a workspace set to use it.
+fn credential_kind(ctx: &Ctx, name: &str, ws: &WorkspaceConfig) -> Option<&'static str> {
     // An app has no stored credential: its secret comes from the environment.
-    if auth == AuthMethod::ClientCredentials {
+    if ws.auth == AuthMethod::ClientCredentials {
         return store::client_secret_is_set(name).then_some("env");
     }
     if std::env::var(api_key_env_var(name)).is_ok_and(|v| !v.trim().is_empty()) {
         return Some("env");
+    }
+    let in_keyring = store::credential_store(Some(ws)).ok()? == CredentialStore::Keyring
+        && matches!(ctx.keyring.get(name), Ok(Some(_)));
+    if in_keyring {
+        return Some("keyring");
     }
     let path = ctx.dirs.credentials_file(name).ok()?;
     path.is_file().then_some("file")
@@ -243,7 +252,19 @@ fn login(ctx: &Ctx, args: &LoginArgs) -> Result<()> {
 
     // Verify before saving, so a wrong key never lands on disk.
     let who = verify(&Client::new(credential.clone()), &name, &ws.url_key)?;
-    let path = store::save_credential(&ctx.dirs, &name, &credential)?;
+    let store = if args.keyring {
+        CredentialStore::Keyring
+    } else {
+        store::credential_store(Some(&ws))?
+    };
+    let saved = store::save_credential(&ctx.dirs, ctx.keyring.as_ref(), &name, &credential, store)?;
+    if let Some(why) = &saved.fallback {
+        ctx.out.status(&format!(
+            "note: the OS keyring is not available ({why}); stored the credentials in a file instead"
+        ));
+    } else if args.keyring && ws.credential_store != CredentialStore::Keyring {
+        set_credential_store(ctx, &name, CredentialStore::Keyring)?;
+    }
 
     let var = api_key_env_var(&name);
     if std::env::var(&var).is_ok_and(|v| !v.trim().is_empty()) {
@@ -251,18 +272,86 @@ fn login(ctx: &Ctx, args: &LoginArgs) -> Result<()> {
             "note: {var} is set and takes precedence over the stored credentials"
         ));
     }
-    ctx.out
-        .status(&format!("Stored credentials in {}", path.display()));
+    ctx.out.status(&format!(
+        "Stored credentials in {}",
+        saved.source.describe()
+    ));
     ctx.out.emit(
         &serde_json::json!({
             "workspace": name,
             "urlKey": who.organization.url_key,
             "user": { "id": who.viewer.id, "name": who.viewer.name, "email": who.viewer.email },
+            "credentials": saved.source.kind(),
         }),
         || {
             format!(
                 "Logged in to {} as {} <{}>",
                 who.organization.url_key, who.viewer.name, who.viewer.email
+            )
+        },
+        || name.clone(),
+    );
+    Ok(())
+}
+
+/// Write `credential_store` of a workspace into `workspaces.toml`, keeping its comments
+/// and ordering. The default (`file`) is removed rather than written.
+fn set_credential_store(ctx: &Ctx, name: &str, store: CredentialStore) -> Result<()> {
+    let path = ctx.dirs.workspaces_file();
+    let text = std::fs::read_to_string(&path)
+        .map_err(|e| CliError::general(format!("cannot read {}: {e}", path.display())))?;
+    let mut doc: toml_edit::DocumentMut = text
+        .parse()
+        .map_err(|e| CliError::general(format!("{}: {e}", path.display())))?;
+    let table = doc["workspaces"][name]
+        .as_table_mut()
+        .ok_or_else(|| CliError::general(format!("workspace {name:?} is not a table")))?;
+    if store.is_file() {
+        table.remove("credential_store");
+    } else {
+        table["credential_store"] = toml_edit::value(store.to_string());
+    }
+    let text = doc.to_string();
+    Config::parse(&text)?; // never write a file we could not read back
+    store::write_atomic(&path, text.as_bytes(), 0o644)
+}
+
+// ------------------------------------------------------------------ migrate
+
+fn migrate(ctx: &Ctx, args: &MigrateArgs) -> Result<()> {
+    let config = store::read_config(&ctx.dirs)?;
+    let name = match &args.name {
+        Some(n) => {
+            config.get(n).ok_or_else(|| {
+                CliError::usage(format!(
+                    "unknown workspace {n:?}; see `linear workspace list`"
+                ))
+            })?;
+            n.clone()
+        }
+        None => ctx.resolve(&config)?.name,
+    };
+    let to = match args.to {
+        StoreArg::File => CredentialStore::File,
+        StoreArg::Keyring => CredentialStore::Keyring,
+    };
+
+    let moved = store::migrate_credential(&ctx.dirs, ctx.keyring.as_ref(), &name, to)?;
+    set_credential_store(ctx, &name, to)?;
+    if let Some(warning) = &moved.left_behind {
+        ctx.out.status(&format!("warning: {warning}"));
+    }
+    ctx.out.emit(
+        &serde_json::json!({
+            "workspace": name,
+            "from": moved.from.kind(),
+            "to": moved.to.kind(),
+        }),
+        || {
+            format!(
+                "Moved the credentials of {name} from {} to {}",
+                moved.from.describe(),
+                moved.to.describe()
             )
         },
         || name.clone(),
@@ -309,10 +398,7 @@ fn whoami(ctx: &Ctx) -> Result<()> {
         &resolved.config.url_key,
     )?;
 
-    let source_kind = match &source {
-        CredentialSource::Env(_) => "env",
-        CredentialSource::File(_) => "file",
-    };
+    let source_kind = source.kind();
     ctx.out.emit(
         &serde_json::json!({
             "workspace": resolved.name,

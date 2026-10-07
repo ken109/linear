@@ -28,6 +28,7 @@ pub mod write;
 use crate::cli::{Cli, Command};
 use crate::error::{CliError, Result};
 use crate::http::Client;
+use crate::keystore::{self, Keyring};
 use crate::output::Output;
 use crate::store::{self, CredentialSource, Dirs};
 use linear_core::auth::{client_secret_env_var, AuthMethod, CLIENT_SECRET_ENV};
@@ -39,6 +40,8 @@ pub struct Ctx {
     pub dirs: Dirs,
     pub out: Output,
     pub workspace_flag: Option<String>,
+    /// Where credentials set to the OS keyring are kept.
+    pub keyring: Box<dyn Keyring>,
 }
 
 pub fn run(cli: &Cli, out: Output) -> Result<()> {
@@ -52,11 +55,7 @@ pub fn run(cli: &Cli, out: Output) -> Result<()> {
         _ => {}
     }
     crate::http::configure(crate::http::Settings::resolve(cli.timeout)?);
-    let ctx = Ctx {
-        dirs: Dirs::from_env()?,
-        out,
-        workspace_flag: cli.workspace.clone(),
-    };
+    let ctx = Ctx::new(Dirs::from_env()?, out, cli.workspace.clone());
     match &cli.command {
         Command::Workspace(cmd) => workspace::run(&ctx, cmd),
         Command::Api(args) => api::run(&ctx, args),
@@ -82,6 +81,15 @@ pub fn run(cli: &Cli, out: Output) -> Result<()> {
 }
 
 impl Ctx {
+    pub fn new(dirs: Dirs, out: Output, workspace_flag: Option<String>) -> Self {
+        Self {
+            dirs,
+            out,
+            workspace_flag,
+            keyring: keystore::from_env(),
+        }
+    }
+
     /// Pick the workspace: `--workspace` > `LINEAR_WORKSPACE` > `.linear.toml` > default.
     pub fn resolve<'a>(&self, config: &'a Config) -> Result<Resolved<'a>> {
         let env = std::env::var("LINEAR_WORKSPACE").ok();
@@ -117,7 +125,8 @@ impl Ctx {
                 ))
             });
         }
-        store::load_credential(&self.dirs, name)?.ok_or_else(|| {
+        let store = store::credential_store(config.get(name))?;
+        store::load_credential(&self.dirs, self.keyring.as_ref(), name, store)?.ok_or_else(|| {
             CliError::auth(format!(
                 "no credentials for workspace {name:?}; run `linear workspace login {name}`"
             ))
