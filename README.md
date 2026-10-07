@@ -189,6 +189,7 @@ linear milestone view "M1" --project "My Project"
 linear initiative list --status active                       # --json includes each description
 linear template list
 linear template skeleton "Bug report"                       # the sections, read from Linear
+linear template skeleton "Project" --type project           # the same for a project template
 linear label list                                           # groups first, each followed by its labels
 linear team list
 linear user view me
@@ -554,7 +555,7 @@ someone else; it cannot take one over.
 - `reorder` works like `issue reorder` on the projects' `sortOrder` and `prioritySortOrder`.
 
 To require a section such as `## Definition of done` in every project body, give a Linear
-*project* template that heading, enable the `template-sections` rule and pass `--template`
+*project* template that heading (`linear template create --type project`), enable the `template-sections` rule and pass `--template`
 (see below); no heading is hard-coded in the CLI.
 
 ### Ownership rules
@@ -618,6 +619,7 @@ linear milestone delete "Review" --project "My Project"
 
 linear initiative create --name "Long effort" [--description-file desc.md]
 linear template create --name "Bug report" --body-file body.md [--description "..."] [--team ENG]
+linear template create --type project --name "Project" --body-file body.md [--description "..."]
 ```
 
 - A **milestone** belongs to a project, so the ownership rule for projects applies: only the
@@ -629,10 +631,16 @@ linear template create --name "Bug report" --body-file body.md [--description ".
   would silently unfile them.
 - An **initiative** with the same name as an existing one is returned instead of creating
   another. (Linear refuses to create initiatives on its free plan; the message is passed on.)
-- `template create` makes an **issue template** from a markdown body. Headings are the sections,
-  and a body without one is refused. Understood markdown: headings, paragraphs, bullet and
-  numbered lists and `**bold**`. A template with the same name returns the existing one. Edit a
-  template's sections in Linear's own UI; `linear template skeleton` reads them back.
+- `template create` makes an **issue template** (the default) or, with `--type project`, a
+  **project template** from a markdown body. Headings are the sections, and a body without one is
+  refused. Understood markdown: headings, paragraphs, bullet and numbered lists and `**bold**`.
+  An issue template belongs to a team (`--team`, default the workspace's `default_team`); a
+  project template has none, and `--team` with `--type project` is refused (exit 2). A template
+  with the same name **and type** returns the existing one (an issue template and a project
+  template may share a name). Edit a template's sections in Linear's own UI;
+  `linear template skeleton [NAME] [--type project]` reads them back (`--type` defaults to
+  `issue`), and `linear template list --type project` / `linear template view NAME` show project
+  templates.
 
 No validator rule applies to these three (the rules cover issues and projects), and initiatives
 and templates are not owned by a project, so only the checks above run.
