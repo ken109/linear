@@ -26,7 +26,27 @@
         "createdAt": "2026-10-02T09:00:00.000Z",
         "mergedAt": null,
         "closedAt": null,
-        "reviews": [{ "state": "approved" }]
+        "reviews": [
+          {
+            "state": "approved"
+          }
+        ],
+        "branch": "feature/ex-23",
+        "hasConflicts": false,
+        "id": "4000000041",
+        "isPullRequestProjection": true,
+        "linkKind": "closes",
+        "previewLinks": [],
+        "repoId": "R_kgDOExample",
+        "repoLogin": "example",
+        "repoName": "app",
+        "reviewerDetails": [],
+        "reviewers": [],
+        "targetBranch": "main",
+        "updatedAt": "2026-10-06T09:00:00.000Z",
+        "url": "https://github.com/example/app/pull/41",
+        "userId": "1000001",
+        "userLogin": "example-user"
       },
       "createdAt": "2026-10-02T09:05:00.000Z"
     },
@@ -41,7 +61,24 @@
         "title": "Rework the widget",
         "status": "open",
         "draft": true,
-        "createdAt": "2026-09-01T09:00:00.000Z"
+        "createdAt": "2026-09-01T09:00:00.000Z",
+        "branch": "feature/ex-24",
+        "hasConflicts": false,
+        "id": "4000000042",
+        "isPullRequestProjection": true,
+        "linkKind": "closes",
+        "previewLinks": [],
+        "repoId": "R_kgDOExample",
+        "repoLogin": "example",
+        "repoName": "app",
+        "reviewerDetails": [],
+        "reviewers": [],
+        "targetBranch": "main",
+        "updatedAt": "2026-10-06T09:00:00.000Z",
+        "url": "https://github.com/example/app/pull/42",
+        "userId": "1000001",
+        "userLogin": "example-user",
+        "reviews": []
       },
       "createdAt": "2026-09-01T09:05:00.000Z"
     },
@@ -58,7 +95,24 @@
         "draft": false,
         "createdAt": "2026-10-03T09:00:00.000Z",
         "mergedAt": "2026-10-05T09:00:00.000Z",
-        "closedAt": "2026-10-05T09:00:00.000Z"
+        "closedAt": "2026-10-05T09:00:00.000Z",
+        "branch": "feature/ex-25",
+        "hasConflicts": false,
+        "id": "4000000043",
+        "isPullRequestProjection": true,
+        "linkKind": "links",
+        "previewLinks": [],
+        "repoId": "R_kgDOExample",
+        "repoLogin": "example",
+        "repoName": "app",
+        "reviewerDetails": [],
+        "reviewers": [],
+        "targetBranch": "main",
+        "updatedAt": "2026-10-06T09:00:00.000Z",
+        "url": "https://github.com/example/app/pull/43",
+        "userId": "1000001",
+        "userLogin": "example-user",
+        "reviews": []
       },
       "createdAt": "2026-10-03T09:05:00.000Z"
     },

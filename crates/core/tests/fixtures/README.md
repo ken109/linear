@@ -64,13 +64,14 @@ added by hand (the captures predate selecting them); `metadata` is the empty obj
 The `sortOrder` and `prioritySortOrder` of the issues in `issue.json`, `issue_view.json`, `issue_list.json`,
 `assigned_issues.json` and `issue_update.json` were added by hand (the captures predate selecting them).
 
-`attachments_github.json` is a list of attachments as `types::Attachment` reads them, for the GitHub integration (KK-260). Only
-the first one is real: the attachment the integration makes for a linked GitHub *issue* (`sourceType` `github`, `source` `{type:
-"github", syncedCommentId}` which the CLI does not select, `metadata` `{id, title}`), read from lt-three and anonymised. It is
-there to show that a `github` attachment is not always a pull request. **The pull-request attachments (`.../pull/<n>`) are
-hand-written**: none of the 233 attachments of ken109 nor the 78 of lt-three (read-only, 2026-10-07) was a pull request, although
-both workspaces have the GitHub integration, so the real `metadata` of a pull request could not be copied. The keys used (`status`,
-`draft`, `createdAt`, `mergedAt`, `closedAt`, `title`, `number`, `reviews`) are what Linear's documentation of `Attachment.metadata`
-leads one to expect ("pull request status, review counts"), and `pull_request.rs` reads them leniently (see there). When a real
-one turns up, replace the hand-written entries with it. The last two entries are not pull requests of the integration: a pull
-request with no readable state, and a plain link (`oauthClient`) to a pull request URL.
+`attachments_github.json` is a list of attachments as `types::Attachment` reads them, for the GitHub integration (KK-260). The first
+one is the attachment the integration makes for a linked GitHub *issue* (`sourceType` `github`, `source` `{type: "github",
+syncedCommentId}` which the CLI does not select, `metadata` `{id, title}`), read from lt-three and anonymised; it shows that a `github`
+attachment is not always a pull request. The open (#41), draft (#42) and merged (#43) pull requests carry the `metadata` keys of real
+pull-request attachments, which KK-271 read on 2026-10-07 from ken109's own PRs (a draft and then open one, and a merged one linked with
+`issue link-pr`): `status` (`draft`, `open`, `merged`), `draft`, `number`, `title`, `createdAt`, `mergedAt`, `closedAt`, `branch`,
+`targetBranch`, `linkKind` (`closes`, `links`), `repo*`, `userLogin`, and `reviews` / `reviewers` / `reviewerDetails` (arrays, empty on
+the PRs read). The values (names, ids, dates) are made up. **Still hand-written:** the shape of a review inside `reviews` (#41's
+`{state: "approved"}`; no real PR had a review) and the closed-without-merge entry (#44; `status` `closed` is a guess, though the reader
+falls back to `closedAt`). The last two entries are not pull requests of the integration: a pull request with no readable state, and a
+plain link (`oauthClient`) to a pull request URL.
