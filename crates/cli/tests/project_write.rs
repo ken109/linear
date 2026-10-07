@@ -879,6 +879,47 @@ fn update_holds_a_new_body_to_the_project_template() {
     assert_eq!(code(&o), 0, "{}", stderr(&o));
 }
 
+#[test]
+fn update_replacing_a_body_without_a_template_is_refused_when_the_rule_is_on() {
+    let sb = workspace_with_rules(&TEMPLATE_RULE);
+    let good = write_file(&sb, "good.md", GOOD_PROJECT_BODY);
+    let mock = Routed::start(update_routes(vec![]));
+
+    let o = run(
+        &sb,
+        &mock,
+        &["project", "update", "Fixture Project", "--body-file", &good],
+    );
+    assert_eq!(code(&o), 5, "{}", stderr(&o));
+    assert!(stderr(&o).contains("--template"), "{}", stderr(&o));
+    assert_no_project_write(&mock);
+}
+
+#[test]
+fn update_body_is_unchecked_when_rule_operations_leave_out_project_update() {
+    let sb = workspace_with_setting(
+        &TEMPLATE_RULE,
+        "rule_operations = { \"template-sections\" = [\"project_create\"] }",
+    );
+    let body = write_file(&sb, "body.md", "Whatever.\n");
+    let mock = Routed::start(update_routes(vec![]));
+
+    let o = run(
+        &sb,
+        &mock,
+        &[
+            "project",
+            "update",
+            "Fixture Project",
+            "--body-file",
+            &body,
+            "--quiet",
+        ],
+    );
+    assert_eq!(code(&o), 0, "{}", stderr(&o));
+    assert!(mock.of("Templates").is_empty());
+}
+
 // ------------------------------------------------------------------ status update
 
 fn status_routes(extra: Vec<(&str, Vec<Reply>)>) -> Vec<(&str, Vec<Reply>)> {

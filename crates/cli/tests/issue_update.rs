@@ -183,6 +183,37 @@ fn template_sections_judge_the_new_body_when_a_template_is_named() {
 }
 
 #[test]
+fn replacing_a_body_without_a_template_is_refused_when_the_rule_is_on() {
+    let sb = workspace_with_rules(&["template-sections"]);
+    let good = write_file(&sb, "good.md", GOOD_BODY);
+    let mock = Routed::start(routes(mine(), vec![]));
+
+    let o = run(&sb, &mock, &update(&["--body-file", &good]));
+    assert_eq!(code(&o), 5, "{}", stderr(&o));
+    assert!(stderr(&o).contains("--template"), "{}", stderr(&o));
+    mock.assert_read_only();
+
+    // An update that leaves the body alone is not held to a template.
+    let o = run(&sb, &mock, &update(&["--due", "2026-12-01"]));
+    assert_eq!(code(&o), 0, "{}", stderr(&o));
+}
+
+#[test]
+fn rule_operations_without_issue_update_leave_a_body_update_unchecked() {
+    let sb = workspace_with_setting(
+        &["template-sections"],
+        "rule_operations = { \"template-sections\" = [\"issue_create\"] }",
+    );
+    let body = write_file(&sb, "body.md", "Whatever.\n");
+    let mock = Routed::start(routes(mine(), vec![]));
+
+    let o = run(&sb, &mock, &update(&["--body-file", &body]));
+    assert_eq!(code(&o), 0, "{}", stderr(&o));
+    assert_eq!(mock.of("IssueUpdate").len(), 1);
+    assert!(mock.of("Templates").is_empty());
+}
+
+#[test]
 fn template_needs_a_body_and_is_ignored_without_the_rule() {
     let sb = workspace_with_rules(&[]);
     let mock = Routed::start(routes(mine(), vec![]));

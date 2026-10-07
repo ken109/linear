@@ -222,7 +222,7 @@ pub struct UpdateCmd {
     #[arg(long, value_name = "FILE")]
     pub body_file: Option<PathBuf>,
     /// The Linear project template the new body must follow (checked by the
-    /// `template-sections` rule)
+    /// `template-sections` rule, which requires it to replace a body)
     #[arg(long, value_name = "NAME", requires = "body_file")]
     pub template: Option<String>,
     /// Project status, by name (ignoring case), such as `In Progress` or `Completed`

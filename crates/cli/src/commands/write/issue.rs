@@ -454,7 +454,7 @@ pub struct UpdateCmd {
     #[arg(long, value_name = "FILE")]
     pub body_file: Option<PathBuf>,
     /// The Linear template the new description must follow (checked by the
-    /// `template-sections` rule)
+    /// `template-sections` rule, which requires it to replace a description)
     #[arg(long, value_name = "NAME", requires = "body_file")]
     pub template: Option<String>,
     /// Attach this http(s) URL as the issue's source. An attachment with the same URL
