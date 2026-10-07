@@ -1219,6 +1219,27 @@ names (as for every write) and prints a warning to stderr saying that no rule ap
 warning is left out with `--json` and `--quiet`, so a script that asked for machine output gets
 exactly the response. `--mutation` on a document that only has queries runs the query as usual.
 
+## For AI agents
+
+An agent that has never seen this CLI should read `linear usage` first: every command group, the
+global flags, the exit codes and the safety model, in under 1000 tokens. `linear <group> usage`
+(for example `linear issue usage`) lists one group's commands with their flags and says which only
+read and which write. Both are generated from the same command definition as `--help` and the shell
+completions, and a test fails when a command is missing from them; neither needs configuration,
+credentials or network.
+
+`skills/linear/SKILL.md` is a [Claude Code](https://claude.com/claude-code) skill that tells an agent
+to start there and how to write safely (read first, `--dry-run` where a command has it, the
+ownership and validator exit codes, `--yes` only for what cannot be undone). To install it, copy or
+link the directory into `~/.claude/skills/` (or a project's `.claude/skills/`):
+
+```sh
+ln -s "$PWD/skills/linear" ~/.claude/skills/linear
+```
+
+Keep an agent's context small with `--json --fields a,b,c` and `--id-only` (see "Cutting the output
+down" above).
+
 ## Schema coverage
 
 `schema/linear.graphql` is Linear's published SDL. `crates/core/coverage.toml` classifies every
