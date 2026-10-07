@@ -58,6 +58,28 @@ pub fn cycle_for<'a>(held_on: NaiveDate, team: &str, cycles: &'a [Cycle]) -> Res
         })
 }
 
+/// The cycle of `cycles` (the cycles of team `team`) that has this number, as `--cycle 12` asks for.
+///
+/// A number no cycle has is a usage error that lists the cycles that do exist.
+pub fn cycle_numbered<'a>(number: u32, team: &str, cycles: &'a [Cycle]) -> Result<&'a Cycle> {
+    cycles
+        .iter()
+        .find(|c| c.number == f64::from(number))
+        .ok_or_else(|| {
+            Error::Usage(format!(
+                "team {team} has no cycle #{number}. Cycles known: {}",
+                known(cycles)
+            ))
+        })
+}
+
+/// A cycle as a person types it, `12` or `#12`: its number.
+pub fn parse_number(spec: &str) -> std::result::Result<u32, String> {
+    spec.trim().trim_start_matches('#').parse().map_err(|_| {
+        format!("{spec:?} is not a cycle number; expected a number such as 42, or none")
+    })
+}
+
 /// `#12 2026-10-05T15:00:00Z .. 2026-10-12T15:00:00Z`, oldest first; `none` when empty.
 fn known(cycles: &[Cycle]) -> String {
     if cycles.is_empty() {

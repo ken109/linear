@@ -98,6 +98,16 @@ pub struct EntityIdComparator {
     pub eq: Option<cynic::Id>,
 }
 
+/// A comparator on a number that may be missing (a priority, a cycle's number).
+#[derive(cynic::InputObject, Debug, Clone, Default, PartialEq)]
+#[cynic(graphql_type = "NullableNumberComparator")]
+pub struct NullableNumberComparator {
+    #[cynic(skip_serializing_if = "Option::is_none")]
+    pub eq: Option<f64>,
+    #[cynic(rename = "in", skip_serializing_if = "Option::is_none")]
+    pub in_: Option<Vec<f64>>,
+}
+
 #[derive(cynic::InputObject, Debug, Clone, Default, PartialEq)]
 #[cynic(graphql_type = "BooleanComparator")]
 pub struct BooleanComparator {
@@ -237,6 +247,37 @@ pub struct AttachmentCollectionFilter {
 }
 
 #[derive(cynic::InputObject, Debug, Clone, Default, PartialEq)]
+#[cynic(graphql_type = "IssueIDComparator")]
+pub struct IssueIdComparator {
+    #[cynic(skip_serializing_if = "Option::is_none")]
+    pub eq: Option<cynic::Id>,
+}
+
+/// The parent of an issue: one issue, or none at all.
+#[derive(cynic::InputObject, Debug, Clone, Default, PartialEq)]
+#[cynic(graphql_type = "NullableIssueFilter")]
+pub struct IssueParentFilter {
+    #[cynic(skip_serializing_if = "Option::is_none")]
+    pub id: Option<IssueIdComparator>,
+    /// `true` matches "no parent".
+    #[cynic(rename = "null", skip_serializing_if = "Option::is_none")]
+    pub is_null: Option<bool>,
+}
+
+/// The cycle of an issue: one cycle of one team, or none at all.
+#[derive(cynic::InputObject, Debug, Clone, Default, PartialEq)]
+#[cynic(graphql_type = "NullableCycleFilter")]
+pub struct IssueCycleFilter {
+    #[cynic(skip_serializing_if = "Option::is_none")]
+    pub number: Option<NumberComparator>,
+    #[cynic(skip_serializing_if = "Option::is_none")]
+    pub team: Option<TeamFilter>,
+    /// `true` matches "no cycle".
+    #[cynic(rename = "null", skip_serializing_if = "Option::is_none")]
+    pub is_null: Option<bool>,
+}
+
+#[derive(cynic::InputObject, Debug, Clone, Default, PartialEq)]
 #[cynic(graphql_type = "IssueFilter", rename_all = "camelCase")]
 pub struct IssueFilter {
     #[cynic(skip_serializing_if = "Option::is_none")]
@@ -264,6 +305,19 @@ pub struct IssueFilter {
     pub completed_at: Option<NullableDateComparator>,
     #[cynic(skip_serializing_if = "Option::is_none")]
     pub canceled_at: Option<NullableDateComparator>,
+    #[cynic(skip_serializing_if = "Option::is_none")]
+    pub priority: Option<NullableNumberComparator>,
+    #[cynic(skip_serializing_if = "Option::is_none")]
+    pub parent: Option<IssueParentFilter>,
+    #[cynic(skip_serializing_if = "Option::is_none")]
+    pub cycle: Option<IssueCycleFilter>,
+}
+
+/// Either "there is none" or this one: what `--parent none|KK-1` and `--cycle none|42` mean.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Pick<T> {
+    Nothing,
+    Is(T),
 }
 
 /// State types that mean the work is finished.
@@ -319,6 +373,15 @@ pub struct IssueQuery {
     /// `open` it adds them to the open ones (the open issues, plus the ones
     /// closed since); on its own, or with a state, it narrows to them.
     pub closed_since: Option<DateTime<Utc>>,
+    /// Priority numbers (see [`priority_number`]); an issue with any of them matches.
+    pub priorities: Vec<i32>,
+    /// The id of an already resolved parent issue, or `Nothing` for issues that have none.
+    pub parent: Option<Pick<String>>,
+    /// A cycle number, or `Nothing` for issues in no cycle. A number means something only
+    /// within a team, so it is matched together with `team_key`, which the caller sets.
+    pub cycle: Option<Pick<u32>>,
+    /// Issues updated at or after this time.
+    pub updated_after: Option<DateTime<Utc>>,
 }
 
 impl IssueQuery {
@@ -357,6 +420,38 @@ impl IssueQuery {
             name: Some(NullableStringComparator {
                 eq_ignore_case: Some(m.clone()),
             }),
+        });
+        f.priority = (!self.priorities.is_empty()).then(|| NullableNumberComparator {
+            in_: Some(self.priorities.iter().map(|p| f64::from(*p)).collect()),
+            ..NullableNumberComparator::default()
+        });
+        f.parent = self.parent.as_ref().map(|p| match p {
+            Pick::Nothing => IssueParentFilter {
+                is_null: Some(true),
+                ..IssueParentFilter::default()
+            },
+            Pick::Is(id) => IssueParentFilter {
+                id: Some(IssueIdComparator {
+                    eq: Some(cynic::Id::new(id.clone())),
+                }),
+                ..IssueParentFilter::default()
+            },
+        });
+        f.cycle = self.cycle.as_ref().map(|c| match c {
+            Pick::Nothing => IssueCycleFilter {
+                is_null: Some(true),
+                ..IssueCycleFilter::default()
+            },
+            Pick::Is(number) => IssueCycleFilter {
+                number: Some(NumberComparator {
+                    eq: Some(f64::from(*number)),
+                }),
+                team: f.team.clone(),
+                ..IssueCycleFilter::default()
+            },
+        });
+        f.updated_at = self.updated_after.map(|t| DateComparator {
+            gte: Some(DateTimeOrDuration(t)),
         });
         f.attachments = self
             .source_url
@@ -436,6 +531,21 @@ impl IssueQuery {
         }
 
         (f != IssueFilter::default()).then_some(f)
+    }
+}
+
+/// Linear's priority number for what a person types: `0`-`4`, or `none`, `urgent`, `high`,
+/// `medium`, `low` (any case; `no-priority` and `no priority` also mean `none`).
+pub fn priority_number(spec: &str) -> Result<i32, String> {
+    const EXPECTED: &str = "expected 0-4 or none, urgent, high, medium, low";
+    let text = spec.trim().to_ascii_lowercase();
+    match text.as_str() {
+        "0" | "none" | "no-priority" | "no priority" => Ok(0),
+        "1" | "urgent" => Ok(1),
+        "2" | "high" => Ok(2),
+        "3" | "medium" => Ok(3),
+        "4" | "low" => Ok(4),
+        _ => Err(format!("{spec:?} is not a priority; {EXPECTED}")),
     }
 }
 

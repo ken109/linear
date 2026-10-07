@@ -94,6 +94,7 @@
     },
     "write": {
       "cycle": null,
+      "priority": 3,
       "team": {
         "states": {
           "nodes": [

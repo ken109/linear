@@ -2,13 +2,13 @@
 
 use super::cached::{self, CachedArgs};
 use super::format::{date_time, fields, indent, opt_date, opt_text, person};
-use super::listing::{paginate, resolve_project, warn_truncated, ListArgs};
+use super::listing::{paginate, resolve_issue, resolve_project, warn_truncated, ListArgs};
 use super::{write, Ctx};
 use crate::error::{CliError, Result};
 use crate::output::table;
 use chrono::Utc;
 use clap::{Args, Subcommand, ValueEnum};
-use linear_core::filters::{closed_since, IssueQuery};
+use linear_core::filters::{closed_since, priority_number, IssueQuery, Pick};
 use linear_core::matching::label_path;
 use linear_core::pull_request::PullRequest;
 use linear_core::read::{
@@ -19,13 +19,14 @@ use serde::Serialize;
 
 #[derive(Debug, Subcommand)]
 pub enum IssueCommand {
-    /// List issues, optionally narrowed by assignee, state, project, label or origin URL
+    /// List issues, optionally narrowed by assignee, state, project, label, priority, parent, cycle or origin URL
     List(ListCmd),
     /// Show one issue with its description and comments
     View(ViewCmd),
     /// Create an issue (same origin URL: returns the existing one instead)
     Create(super::write::issue::CreateCmd),
-    /// Change an issue's state, project, milestone, due date, assignee, description, labels or source
+    /// Change an issue's state, project, milestone, due date, assignee, description, labels,
+    /// priority, estimate, parent, cycle or source
     ///
     /// Only the fields that differ from now are sent; a run that changes nothing sends
     /// nothing (`changed` is empty with --json). If attaching the source fails, the
@@ -145,6 +146,27 @@ pub struct ListCmd {
     /// The exact URL of an attachment, i.e. where the issue came from
     #[arg(long, value_name = "URL")]
     pub source_url: Option<String>,
+    /// Priority: 0-4 or none, urgent, high, medium, low (repeatable or comma-separated; any
+    /// of them). `none` (0) is the issues that have no priority
+    #[arg(
+        long,
+        value_name = "LEVEL",
+        value_delimiter = ',',
+        value_parser = priority_number
+    )]
+    pub priority: Vec<i32>,
+    /// Parent issue (identifier such as KK-12, or id), or `none` for the issues that have
+    /// no parent
+    #[arg(long, value_name = "ISSUE")]
+    pub parent: Option<String>,
+    /// Cycle number (`42` or `#42`) of --team, else of the workspace's `default_team`, or
+    /// `none` for the issues that are in no cycle
+    #[arg(long, value_name = "N")]
+    pub cycle: Option<String>,
+    /// Only issues updated at or after this time: `14d` (14 days back from now) or a date
+    /// (YYYY-MM-DD, from 00:00 UTC)
+    #[arg(long, value_name = "SINCE")]
+    pub updated_after: Option<String>,
     #[command(flatten)]
     pub page: ListArgs,
     #[command(flatten)]
@@ -240,6 +262,18 @@ fn check_cached_filters(args: &ListCmd) -> Result<()> {
     if args.completed_since.is_some() {
         flags.push("--completed-since".to_owned());
     }
+    if !args.priority.is_empty() {
+        flags.push("--priority".to_owned());
+    }
+    if args.parent.is_some() {
+        flags.push("--parent".to_owned());
+    }
+    if args.cycle.is_some() {
+        flags.push("--cycle".to_owned());
+    }
+    if args.updated_after.is_some() {
+        flags.push("--updated-after".to_owned());
+    }
     cached::refuse_outside_cache("the issues assigned to you that are In Progress", &flags)
 }
 
@@ -261,28 +295,62 @@ fn fetch_list(ctx: &Ctx, args: &ListCmd) -> Result<(String, Vec<Issue>)> {
     }
 
     // Judged before anything is sent: a bad time is a usage error.
+    let updated_after = args
+        .updated_after
+        .as_deref()
+        .map(|spec| closed_since(spec, Utc::now()).map_err(CliError::usage))
+        .transpose()?;
     let closed_since = args
         .completed_since
         .as_deref()
         .map(|spec| closed_since(spec, Utc::now()).map_err(CliError::usage))
         .transpose()?;
 
+    let cycle = match args.cycle.as_deref().map(str::trim) {
+        None => None,
+        Some(spec) if spec.eq_ignore_ascii_case("none") => Some(Pick::Nothing),
+        Some(spec) => Some(Pick::Is(
+            linear_core::cycle::parse_number(spec).map_err(CliError::usage)?,
+        )),
+    };
+
     let session = ctx.session()?;
+    // A cycle number means something only within a team.
+    let mut team_key = args.team.clone();
+    if matches!(cycle, Some(Pick::Is(_))) && team_key.is_none() {
+        team_key = Some(session.config.default_team.clone().ok_or_else(|| {
+            CliError::usage(
+                "--cycle <N> needs a team: pass --team <KEY> or set default_team for this \
+                 workspace in workspaces.toml",
+            )
+        })?);
+    }
     let project_id = match &args.project {
         Some(reference) => Some(resolve_project(&session.client, reference)?.id.into_inner()),
         None => None,
+    };
+    let parent = match args.parent.as_deref().map(str::trim) {
+        None => None,
+        Some(spec) if spec.eq_ignore_ascii_case("none") => Some(Pick::Nothing),
+        Some(reference) => Some(Pick::Is(
+            resolve_issue(&session.client, reference)?.id.into_inner(),
+        )),
     };
     let filter = IssueQuery {
         assignee: args.assignee.clone(),
         state_types: args.state_type.clone(),
         state_names: args.state.clone(),
         open: args.open,
-        team_key: args.team.clone(),
+        team_key,
         project_id,
         milestone: args.milestone.clone(),
         labels: args.label.clone(),
         source_url: args.source_url.clone(),
         closed_since,
+        priorities: args.priority.clone(),
+        parent,
+        cycle,
+        updated_after,
     }
     .filter();
 

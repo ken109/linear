@@ -2,7 +2,7 @@
 //! after the meeting", judged at noon Japan Standard Time.
 
 use chrono::{NaiveDate, TimeZone, Utc};
-use linear_core::cycle::{cycle_for, instant_for, label};
+use linear_core::cycle::{cycle_for, cycle_numbered, instant_for, label, parse_number};
 use linear_core::filters::cycles_of_team;
 use linear_core::read::{self, CycleList, CycleListVars};
 use linear_core::types::{Cycle, PageVars};
@@ -178,4 +178,36 @@ fn the_cycles_query_asks_for_one_team_and_decodes_a_page() {
         serde_json::to_value(&page.cycles.nodes[0]).unwrap()["startsAt"],
         Value::from("2026-10-05T15:00:00Z")
     );
+}
+
+#[test]
+fn a_cycle_is_found_by_its_number_and_a_missing_one_lists_the_others() {
+    let cycles = weekly("2026-09-28", 3);
+    let hit = cycle_numbered(41, "EX", &cycles).unwrap();
+    assert_eq!(hit.id.inner(), "cycle-41");
+
+    let err = cycle_numbered(7, "EX", &cycles).unwrap_err();
+    assert_eq!(err.code(), ErrorCode::Usage);
+    let message = err.to_string();
+    assert!(message.contains("team EX has no cycle #7"), "{message}");
+    assert!(
+        message.contains("#40") && message.contains("#42"),
+        "{message}"
+    );
+
+    let none = cycle_numbered(1, "EX", &[]).unwrap_err().to_string();
+    assert!(none.contains("Cycles known: none"), "{none}");
+}
+
+#[test]
+fn a_cycle_number_reads_with_or_without_the_hash() {
+    assert_eq!(parse_number("42"), Ok(42));
+    assert_eq!(parse_number("#42"), Ok(42));
+    assert_eq!(parse_number(" 7 "), Ok(7));
+    for bad in ["", "#", "-1", "four", "4.5"] {
+        assert!(
+            parse_number(bad).unwrap_err().contains("cycle number"),
+            "{bad}"
+        );
+    }
 }

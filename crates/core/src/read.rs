@@ -182,6 +182,9 @@ pub struct IssueWriteDetail {
     /// The cycle the issue is in, if any (`issue create --held-on` only
     /// fills an empty one).
     pub cycle: Option<Cycle>,
+    /// Linear's priority number (0 none, 1 urgent, 2 high, 3 medium, 4 low), so that
+    /// `issue update --priority` can tell whether it would change anything.
+    pub priority: f64,
 }
 
 #[derive(cynic::QueryFragment, Debug, Clone, PartialEq)]

@@ -83,7 +83,10 @@ fields = [
 type = "Query"
 status = "implemented"
 via = ["read::cycles", "cycle_read::cycle_infos", "cycle_read::cycle_issues"]
-commands = ["cycle", "cycle list", "cycle view", "issue create --held-on"]
+commands = [
+  "cycle", "cycle list", "cycle view", "issue create --held-on", "issue create --cycle",
+  "issue update --cycle",
+]
 fields = [
   "cycle", "cycles",
 ]

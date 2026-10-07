@@ -280,6 +280,19 @@ pub fn view(identifier: &str) -> View {
     View(v)
 }
 
+/// What `issue(id:)` answers for the issue `identifier` (the lookup behind `--parent`).
+pub fn issue_by_id(identifier: &str) -> Reply {
+    let mut v = fixture_data("issue");
+    v["issue"]["identifier"] = json!(identifier);
+    v["issue"]["id"] = json!(format!("id-{identifier}"));
+    data(v)
+}
+
+/// What `issue(id:)` answers when Linear has no such issue.
+pub fn no_such_issue() -> Reply {
+    graphql_error("Entity not found: Issue")
+}
+
 /// The two cycles of the `cycles` fixture: #41 (2026-10-05T15:00Z ..) and #42.
 pub const CYCLE_41: &str = "00000000-0000-4000-8000-000000000201";
 pub const CYCLE_42: &str = "00000000-0000-4000-8000-000000000202";
@@ -305,6 +318,30 @@ impl View {
                     .unwrap_or_else(|| panic!("no fixture cycle {id}"))
                     .clone()
             }
+            None => Value::Null,
+        };
+        self
+    }
+
+    /// Has this priority number (the fixture issue has 3, medium).
+    pub fn with_priority(mut self, priority: f64) -> View {
+        self.0["write"]["priority"] = json!(priority);
+        self
+    }
+
+    /// Has this estimate, or none (the fixture issue has 3).
+    pub fn with_estimate(mut self, estimate: Option<f64>) -> View {
+        self.0["issue"]["estimate"] = json!(estimate);
+        self
+    }
+
+    /// Is a sub-issue of `identifier` (whose id is `id-<identifier>`), or of nothing.
+    pub fn with_parent(mut self, identifier: Option<&str>) -> View {
+        self.0["issue"]["parent"] = match identifier {
+            Some(i) => json!({
+                "id": format!("id-{i}"), "identifier": i,
+                "url": format!("https://linear.app/example/issue/{i}"),
+            }),
             None => Value::Null,
         };
         self

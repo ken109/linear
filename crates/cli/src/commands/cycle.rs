@@ -14,7 +14,7 @@ use crate::http::Client;
 use crate::output::table;
 use chrono::NaiveDate;
 use clap::{Args, Subcommand, ValueEnum};
-use linear_core::cycle::{cycle_for, day_after, label, stamp};
+use linear_core::cycle::{cycle_for, cycle_numbered as find_in, day_after, label, stamp};
 use linear_core::cycle_read::{
     self, CycleInfo, CycleInfoList, CycleInfoListVars, CycleIssuesQuery, CycleIssuesVars,
     CYCLE_INFO_PAGE_SIZE, CYCLE_ISSUES_PAGE_SIZE,
@@ -81,18 +81,31 @@ pub struct ViewCmd {
     pub page: ListArgs,
 }
 
-/// The cycle of team `team` that contains the day after `held_on`, from Linear.
-///
-/// Fails with a usage error that lists the cycles there are when none does.
-pub(super) fn find(client: &Client, team: &str, held_on: NaiveDate) -> Result<Cycle> {
+/// Every cycle of team `team`.
+fn of_team(client: &Client, team: &str) -> Result<Vec<Cycle>> {
     let filter = Some(cycles_of_team(team));
-    let all = paginate(CYCLE_LIST_PAGE_SIZE, None, |page| {
+    Ok(paginate(CYCLE_LIST_PAGE_SIZE, None, |page| {
         let vars = CycleListVars::new(page, filter.clone());
         let data: CycleList = client.execute(&read::cycles(vars))?;
         Ok(data.cycles)
     })?
-    .items;
+    .items)
+}
+
+/// The cycle of team `team` that contains the day after `held_on`, from Linear.
+///
+/// Fails with a usage error that lists the cycles there are when none does.
+pub(super) fn find(client: &Client, team: &str, held_on: NaiveDate) -> Result<Cycle> {
+    let all = of_team(client, team)?;
     Ok(cycle_for(held_on, team, &all)?.clone())
+}
+
+/// The cycle of team `team` that has this number (`--cycle 42`), from Linear.
+///
+/// Fails with a usage error that lists the cycles there are when none does.
+pub(super) fn find_with_number(client: &Client, team: &str, number: u32) -> Result<Cycle> {
+    let all = of_team(client, team)?;
+    Ok(find_in(number, team, &all)?.clone())
 }
 
 #[derive(Serialize)]

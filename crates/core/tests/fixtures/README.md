@@ -25,7 +25,7 @@ Structure, nullability and value formats are exactly Linear's.
 | `issue_comments.json`       | `queries::issue_comments`     |                                                    |
 | `templates.json`            | `queries::templates`          | `templateData` is a JSON document inside a string  |
 | `issue_update.json`         | `inputs::issue_update`        |                                                    |
-| `issue_write_view.json`     | `read::issue_write_view`      | **derived**: `issue.json` plus the `write` alias (team states, project with lead and milestone, `cycle`: null); shape verified against the sandbox |
+| `issue_write_view.json`     | `read::issue_write_view`      | **derived**: `issue.json` plus the `write` alias (team states, project with lead and milestone, `cycle`: null, `priority`: 3); shape verified against the sandbox |
 | `attachments_for_url.json`, `attachments_for_url_none.json` | `read::attachments_for_url` | **derived** from `issue.json`; shape verified against the sandbox |
 | `cycles.json`               | `read::cycles`                | **hand-written**: the sandbox team has no cycles. The shape (fields, nullability) was checked against lt-three's real cycles, read-only; cycle #41 is Tue 2026-10-05T15:00Z, a week long |
 | `webhooks.json`             | `read::webhooks`              | **hand-written**: a labelled webhook scoped to a team and an unlabelled, disabled one for all public teams; shape (fields, nullability) from Linear's schema |

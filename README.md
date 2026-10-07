@@ -293,6 +293,9 @@ linear issue list --source-url https://example.com/a        # find an issue by w
 linear issue list --project "My Project" --milestone M1 --open --label bug
 linear issue list --open --completed-since 14d --all        # open issues, plus the ones closed in the last 14 days
 linear issue list --project "My Project" --open --order manual --all   # the screen order of the project
+linear issue list --team KK --priority urgent,high --updated-after 7d   # by priority, recently touched
+linear issue list --parent KK-12                            # the sub-issues of KK-12 (`--parent none`: top-level only)
+linear issue list --team KK --cycle 42                      # the issues of cycle #42 of team KK (`--cycle none`: in no cycle)
 linear issue view KK-12
 
 linear project list --open --lead me
@@ -326,6 +329,14 @@ are alternatives, so `--open --completed-since 14d` is the open issues **and** t
 the last 14 days (what a duplicate check needs); on its own it lists just the closed ones;
 `--state-type completed --completed-since 14d` is the completed ones only. A bad value is a usage
 error (exit 2) before anything is sent.
+`--priority LEVEL` takes `0`-`4` or `none`, `urgent`, `high`, `medium`, `low` (repeatable or
+comma-separated; any of them; `none` is the issues without a priority). `--parent ISSUE` keeps the
+sub-issues of one issue (looked up first; `none` keeps the issues that have no parent).
+`--cycle N` keeps the issues of cycle number `N` (`42` or `#42`) of `--team`, or of the workspace's
+`default_team` when there is no `--team`, because cycle numbers belong to a team; `--cycle none`
+keeps the issues that are in no cycle and needs no team. `--updated-after <Nd|YYYY-MM-DD>` keeps the
+issues updated at or after that time (read like `--completed-since`). All of them narrow the other
+filters, and none can be combined with `--cached`.
 `--order manual` sorts by `sortOrder`, the order `issue reorder` writes and a project's screen shows
 (top first); the default is the order Linear returns. Linear cannot sort by it, so every matching
 page is fetched first and `--limit` then keeps the first of the sorted list. The numbers only
@@ -533,13 +544,16 @@ and the issues named with `--issues` even if they are old and closed.
 linear issue create --title "Fix the thing" --project "My Project" \
   --template "Bug report" --body-file body.md --source https://example.com/a \
   [--source-title "Where it came from"] [--meta kind=slack --meta ticket=42] \
-  [--milestone M1] [--assignee me] [--label bug] [--team ENG] [--held-on 2026-10-05]
+  [--milestone M1] [--assignee me] [--label bug] [--team ENG] [--held-on 2026-10-05] \
+  [--priority high] [--estimate 3] [--parent KK-10] [--cycle 42]
 linear issue update KK-12 --state "In Progress" --due 2026-11-01 [--milestone M2] [--assignee me]
 linear issue update KK-12 --project "Other Project" [--milestone M1]   # the old milestone is cleared
 linear issue update KK-12 --body-file body.md [--template "Bug report"]   # replace the description
 linear issue update KK-12 --source https://example.com/a [--source-title ..] [--meta kind=slack]
 linear issue update KK-12 --labels bug,api                             # exactly these labels
 linear issue update KK-12 --add-labels bug --remove-labels triage      # or edit the set
+linear issue update KK-12 --priority urgent --estimate 5 --cycle 42    # priority, estimate, cycle number
+linear issue update KK-12 --parent KK-10                               # make it a sub-issue (`--parent none` undoes it)
 linear issue comment KK-12 --body-file comment.md
 linear issue link-pr KK-12 https://github.com/owner/repo/pull/34      # needs the GitHub integration
 linear issue attach-file KK-12 ./shot.png [--title "Login bug"]       # upload a file and attach it
@@ -620,12 +634,21 @@ never clash with it (`cycle --team EX list` is refused; give `--team` to the sub
   (identifier, title, url, state, assignee); `--quiet` prints the cycle number. A number the
   team does not have is a usage error (exit 2).
 
+`issue create --cycle 42` does the same for a cycle given by its number in the team (`42` or
+`#42`; it cannot be combined with `--held-on`), and fails before creating anything when the team
+has no such cycle. `--priority` (`0`-`4`, or `none`, `urgent`, `high`, `medium`, `low`),
+`--estimate` (a whole number in the team's scale) and `--parent` (an issue, looked up first) go
+onto the new issue. An issue that already exists for the same `--source` keeps its own priority,
+estimate and parent (a note says they were not applied; `issue update` changes them), and gets the
+cycle only when it has none.
+
 #### `issue update`
 
 `issue update` sends only the fields that differ from what the issue has now, and never `null`
 for a field it was not asked to clear. A second identical run sends nothing and says so
 (`"changed": []` with `--json`; otherwise `changed` lists what was written: `description`,
-`state`, `project`, `milestone`, `dueDate`, `assignee`, `labels`, `source`).
+`state`, `project`, `milestone`, `dueDate`, `assignee`, `labels`, `priority`, `estimate`,
+`parent`, `cycle`, `source`).
 
 - `--body-file FILE|-` replaces the description (an empty file is a usage error). Trailing
   whitespace does not count as a difference, nor does the bullet Linear rewrites (`- item` is
@@ -650,6 +673,16 @@ for a field it was not asked to clear. A second identical run sends nothing and 
   with `--labels`. With `label-groups-exclusive`, the labels the issue would end up with are
   checked, so adding a second label of a single-select group is refused (exit 5) unless the first
   one is removed in the same command.
+- `--priority LEVEL` is `0`-`4` or `none` (0), `urgent`, `high`, `medium`, `low`.
+  `--estimate N` is a whole number in the team's scale (Linear refuses one the team's estimate
+  scale does not allow), and `--estimate none` removes it. `--parent ISSUE` makes the issue a
+  sub-issue of another (given by identifier or id and looked up first; an issue cannot be its own
+  parent), and `--parent none` makes it a top-level issue again. `--cycle N` puts the issue in the
+  cycle with that number in the issue's team (`42` or `#42`; a number the team has no cycle for is
+  a usage error that lists the cycles it has), moving it out of another one, and `--cycle none`
+  takes it out of its cycle. Like every field, a value the issue already has sends nothing, and a
+  source that cannot be attached puts these back too. They follow the same ownership rule as the
+  other fields; there is no validator rule for them.
 
 #### Source metadata
 

@@ -82,9 +82,18 @@ pub struct IssueUpdateInput {
     pub sort_order: Option<f64>,
     #[cynic(skip_serializing_if = "Option::is_none")]
     pub priority_sort_order: Option<f64>,
-    /// Put the issue in this cycle (never sent as a clear: nothing here takes one out).
+    /// Put the issue in this cycle; `Patch::Clear` takes it out of its cycle.
+    #[cynic(skip_serializing_if = "Patch::is_keep")]
+    pub cycle_id: Patch<String>,
+    /// Linear's priority number: 0 none, 1 urgent, 2 high, 3 medium, 4 low.
     #[cynic(skip_serializing_if = "Option::is_none")]
-    pub cycle_id: Option<String>,
+    pub priority: Option<i32>,
+    /// The estimate in the team's scale; `Patch::Clear` removes it.
+    #[cynic(skip_serializing_if = "Patch::is_keep")]
+    pub estimate: Patch<i32>,
+    /// The issue this one is a sub-issue of; `Patch::Clear` makes it a top-level issue.
+    #[cynic(skip_serializing_if = "Patch::is_keep")]
+    pub parent_id: Patch<String>,
 }
 
 impl IssueUpdateInput {
@@ -100,7 +109,10 @@ impl IssueUpdateInput {
             && self.label_ids.is_none()
             && self.sort_order.is_none()
             && self.priority_sort_order.is_none()
-            && self.cycle_id.is_none()
+            && self.cycle_id.is_keep()
+            && self.priority.is_none()
+            && self.estimate.is_keep()
+            && self.parent_id.is_keep()
     }
 }
 
@@ -154,6 +166,15 @@ pub struct IssueCreateInput {
     pub label_ids: Option<Vec<String>>,
     #[cynic(skip_serializing_if = "Option::is_none")]
     pub cycle_id: Option<String>,
+    /// Linear's priority number: 0 none, 1 urgent, 2 high, 3 medium, 4 low.
+    #[cynic(skip_serializing_if = "Option::is_none")]
+    pub priority: Option<i32>,
+    /// The estimate in the team's scale.
+    #[cynic(skip_serializing_if = "Option::is_none")]
+    pub estimate: Option<i32>,
+    /// The issue this one is a sub-issue of.
+    #[cynic(skip_serializing_if = "Option::is_none")]
+    pub parent_id: Option<String>,
 }
 
 #[derive(cynic::QueryVariables, Debug, Clone)]

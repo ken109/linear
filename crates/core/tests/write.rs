@@ -113,6 +113,53 @@ fn the_fields_an_issue_update_can_clear_say_so_with_an_explicit_null() {
 }
 
 #[test]
+fn priority_estimate_parent_and_cycle_of_an_update_can_be_set_and_the_last_three_cleared() {
+    let set = serde_json::to_value(IssueUpdateInput {
+        priority: Some(0),
+        estimate: Patch::Set(5),
+        parent_id: Patch::Set("i".into()),
+        cycle_id: Patch::Set("c".into()),
+        ..Default::default()
+    })
+    .unwrap();
+    assert_eq!(
+        set,
+        json!({ "priority": 0, "estimate": 5, "parentId": "i", "cycleId": "c" })
+    );
+    let clear = serde_json::to_value(IssueUpdateInput {
+        estimate: Patch::Clear,
+        parent_id: Patch::Clear,
+        cycle_id: Patch::Clear,
+        ..Default::default()
+    })
+    .unwrap();
+    assert_eq!(
+        clear,
+        json!({ "estimate": null, "parentId": null, "cycleId": null })
+    );
+    for input in [
+        IssueUpdateInput {
+            priority: Some(0),
+            ..Default::default()
+        },
+        IssueUpdateInput {
+            estimate: Patch::Clear,
+            ..Default::default()
+        },
+        IssueUpdateInput {
+            parent_id: Patch::Clear,
+            ..Default::default()
+        },
+        IssueUpdateInput {
+            cycle_id: Patch::Clear,
+            ..Default::default()
+        },
+    ] {
+        assert!(!input.is_empty());
+    }
+}
+
+#[test]
 fn every_field_of_an_issue_update_counts_towards_it_changing_something() {
     for input in [
         IssueUpdateInput {
@@ -169,6 +216,9 @@ fn a_create_input_omits_what_was_not_given() {
         project_milestone_id: Some("m".into()),
         label_ids: Some(vec!["l1".into(), "l2".into()]),
         cycle_id: Some("c".into()),
+        priority: Some(2),
+        estimate: Some(3),
+        parent_id: Some("i".into()),
     })
     .unwrap();
     assert_eq!(
@@ -176,9 +226,17 @@ fn a_create_input_omits_what_was_not_given() {
         json!({
             "teamId": "t", "title": "Title", "description": "Body", "assigneeId": "u",
             "projectId": "p", "projectMilestoneId": "m", "labelIds": ["l1", "l2"],
-            "cycleId": "c",
+            "cycleId": "c", "priority": 2, "estimate": 3, "parentId": "i",
         })
     );
+    // Priority 0 is a value (no priority), not "left out".
+    let none = serde_json::to_value(IssueCreateInput {
+        team_id: "t".into(),
+        priority: Some(0),
+        ..Default::default()
+    })
+    .unwrap();
+    assert_eq!(none, json!({ "teamId": "t", "priority": 0 }));
 }
 
 #[test]

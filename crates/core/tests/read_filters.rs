@@ -1,6 +1,8 @@
 //! Filters built from what a person types, as they appear on the wire.
 
-use linear_core::filters::{closed_since, InitiativeQuery, IssueQuery, ProjectQuery};
+use linear_core::filters::{
+    closed_since, priority_number, InitiativeQuery, IssueQuery, Pick, ProjectQuery,
+};
 use linear_core::read::{self, InitiativeListVars, IssueListVars, ProjectListVars};
 use linear_core::types::PageVars;
 use linear_core::wire::build_request;
@@ -287,4 +289,107 @@ fn closed_since_refuses_what_is_not_a_day_count_or_a_real_date() {
         let e = closed_since(bad, now).expect_err(bad);
         assert!(e.contains("expected"), "{bad:?}: {e}");
     }
+}
+
+#[test]
+fn priorities_are_alternatives_by_number() {
+    let q = IssueQuery {
+        priorities: vec![1, 2],
+        ..IssueQuery::default()
+    };
+    assert_eq!(
+        issue_filter_json(&q),
+        json!({"priority": {"in": [1.0, 2.0]}})
+    );
+}
+
+#[test]
+fn priority_names_and_numbers_both_read() {
+    for (spec, number) in [
+        ("0", 0),
+        ("none", 0),
+        ("No-Priority", 0),
+        ("1", 1),
+        ("Urgent", 1),
+        ("high", 2),
+        ("2", 2),
+        (" medium ", 3),
+        ("low", 4),
+        ("4", 4),
+    ] {
+        assert_eq!(priority_number(spec), Ok(number), "{spec}");
+    }
+    for bad in ["5", "-1", "", "critical", "1.5"] {
+        let e = priority_number(bad).unwrap_err();
+        assert!(e.contains("expected 0-4"), "{bad}: {e}");
+    }
+}
+
+#[test]
+fn a_parent_is_one_issue_or_none() {
+    let q = IssueQuery {
+        parent: Some(Pick::Is("issue-id".into())),
+        ..IssueQuery::default()
+    };
+    assert_eq!(
+        issue_filter_json(&q),
+        json!({"parent": {"id": {"eq": "issue-id"}}})
+    );
+    let q = IssueQuery {
+        parent: Some(Pick::Nothing),
+        ..IssueQuery::default()
+    };
+    assert_eq!(issue_filter_json(&q), json!({"parent": {"null": true}}));
+}
+
+#[test]
+fn a_cycle_number_is_matched_within_the_team_and_none_means_no_cycle() {
+    let q = IssueQuery {
+        cycle: Some(Pick::Is(42)),
+        team_key: Some("EX".into()),
+        ..IssueQuery::default()
+    };
+    assert_eq!(
+        issue_filter_json(&q),
+        json!({
+            "team": {"key": {"eqIgnoreCase": "EX"}},
+            "cycle": {"number": {"eq": 42.0}, "team": {"key": {"eqIgnoreCase": "EX"}}},
+        })
+    );
+    let q = IssueQuery {
+        cycle: Some(Pick::Nothing),
+        ..IssueQuery::default()
+    };
+    assert_eq!(issue_filter_json(&q), json!({"cycle": {"null": true}}));
+}
+
+#[test]
+fn updated_after_is_a_lower_bound_on_the_update_time() {
+    let q = IssueQuery {
+        updated_after: Some(utc("2026-10-01T00:00:00Z")),
+        ..IssueQuery::default()
+    };
+    assert_eq!(
+        issue_filter_json(&q),
+        json!({"updatedAt": {"gte": "2026-10-01T00:00:00Z"}})
+    );
+}
+
+#[test]
+fn the_new_filters_narrow_together_with_the_old_ones() {
+    let q = IssueQuery {
+        assignee: Some("me".into()),
+        priorities: vec![2],
+        parent: Some(Pick::Nothing),
+        open: true,
+        ..IssueQuery::default()
+    };
+    let f = issue_filter_json(&q);
+    assert_eq!(f["assignee"], json!({"isMe": {"eq": true}}));
+    assert_eq!(f["priority"], json!({"in": [2.0]}));
+    assert_eq!(f["parent"], json!({"null": true}));
+    assert_eq!(
+        f["state"],
+        json!({"type": {"nin": ["completed", "canceled"]}})
+    );
 }

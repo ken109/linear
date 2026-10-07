@@ -7,8 +7,9 @@ use crate::http::Client;
 use clap::Args;
 use linear_core::config::WorkspaceConfig;
 use linear_core::matching::match_project;
+use linear_core::queries::{self, IssueById};
 use linear_core::read::{self, ProjectRefs, PROJECT_REFS_PAGE_SIZE};
-use linear_core::types::{PageVars, ProjectRef};
+use linear_core::types::{Issue, PageVars, ProjectRef};
 use linear_core::wire::{Page, Pager};
 
 /// A resolved workspace and a client that talks to it.
@@ -117,4 +118,17 @@ fn all_project_refs(client: &Client) -> Result<Vec<ProjectRef>> {
 pub fn resolve_project(client: &Client, reference: &str) -> Result<ProjectRef> {
     let rows = all_project_refs(client)?;
     Ok(match_project(&rows, reference)?.clone())
+}
+
+/// An issue by identifier (such as `KK-12`) or id, for a flag that names another issue
+/// (`--parent`). An issue Linear does not know is a usage error, not a failed request.
+pub fn resolve_issue(client: &Client, reference: &str) -> Result<Issue> {
+    let reference = reference.trim();
+    match client.execute::<_, _, IssueById>(&queries::issue(reference)) {
+        Ok(data) => Ok(data.issue),
+        Err(e) if e.message.to_ascii_lowercase().contains("not found") => {
+            Err(CliError::usage(format!("no issue {reference:?}")))
+        }
+        Err(e) => Err(e),
+    }
 }

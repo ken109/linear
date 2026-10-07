@@ -9,11 +9,14 @@ use super::{read_text, resolve, retry, Rollback, WriteSession, ATTACH_WAITS};
 use crate::commands::cycle;
 use crate::commands::format::person;
 use crate::commands::issue::{out as issue_out, IssueOut};
+use crate::commands::listing::resolve_issue;
 use crate::commands::Ctx;
 use crate::error::{CliError, Result};
 use chrono::NaiveDate;
 use clap::Args;
 use linear_core::config::Rule;
+use linear_core::cycle::parse_number as cycle_number;
+use linear_core::filters::priority_number;
 use linear_core::guard::{Placement, Write};
 use linear_core::inputs::{
     self, AttachmentCreate, AttachmentCreateInput, CommentCreate, CommentCreateInput, IssueCreate,
@@ -83,6 +86,20 @@ pub struct CreateCmd {
     /// when it has none; its other fields are not touched
     #[arg(long, value_name = "DATE")]
     pub held_on: Option<NaiveDate>,
+    /// Priority: 0-4 or none, urgent, high, medium, low
+    #[arg(long, value_name = "LEVEL", value_parser = priority_number)]
+    pub priority: Option<i32>,
+    /// Estimate, a whole number in the team's scale
+    #[arg(long, value_name = "N", value_parser = parse_estimate)]
+    pub estimate: Option<i32>,
+    /// Make it a sub-issue of this issue (identifier such as KK-12, or id)
+    #[arg(long, value_name = "ISSUE")]
+    pub parent: Option<String>,
+    /// Put it in the cycle with this number (`42` or `#42`) of the team; the command fails
+    /// before creating anything when the team has none. As with --held-on, an issue that
+    /// already exists for the same --source gets the cycle only when it has none
+    #[arg(long, value_name = "N", value_parser = cycle_number, conflicts_with = "held_on")]
+    pub cycle: Option<u32>,
     /// Team key (default: the workspace's `default_team`)
     #[arg(long, value_name = "KEY")]
     pub team: Option<String>,
@@ -155,10 +172,16 @@ pub fn create(ctx: &Ctx, cmd: &CreateCmd) -> Result<()> {
         None => ws.viewer.id.clone(),
     };
     let labels = resolve::labels(&ws, &cmd.label)?;
-    // A day no cycle contains stops here, before anything is written.
-    let cycle = cmd
-        .held_on
-        .map(|day| cycle::find(&ws.client, &team.key, day))
+    // A day no cycle contains, and a number no cycle has, stop here, before anything is written.
+    let cycle = match (cmd.held_on, cmd.cycle) {
+        (Some(day), _) => Some(cycle::find(&ws.client, &team.key, day)?),
+        (None, Some(number)) => Some(cycle::find_with_number(&ws.client, &team.key, number)?),
+        (None, None) => None,
+    };
+    let parent = cmd
+        .parent
+        .as_deref()
+        .map(|reference| resolve_issue(&ws.client, reference))
         .transpose()?;
 
     // Guard, then validators.
@@ -192,6 +215,21 @@ pub fn create(ctx: &Ctx, cmd: &CreateCmd) -> Result<()> {
         draft = draft.source_metadata(m.clone());
     }
     if let Outcome::AlreadyExists(existing) = ws.validate(&draft)? {
+        let skipped: Vec<&str> = [
+            ("--priority", cmd.priority.is_some()),
+            ("--estimate", cmd.estimate.is_some()),
+            ("--parent", cmd.parent.is_some()),
+        ]
+        .into_iter()
+        .filter_map(|(flag, given)| given.then_some(flag))
+        .collect();
+        if !skipped.is_empty() {
+            ws.note(&format!(
+                "{} already exists for this source, so {} not applied (`issue update` changes it)",
+                existing.identifier,
+                skipped.join(", ") + if skipped.len() == 1 { " was" } else { " were" }
+            ));
+        }
         // The source is already attached: nothing is created, but metadata
         // that differs from what is stored is written onto that attachment.
         let metadata_updated = match (source, &metadata) {
@@ -237,6 +275,9 @@ pub fn create(ctx: &Ctx, cmd: &CreateCmd) -> Result<()> {
         label_ids: (!labels.is_empty())
             .then(|| labels.iter().map(|l| l.id.inner().to_owned()).collect()),
         cycle_id: cycle.as_ref().map(|c| c.id.inner().to_owned()),
+        priority: cmd.priority,
+        estimate: cmd.estimate,
+        parent_id: parent.as_ref().map(|p| p.id.inner().to_owned()),
     };
     let data: IssueCreate = ws.client.execute(&inputs::issue_create(input))?;
     let issue = match data.issue_create {
@@ -329,7 +370,7 @@ fn put_in_cycle(
     )?;
     ws.validate(&Draft::new(Operation::IssueUpdate))?;
     let input = IssueUpdateInput {
-        cycle_id: Some(wanted.id.inner().to_owned()),
+        cycle_id: Patch::Set(wanted.id.inner().to_owned()),
         ..Default::default()
     };
     let data: IssueUpdate = ws
@@ -492,6 +533,47 @@ pub struct UpdateCmd {
     /// one it does not have is ignored
     #[arg(long, value_name = "NAME", value_delimiter = ',')]
     pub remove_labels: Vec<String>,
+    /// Priority: 0-4 or none, urgent, high, medium, low
+    #[arg(long, value_name = "LEVEL", value_parser = priority_number)]
+    pub priority: Option<i32>,
+    /// Estimate, a whole number in the team's scale, or `none` to remove it
+    #[arg(long, value_name = "N", value_parser = estimate_or_none)]
+    pub estimate: Option<Patch<i32>>,
+    /// Make it a sub-issue of this issue (identifier such as KK-12, or id), or `none` to make
+    /// it a top-level issue again
+    #[arg(long, value_name = "ISSUE")]
+    pub parent: Option<String>,
+    /// Put it in the cycle with this number (`42` or `#42`) of the issue's team, or `none` to
+    /// take it out of its cycle
+    #[arg(long, value_name = "N", value_parser = cycle_or_none)]
+    pub cycle: Option<Patch<u32>>,
+}
+
+/// `--estimate`: a whole number, at least 0.
+fn parse_estimate(spec: &str) -> std::result::Result<i32, String> {
+    spec.trim()
+        .parse::<i32>()
+        .ok()
+        .filter(|n| *n >= 0)
+        .ok_or_else(|| format!("{spec:?} is not an estimate; expected a whole number such as 3"))
+}
+
+fn is_none(spec: &str) -> bool {
+    spec.trim().eq_ignore_ascii_case("none")
+}
+
+fn estimate_or_none(spec: &str) -> std::result::Result<Patch<i32>, String> {
+    if is_none(spec) {
+        return Ok(Patch::Clear);
+    }
+    parse_estimate(spec).map(Patch::Set)
+}
+
+fn cycle_or_none(spec: &str) -> std::result::Result<Patch<u32>, String> {
+    if is_none(spec) {
+        return Ok(Patch::Clear);
+    }
+    cycle_number(spec).map(Patch::Set)
 }
 
 /// What `update` prints: the issue as it is now, and which fields were written.
@@ -523,10 +605,15 @@ pub fn update(ctx: &Ctx, cmd: &UpdateCmd) -> Result<()> {
         && cmd.body_file.is_none()
         && cmd.source.is_none()
         && !relabel
+        && cmd.priority.is_none()
+        && cmd.estimate.is_none()
+        && cmd.parent.is_none()
+        && cmd.cycle.is_none()
     {
         return Err(CliError::usage(
             "nothing to change: pass --state, --project, --milestone, --due, --assignee, \
-             --body-file, --source, --labels, --add-labels or --remove-labels",
+             --body-file, --source, --labels, --add-labels, --remove-labels, --priority, \
+             --estimate, --parent or --cycle",
         ));
     }
     // Everything that can be judged from the arguments alone comes first.
@@ -598,6 +685,31 @@ pub fn update(ctx: &Ctx, cmd: &UpdateCmd) -> Result<()> {
         Some(labels_after(&ws, issue, cmd)?)
     } else {
         None
+    };
+    // `Patch::Keep`: not asked for; `Clear`: asked to be taken away; `Set`: the issue or cycle.
+    let parent = match cmd.parent.as_deref().map(str::trim) {
+        None => Patch::Keep,
+        Some(spec) if is_none(spec) => Patch::Clear,
+        Some(reference) => {
+            let found = resolve_issue(&ws.client, reference)?;
+            if found.id == issue.id {
+                return Err(CliError::usage(format!(
+                    "{} cannot be its own parent",
+                    issue.identifier
+                )));
+            }
+            Patch::Set(found)
+        }
+    };
+    let cycle = match &cmd.cycle {
+        None => Patch::Keep,
+        Some(Patch::Keep) => Patch::Keep,
+        Some(Patch::Clear) => Patch::Clear,
+        Some(Patch::Set(number)) => Patch::Set(cycle::find_with_number(
+            &ws.client,
+            &issue.team.key,
+            *number,
+        )?),
     };
 
     // Guard, then validators.
@@ -717,6 +829,56 @@ pub fn update(ctx: &Ctx, cmd: &UpdateCmd) -> Result<()> {
             );
             changed.push("labels");
         }
+    }
+    if let Some(p) = cmd.priority {
+        let old = view.write.priority as i32;
+        if p != old {
+            input.priority = Some(p);
+            restore.priority = Some(old);
+            changed.push("priority");
+        }
+    }
+    let old_estimate = issue.estimate.map(|e| e as i32);
+    match cmd.estimate {
+        Some(Patch::Set(e)) if old_estimate != Some(e) => {
+            input.estimate = Patch::Set(e);
+            restore.estimate = put_back(old_estimate);
+            changed.push("estimate");
+        }
+        Some(Patch::Clear) if old_estimate.is_some() => {
+            input.estimate = Patch::Clear;
+            restore.estimate = put_back(old_estimate);
+            changed.push("estimate");
+        }
+        _ => {}
+    }
+    let old_parent = issue.parent.as_ref().map(|p| p.id.inner().to_owned());
+    match &parent {
+        Patch::Set(p) if old_parent.as_deref() != Some(p.id.inner()) => {
+            input.parent_id = Patch::Set(p.id.inner().to_owned());
+            restore.parent_id = put_back(old_parent);
+            changed.push("parent");
+        }
+        Patch::Clear if old_parent.is_some() => {
+            input.parent_id = Patch::Clear;
+            restore.parent_id = put_back(old_parent);
+            changed.push("parent");
+        }
+        _ => {}
+    }
+    let old_cycle = view.write.cycle.as_ref().map(|c| c.id.inner().to_owned());
+    match &cycle {
+        Patch::Set(c) if old_cycle.as_deref() != Some(c.id.inner()) => {
+            input.cycle_id = Patch::Set(c.id.inner().to_owned());
+            restore.cycle_id = put_back(old_cycle);
+            changed.push("cycle");
+        }
+        Patch::Clear if old_cycle.is_some() => {
+            input.cycle_id = Patch::Clear;
+            restore.cycle_id = put_back(old_cycle);
+            changed.push("cycle");
+        }
+        _ => {}
     }
     let attachment = match source {
         Some(url) => source_step(

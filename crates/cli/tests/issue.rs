@@ -206,6 +206,201 @@ fn an_unknown_state_type_is_a_usage_error() {
 }
 
 #[test]
+fn priority_updated_after_and_a_missing_parent_become_filters() {
+    let sb = workspace();
+    let mock = Mock::start(vec![ok(&fixture("issue_list"))]);
+    let o = linear(
+        &sb,
+        &mock,
+        &[
+            "issue",
+            "list",
+            "--priority",
+            "urgent,High",
+            "--parent",
+            "none",
+            "--updated-after",
+            "2026-10-01",
+            "--quiet",
+        ],
+    );
+    assert_eq!(code(&o), 0, "{}", stderr(&o));
+    // `none` is not an issue to look up: the only request is the list.
+    assert_eq!(mock.requests().len(), 1);
+    assert_eq!(
+        request(&mock, 0)["variables"]["filter"],
+        json!({
+            "priority": {"in": [1.0, 2.0]},
+            "parent": {"null": true},
+            "updatedAt": {"gte": "2026-10-01T00:00:00Z"},
+        })
+    );
+}
+
+#[test]
+fn updated_after_reads_days_back_from_now() {
+    let sb = workspace();
+    let mock = Mock::start(vec![ok(&fixture("issue_list"))]);
+    let o = linear(
+        &sb,
+        &mock,
+        &["issue", "list", "--updated-after", "7d", "--quiet"],
+    );
+    assert_eq!(code(&o), 0, "{}", stderr(&o));
+    let since = request(&mock, 0)["variables"]["filter"]["updatedAt"]["gte"]
+        .as_str()
+        .unwrap()
+        .to_owned();
+    let t: chrono::DateTime<chrono::Utc> = since.parse().unwrap();
+    let age = chrono::Utc::now() - t;
+    assert!(
+        age > chrono::Duration::days(7) - chrono::Duration::minutes(5)
+            && age < chrono::Duration::days(7) + chrono::Duration::minutes(5),
+        "{since}"
+    );
+}
+
+#[test]
+fn a_parent_is_looked_up_before_the_list_is_filtered_by_it() {
+    let sb = workspace();
+    let mut parent: Value = serde_json::from_str(&fixture("issue")).unwrap();
+    parent["data"]["issue"]["id"] = json!("parent-id");
+    let mock = Mock::start(vec![ok(&parent.to_string()), ok(&fixture("issue_list"))]);
+    let o = linear(
+        &sb,
+        &mock,
+        &["issue", "list", "--parent", "EX-1", "--quiet"],
+    );
+    assert_eq!(code(&o), 0, "{}", stderr(&o));
+    let lookup = request(&mock, 0);
+    assert_eq!(lookup["operationName"], "IssueById");
+    assert_eq!(lookup["variables"]["id"], "EX-1");
+    assert_eq!(
+        request(&mock, 1)["variables"]["filter"],
+        json!({"parent": {"id": {"eq": "parent-id"}}})
+    );
+}
+
+#[test]
+fn an_unknown_parent_fails_before_any_issue_is_listed() {
+    let sb = workspace();
+    let missing = r#"{"errors":[{"message":"Entity not found: Issue"}],"data":null}"#;
+    let mock = Mock::start(vec![ok(missing)]);
+    let o = linear(&sb, &mock, &["issue", "list", "--parent", "EX-999"]);
+    assert_eq!(code(&o), 2, "{}", stderr(&o));
+    assert!(stderr(&o).contains("no issue \"EX-999\""), "{}", stderr(&o));
+    assert_eq!(mock.requests().len(), 1);
+}
+
+#[test]
+fn a_cycle_number_is_matched_within_the_default_team() {
+    // `workspace()` has default_team EX.
+    let sb = workspace();
+    let mock = Mock::start(vec![ok(&fixture("issue_list"))]);
+    let o = linear(&sb, &mock, &["issue", "list", "--cycle", "#42", "--quiet"]);
+    assert_eq!(code(&o), 0, "{}", stderr(&o));
+    assert_eq!(
+        request(&mock, 0)["variables"]["filter"],
+        json!({
+            "team": {"key": {"eqIgnoreCase": "EX"}},
+            "cycle": {"number": {"eq": 42.0}, "team": {"key": {"eqIgnoreCase": "EX"}}},
+        })
+    );
+}
+
+#[test]
+fn team_flag_wins_over_the_default_team_for_a_cycle_number() {
+    let sb = workspace();
+    let mock = Mock::start(vec![ok(&fixture("issue_list"))]);
+    let o = linear(
+        &sb,
+        &mock,
+        &["issue", "list", "--cycle", "3", "--team", "OPS", "--quiet"],
+    );
+    assert_eq!(code(&o), 0, "{}", stderr(&o));
+    let filter = &request(&mock, 0)["variables"]["filter"];
+    assert_eq!(
+        filter["cycle"]["team"],
+        json!({"key": {"eqIgnoreCase": "OPS"}})
+    );
+    assert_eq!(filter["team"], json!({"key": {"eqIgnoreCase": "OPS"}}));
+}
+
+#[test]
+fn cycle_none_is_the_issues_in_no_cycle_and_needs_no_team() {
+    let sb = Sandbox::new();
+    let o = sb.run(
+        &["workspace", "add", "example", "--url-key", "example"],
+        None,
+        &[],
+    );
+    assert_eq!(code(&o), 0, "{}", stderr(&o));
+    let mock = Mock::start(vec![ok(&fixture("issue_list"))]);
+    let o = linear(&sb, &mock, &["issue", "list", "--cycle", "none", "--quiet"]);
+    assert_eq!(code(&o), 0, "{}", stderr(&o));
+    assert_eq!(
+        request(&mock, 0)["variables"]["filter"],
+        json!({"cycle": {"null": true}})
+    );
+}
+
+#[test]
+fn a_cycle_number_without_any_team_is_a_usage_error() {
+    let sb = Sandbox::new();
+    let o = sb.run(
+        &["workspace", "add", "example", "--url-key", "example"],
+        None,
+        &[],
+    );
+    assert_eq!(code(&o), 0, "{}", stderr(&o));
+    let mock = Mock::start(vec![ok(&fixture("issue_list"))]);
+    let o = linear(&sb, &mock, &["issue", "list", "--cycle", "42"]);
+    assert_eq!(code(&o), 2, "{}", stderr(&o));
+    assert!(
+        stderr(&o).contains("--cycle <N> needs a team"),
+        "{}",
+        stderr(&o)
+    );
+    assert!(mock.requests().is_empty());
+}
+
+#[test]
+fn bad_values_of_the_new_filters_are_usage_errors_before_any_request() {
+    let sb = workspace();
+    for args in [
+        &["--priority", "5"][..],
+        &["--priority", "urgent,loud"],
+        &["--cycle", "next"],
+        &["--updated-after", "yesterday"],
+        &["--updated-after", "0d"],
+    ] {
+        let mock = Mock::start(vec![ok(&fixture("issue_list"))]);
+        let mut full = vec!["issue", "list"];
+        full.extend_from_slice(args);
+        let o = linear(&sb, &mock, &full);
+        assert_eq!(code(&o), 2, "{args:?}: {}", stderr(&o));
+        assert!(mock.requests().is_empty(), "{args:?}: a request was sent");
+    }
+}
+
+#[test]
+fn the_new_filters_are_refused_next_to_cached() {
+    let sb = workspace();
+    for args in [
+        &["--priority", "high"][..],
+        &["--parent", "none"],
+        &["--cycle", "none"],
+        &["--updated-after", "7d"],
+    ] {
+        let mut full = vec!["issue", "list", "--cached"];
+        full.extend_from_slice(args);
+        let o = sb.run(&full, None, &[]);
+        assert_eq!(code(&o), 2, "{args:?}: {}", stderr(&o));
+        assert!(stderr(&o).contains(args[0]), "{args:?}: {}", stderr(&o));
+    }
+}
+
+#[test]
 fn view_shows_the_description_and_comments() {
     let sb = workspace();
     let mock = Mock::start(vec![ok(&fixture("issue_view"))]);
