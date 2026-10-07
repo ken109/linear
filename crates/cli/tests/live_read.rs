@@ -130,7 +130,7 @@ fn projects_show_the_lead_and_open_excludes_finished_ones() {
         let t = p["status"]["type"].as_str().unwrap();
         assert!(t != "completed" && t != "canceled", "{t}");
     }
-    // `ken109-linear projects` has no lead; here it is present and `me` finds it.
+    // The lead is present on a project and `me` finds it.
     let mine = json(&sb, &key, &["project", "list", "--lead", "me"]);
     assert!(!mine.as_array().unwrap().is_empty());
     assert_eq!(mine[0]["lead"]["isMe"], true);

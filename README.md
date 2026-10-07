@@ -140,8 +140,8 @@ linear -w team workspace whoami        # or `workspace login`: checks the grant,
 
 - **The secret is only read from the environment**: `LINEAR_CLIENT_SECRET_<NAME>` (for example
   `LINEAR_CLIENT_SECRET_TEAM`) for one workspace, else `LINEAR_CLIENT_SECRET`. The client id is
-  `LINEAR_CLIENT_ID_<NAME>`, else `LINEAR_CLIENT_ID`, else `client_id` in `workspaces.toml`. The
-  names are the old `tools/linear.ts`'s. Nothing is written to `credentials/`.
+  `LINEAR_CLIENT_ID_<NAME>`, else `LINEAR_CLIENT_ID`, else `client_id` in `workspaces.toml`. Nothing
+  is written to `credentials/`.
 - On first use a run asks `https://api.linear.app/oauth/token` for a token (grant
   `client_credentials`, scope `read,write,initiative:write`; Linear makes the token an app
   token by itself). It is kept in memory for the run, replaced a minute before it expires, and
@@ -149,7 +149,7 @@ linear -w team workspace whoami        # or `workspace login`: checks the grant,
   days and cannot be refreshed, so each run simply asks for a new one.
 - **Use the same scopes as everybody else using the app.** Linear invalidates an app's tokens
   when a token is requested with different scopes; that is why the scopes are fixed here to the
-  ones the old tool and the app's other users request.
+  ones the app's other users request.
 - The secret and the token are never printed: not in errors (a server that echoes the secret
   is masked), not in `workspace list` (it only says `env` or `no client secret`), not in logs.
 - "You" in the ownership rules is the user Linear reports for the token, which is the app.

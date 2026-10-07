@@ -115,8 +115,7 @@ pub fn api_key_env_var(workspace: &str) -> String {
     format!("LINEAR_API_KEY_{}", env_suffix(workspace))
 }
 
-/// The client secret of every workspace that uses client credentials (the name
-/// the old `tools/linear.ts` used).
+/// The client secret of every workspace that uses client credentials.
 pub const CLIENT_SECRET_ENV: &str = "LINEAR_CLIENT_SECRET";
 /// The client id, for every workspace (it can also be `client_id` in the workspace's config).
 pub const CLIENT_ID_ENV: &str = "LINEAR_CLIENT_ID";
@@ -140,8 +139,8 @@ pub const TOKEN_URL: &str = "https://api.linear.app/oauth/token";
 ///
 /// `initiative:write` is needed by an app actor to link projects to
 /// initiatives. Linear invalidates the app's existing tokens when a token is
-/// requested with *different* scopes, so every user of the same app (the old
-/// `tools/linear.ts`, a Worker) has to ask for the same ones.
+/// requested with *different* scopes, so every user of the same app (a CI
+/// script, a Worker) has to ask for the same ones.
 pub const APP_SCOPE: &str = "read,write,initiative:write";
 
 /// The body of the token request for the client credentials grant
