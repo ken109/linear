@@ -35,6 +35,8 @@ struct WorkspaceRow {
     default_team: Option<String>,
     auth: AuthMethod,
     ownership: Ownership,
+    /// `--force` may override the ownership rules in this workspace.
+    allow_force: bool,
     default: bool,
     /// `"env"`, `"file"`, `"keyring"` or null. Never the credential itself.
     credentials: Option<&'static str>,
@@ -51,6 +53,7 @@ fn list(ctx: &Ctx) -> Result<()> {
             default_team: ws.default_team.clone(),
             auth: ws.auth,
             ownership: ws.ownership,
+            allow_force: ws.allow_force,
             default: config.default.as_deref() == Some(name),
             credentials: credential_kind(ctx, name, ws),
         })
@@ -72,6 +75,7 @@ fn list(ctx: &Ctx) -> Result<()> {
                         r.default_team.clone().unwrap_or_else(|| "-".into()),
                         r.auth.to_string(),
                         r.ownership.to_string(),
+                        if r.allow_force { "yes" } else { "no" }.to_owned(),
                         r.credentials
                             .map_or(
                                 if r.auth == AuthMethod::ClientCredentials {
@@ -86,7 +90,15 @@ fn list(ctx: &Ctx) -> Result<()> {
                 })
                 .collect();
             table(
-                &["NAME", "URL KEY", "TEAM", "AUTH", "OWNERSHIP", "CREDENTIALS"],
+                &[
+                    "NAME",
+                    "URL KEY",
+                    "TEAM",
+                    "AUTH",
+                    "OWNERSHIP",
+                    "FORCE",
+                    "CREDENTIALS",
+                ],
                 &body,
             )
         },
