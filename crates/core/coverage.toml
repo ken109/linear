@@ -169,6 +169,15 @@ fields = [
 [[entry]]
 type = "Query"
 status = "implemented"
+via = ["docs::doc_list", "docs::doc_view"]
+commands = ["document list", "document view", "document create", "document update"]
+fields = [
+  "document", "documents",
+]
+
+[[entry]]
+type = "Query"
+status = "implemented"
 via = ["read::labels", "label_write::label_details"]
 commands = ["label list", "label view", "label create", "label update"]
 fields = [
@@ -241,8 +250,8 @@ fields = [
   "customView", "customViewDetailsSuggestion", "customViewHasSubscribers",
   "customViews", "customer", "customerNeed", "customerNeeds", "customerStatus",
   "customerStatuses", "customerTier", "customerTiers", "customers", "diff",
-  "document", "documentContentHistory", "documentContentHistoryEntries",
-  "documentContentHistoryTimeline", "documents", "emoji", "emojis", "entityExternalLink",
+  "documentContentHistory", "documentContentHistoryEntries",
+  "documentContentHistoryTimeline", "emoji", "emojis", "entityExternalLink",
   "favorite", "favorites", "inboxNotifications", "initiativeFilterSuggestion", "initiativeLabel",
   "initiativeLabels", "initiativeLeadTeamChangeImpact", "initiativeRelation",
   "initiativeRelations", "initiativeToProject", "initiativeToProjects", "initiativeUpdate",
@@ -370,6 +379,15 @@ via = ["files::file_upload", "files::file_upload_delete"]
 commands = ["file upload", "issue attach-file"]
 fields = [
   "fileUpload", "fileUploadDangerouslyDelete",
+]
+
+[[entry]]
+type = "Mutation"
+status = "implemented"
+via = ["docs::doc_create", "docs::doc_update"]
+commands = ["document create", "document update"]
+fields = [
+  "documentCreate", "documentUpdate",
 ]
 
 [[entry]]
@@ -509,7 +527,7 @@ fields = [
   "customerNeedCreate", "customerNeedCreateFromAttachment", "customerNeedUpdate",
   "customerStatusCreate", "customerStatusUpdate", "customerTierCreate", "customerTierUpdate",
   "customerUpdate", "customerUpsert", "cycleCreate", "cycleShiftAll",
-  "cycleStartUpcomingCycleToday", "cycleUpdate", "documentCreate", "documentUpdate",
+  "cycleStartUpcomingCycleToday", "cycleUpdate",
   "emojiCreate", "entityExternalLinkCreate", "entityExternalLinkUpdate", "favoriteCreate",
   "favoriteUpdate", "inboxNotificationUpdate", "initiativeAddLabel", "initiativeLabelCreate",
   "initiativeLabelUpdate", "initiativeLeadTeamUpdate", "initiativeRelationCreate",

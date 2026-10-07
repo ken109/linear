@@ -1,0 +1,32 @@
+{
+  "data": {
+    "document": {
+      "id": "00000000-0000-4000-8000-000000000401",
+      "slugId": "1a2b3c4d5e6f",
+      "title": "Design notes",
+      "url": "https://linear.app/example/document/design-notes-1a2b3c4d5e6f",
+      "icon": null,
+      "createdAt": "2026-10-05T01:02:03.000Z",
+      "updatedAt": "2026-10-06T04:05:06.000Z",
+      "creator": {
+        "id": "00000000-0000-4000-8000-000000000001",
+        "name": "Alice Example",
+        "displayName": "alice",
+        "email": "alice@example.com",
+        "active": true,
+        "isMe": true
+      },
+      "project": {
+        "id": "00000000-0000-4000-8000-000000000006",
+        "slugId": "aaaaaaaaaaaa",
+        "name": "Fixture Project",
+        "url": "https://linear.app/example/project/fixture-project-aaaaaaaaaaaa"
+      },
+      "initiative": null,
+      "issue": null
+    },
+    "detail": {
+      "content": "## Goal\n\nWrite it down.\n\n## Notes\n\nSee the roadmap."
+    }
+  }
+}

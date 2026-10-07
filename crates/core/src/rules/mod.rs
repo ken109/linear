@@ -37,14 +37,18 @@ pub enum Operation {
     IssueUpdate,
     ProjectCreate,
     ProjectUpdate,
+    DocumentCreate,
+    DocumentUpdate,
 }
 
 impl Operation {
-    pub const ALL: [Operation; 4] = [
+    pub const ALL: [Operation; 6] = [
         Self::IssueCreate,
         Self::IssueUpdate,
         Self::ProjectCreate,
         Self::ProjectUpdate,
+        Self::DocumentCreate,
+        Self::DocumentUpdate,
     ];
 
     pub fn as_str(self) -> &'static str {
@@ -53,11 +57,16 @@ impl Operation {
             Self::IssueUpdate => "issue_update",
             Self::ProjectCreate => "project_create",
             Self::ProjectUpdate => "project_update",
+            Self::DocumentCreate => "document_create",
+            Self::DocumentUpdate => "document_update",
         }
     }
 
     pub fn is_create(self) -> bool {
-        matches!(self, Self::IssueCreate | Self::ProjectCreate)
+        matches!(
+            self,
+            Self::IssueCreate | Self::ProjectCreate | Self::DocumentCreate
+        )
     }
 
     /// The kind of Linear template this operation's body is checked against.
@@ -65,6 +74,7 @@ impl Operation {
         match self {
             Self::IssueCreate | Self::IssueUpdate => TemplateKind::Issue,
             Self::ProjectCreate | Self::ProjectUpdate => TemplateKind::Project,
+            Self::DocumentCreate | Self::DocumentUpdate => TemplateKind::Document,
         }
     }
 }
@@ -107,6 +117,7 @@ impl fmt::Display for Rule {
 pub enum TemplateKind {
     Issue,
     Project,
+    Document,
 }
 
 impl TemplateKind {
@@ -115,6 +126,7 @@ impl TemplateKind {
         match self {
             Self::Issue => "issue",
             Self::Project => "project",
+            Self::Document => "document",
         }
     }
 }

@@ -88,6 +88,9 @@ pub enum Write<'a> {
     ProjectCreate { lead: Option<&'a str> },
     /// Change a project that currently has this lead.
     ProjectUpdate { lead: Option<&'a str> },
+    /// Change an initiative that currently has this owner (the CLI writes
+    /// documents under an initiative, and nothing else).
+    InitiativeUpdate { owner: Option<&'a str> },
     /// Create an issue with this assignee in this place.
     IssueCreate {
         assignee: Option<&'a str>,
@@ -120,6 +123,7 @@ impl<'a> Write<'a> {
         match self {
             Self::ProjectCreate { .. } => Operation::ProjectCreate,
             Self::ProjectUpdate { .. } => Operation::ProjectUpdate,
+            Self::InitiativeUpdate { .. } => Operation::DocumentUpdate,
             Self::IssueCreate { .. } => Operation::IssueCreate,
             // A comment is a write to its issue.
             Self::IssueUpdate { .. }
@@ -158,6 +162,8 @@ pub enum DenyReason {
     ForeignProject,
     /// The comment was written by someone else (or by nobody).
     CommentNotOwned,
+    /// The initiative is owned by someone else (or nobody).
+    InitiativeNotOwned,
 }
 
 /// A write refused by the ownership rules. Maps to exit code 4
@@ -229,6 +235,23 @@ pub fn check_with(
                     op,
                     DenyReason::ProjectNotLed,
                     format!("you are not the lead of this project ({})", who(lead)),
+                )
+            }
+        }
+        Write::InitiativeUpdate { owner } => {
+            if viewer.is(owner) {
+                Ok(())
+            } else {
+                deny(
+                    op,
+                    DenyReason::InitiativeNotOwned,
+                    format!(
+                        "you are not the owner of this initiative ({})",
+                        match owner {
+                            Some(_) => "owned by someone else",
+                            None => "it has no owner",
+                        }
+                    ),
                 )
             }
         }

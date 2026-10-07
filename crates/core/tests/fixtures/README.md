@@ -20,6 +20,7 @@ Structure, nullability and value formats are exactly Linear's.
 | `labels.json`               | `read::labels`                | a group, a child and a plain label, in creation order |
 | `teams.json`, `users.json`  | `read::teams`, `read::users`  | `users.json` includes Linear's own bot user        |
 | `label_details.json`        | `label_write::label_details`  | **hand-written** on the shape of `labels.json` plus the fields a label write reads (`team`, `description`, `groupType`): workspace group `area` with child `api`, workspace labels `Bug` and `Feature`, a team group `flow` (team EX) with child `review`, and the team label `Team only`; the shape was verified against the sandbox |
+| `documents.json`, `document_view.json` | `docs::doc_list`, `docs::doc_view` | **hand-written** on the shape of a real document (read from the sandbox): a project document, an initiative document and an issue document; `document_view.json` adds the `detail` alias (the body) to the first. `Example Initiative` is owned by Alice, the viewer |
 | `templates_sections.json`   | `queries::templates`          | `templates.json` plus a template with real heading nodes and a project template |
 | `issue_comments.json`       | `queries::issue_comments`     |                                                    |
 | `templates.json`            | `queries::templates`          | `templateData` is a JSON document inside a string  |
@@ -51,6 +52,11 @@ find it. The initiative scenario creates one initiative (`live initiative <nanos
 projects to it, and at the end cancels the projects and archives the initiative (a raw `initiativeArchive` mutation, since the
 CLI has no archive command), even when an assertion fails. What remains after each run: those canceled projects and that
 archived initiative. The rollback of a failed link is not provoked live (it cannot be done safely); the mock tests cover it.
+
+The live document test (`crates/cli/tests/live_document.rs`) uses `Fixture Project` (led by the key's owner) and
+`Finished Project` (no lead). It creates a document template, documents under the project and under an initiative of its
+own (`live document initiative <nanoseconds>`, given an owner by a raw `initiativeUpdate`) per run, and deletes the documents
+and the template and archives the initiative at the end, even when an assertion fails.
 
 The live label test (`crates/cli/tests/live_label.rs`) uses `Fixture Project` only. It creates one group and two labels
 (`live group <nanoseconds>`, ...) and one issue that carries two of them per run, and deletes the labels (a raw
