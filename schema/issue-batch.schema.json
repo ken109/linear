@@ -1,0 +1,366 @@
+{
+  "$defs": {
+    "Item": {
+      "description": "One write.",
+      "oneOf": [
+        {
+          "additionalProperties": false,
+          "description": "`issue create`",
+          "properties": {
+            "allowForeign": {
+              "default": false,
+              "description": "Allow creating, in a project somebody else leads, an issue assigned to you\n(`--allow-foreign`).",
+              "type": "boolean"
+            },
+            "assignee": {
+              "description": "`me`, an email or a name (`--assignee`; default: you).",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "body": {
+              "description": "The description, as markdown text (`--body-file`, inline).",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "cycle": {
+              "description": "The number of a cycle of the team (`--cycle`). Not with `heldOn`.",
+              "format": "uint32",
+              "minimum": 0,
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "estimate": {
+              "description": "A whole number in the team's scale (`--estimate`).",
+              "format": "uint32",
+              "minimum": 0,
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "heldOn": {
+              "description": "The day of the meeting the issue came out of; it goes into the cycle that contains the\nday after it (`--held-on`). Not with `cycle`.",
+              "format": "date",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "labels": {
+              "default": [],
+              "description": "Label names (`--label`).",
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "meta": {
+              "additionalProperties": {
+                "$ref": "#/$defs/MetaScalar"
+              },
+              "description": "Metadata of the source attachment (`--meta`): strings and numbers; needs `source`.",
+              "type": [
+                "object",
+                "null"
+              ]
+            },
+            "milestone": {
+              "description": "Milestone of the project, by name (`--milestone`).",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "op": {
+              "const": "create",
+              "type": "string"
+            },
+            "parent": {
+              "description": "Make it a sub-issue of this existing issue (`--parent`).",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "priority": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/Priority"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "0 to 4, or `none`, `urgent`, `high`, `medium`, `low` (`--priority`)."
+            },
+            "project": {
+              "description": "The project to create it in: id, slug id, URL or name (`--project`).",
+              "type": "string"
+            },
+            "source": {
+              "description": "Where the issue came from: an http(s) URL attached to the issue (`--source`). An issue\nthat already carries it is returned instead of creating another.",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "sourceTitle": {
+              "description": "Title of the source attachment (`--source-title`); needs `source`.",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "team": {
+              "description": "Team key (`--team`; default: the workspace's `default_team`).",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "template": {
+              "description": "The Linear template the description must follow (`--template`).",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "title": {
+              "description": "The issue's title (`--title`).",
+              "type": "string"
+            }
+          },
+          "required": [
+            "op",
+            "title",
+            "project"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "description": "`issue update`",
+          "properties": {
+            "addLabels": {
+              "description": "Add these labels (`--add-labels`).",
+              "items": {
+                "type": "string"
+              },
+              "type": [
+                "array",
+                "null"
+              ]
+            },
+            "assignee": {
+              "description": "`me`, an email or a name (`--assignee`).",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "body": {
+              "description": "The new description, as markdown text (`--body-file`, inline).",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "cycle": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/NumberOrNone"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The number of a cycle of the issue's team, or `\"none\"` to take it out (`--cycle`)."
+            },
+            "due": {
+              "description": "Due date, `YYYY-MM-DD` (`--due`).",
+              "format": "date",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "estimate": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/NumberOrNone"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "A whole number in the team's scale, or `\"none\"` to remove it (`--estimate`)."
+            },
+            "issue": {
+              "description": "The issue: identifier such as `KK-12`, or id. It must exist.",
+              "type": "string"
+            },
+            "labels": {
+              "description": "Set the labels to exactly these (`--labels`). Not with `addLabels` or `removeLabels`.",
+              "items": {
+                "type": "string"
+              },
+              "type": [
+                "array",
+                "null"
+              ]
+            },
+            "meta": {
+              "additionalProperties": {
+                "$ref": "#/$defs/MetaScalar"
+              },
+              "description": "Metadata of the source attachment (`--meta`): strings and numbers; needs `source`.",
+              "type": [
+                "object",
+                "null"
+              ]
+            },
+            "milestone": {
+              "description": "Milestone of the (new) project, by name (`--milestone`).",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "op": {
+              "const": "update",
+              "type": "string"
+            },
+            "parent": {
+              "description": "Make it a sub-issue of this issue, or `\"none\"` to make it top-level (`--parent`).",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "priority": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/Priority"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "0 to 4, or `none`, `urgent`, `high`, `medium`, `low` (`--priority`)."
+            },
+            "project": {
+              "description": "Move to this project (`--project`).",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "removeLabels": {
+              "description": "Remove these labels (`--remove-labels`).",
+              "items": {
+                "type": "string"
+              },
+              "type": [
+                "array",
+                "null"
+              ]
+            },
+            "source": {
+              "description": "Attach this http(s) URL as the issue's source (`--source`).",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "sourceTitle": {
+              "description": "Title of the source attachment (`--source-title`); needs `source`.",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "state": {
+              "description": "Workflow state, by name (`--state`).",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "template": {
+              "description": "The Linear template the new description must follow (`--template`); needs `body`.",
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "op",
+            "issue"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "MetaScalar": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "number"
+        }
+      ],
+      "description": "A metadata value: a string or a number, nothing nested."
+    },
+    "NumberOrNone": {
+      "anyOf": [
+        {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        {
+          "description": "Only `\"none\"`.",
+          "type": "string"
+        }
+      ],
+      "description": "A whole number, or the word `none`."
+    },
+    "Priority": {
+      "anyOf": [
+        {
+          "format": "int64",
+          "type": "integer"
+        },
+        {
+          "type": "string"
+        }
+      ],
+      "description": "A priority: a number `0` to `4`, or its name."
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Several issue creations and updates, applied all or nothing by `linear issue batch --file`.",
+  "properties": {
+    "issues": {
+      "description": "The writes, applied in this order. Each issue may be written once, and a source URL\nmay appear once.",
+      "items": {
+        "$ref": "#/$defs/Item"
+      },
+      "type": "array"
+    }
+  },
+  "required": [
+    "issues"
+  ],
+  "title": "linear issue batch",
+  "type": "object"
+}
