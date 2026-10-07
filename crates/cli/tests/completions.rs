@@ -44,11 +44,12 @@ fn an_unknown_shell_is_a_usage_error_that_lists_the_shells() {
 #[test]
 fn it_works_with_no_home_at_all() {
     // `Sandbox::run` sets HOME and LINEAR_CONFIG_DIR; run the binary bare.
-    let o = std::process::Command::new(env!("CARGO_BIN_EXE_linear"))
-        .args(["completions", "bash"])
-        .env_clear()
-        .output()
-        .expect("spawn");
+    let mut cmd = std::process::Command::new(env!("CARGO_BIN_EXE_linear"));
+    cmd.args(["completions", "bash"]).env_clear();
+    if let Some(root) = std::env::var_os("SystemRoot") {
+        cmd.env("SystemRoot", root); // Windows
+    }
+    let o = cmd.output().expect("spawn");
     assert!(o.status.success(), "{}", stderr(&o));
     assert!(!o.stdout.is_empty());
 }

@@ -116,6 +116,11 @@ impl Sandbox {
             .env("HOME", self.root.path())
             .env("LINEAR_CONFIG_DIR", self.config_dir())
             .current_dir(self.cwd());
+        // After `env_clear`, a Windows process still needs its system root to
+        // start networking (names are case-insensitive there).
+        if let Some(root) = std::env::var_os("SystemRoot") {
+            cmd.env("SystemRoot", root);
+        }
         if let Some(m) = mock {
             cmd.env("LINEAR_API_URL", &m.url);
         }

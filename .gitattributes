@@ -1,0 +1,4 @@
+# Text files are LF in the working tree on every platform. Several tests compare
+# files byte for byte (golden files, fixtures), and a Windows checkout with
+# core.autocrlf would otherwise turn them into CRLF.
+* text=auto eol=lf
