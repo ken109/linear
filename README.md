@@ -167,6 +167,38 @@ Credentials are stored in `~/.config/linear/credentials/<workspace>.json` (mode 
 `LINEAR_API_KEY_<NAME>` (for example `LINEAR_API_KEY_MAIN`) overrides the stored key.
 Tokens are never printed.
 
+### OS keyring
+
+By default the credential is a file. A workspace can keep it in the OS keyring instead (the
+macOS Keychain, or libsecret on Linux):
+
+```sh
+printf %s "$LINEAR_API_KEY" | linear workspace login main --with-token --keyring
+linear workspace migrate main            # move a stored credential from the file into the keyring
+linear workspace migrate main --to file  # and back
+```
+
+`--keyring` (and `migrate`) set `credential_store = "keyring"` for the workspace in
+`workspaces.toml`; later logins and every command then use the keyring. The entry is service
+`linear-cli`, account `<workspace>`, and holds the same JSON as the file; the file is removed once
+the entry is written (`migrate` reads the entry back before it removes anything).
+`workspace list` shows `keyring` in the `CREDENTIALS` column.
+
+- **Where there is no keyring, the file is used.** On WSL, a CI runner or a server without a
+  Secret Service, `login --keyring` stores the file and says so (and leaves `workspaces.toml`
+  alone), and a workspace set to `keyring` reads its `credentials/<workspace>.json` when the
+  keyring is not there or has no entry. `migrate` stops and changes nothing.
+- On Linux the keyring is reached through libsecret's `secret-tool` (package `libsecret-tools`),
+  which has to be installed and needs a running Secret Service (GNOME Keyring, KWallet). The value
+  is passed on standard input, never on the command line. `linear` has no extra dependency for it.
+- `LINEAR_CREDENTIAL_STORE=file|keyring` overrides `credential_store` for a run, and
+  `LINEAR_KEYRING=off` makes the keyring count as missing (a shared `workspaces.toml` on a machine
+  without one).
+- macOS may ask for permission when a new build of `linear` first reads an entry another build
+  wrote; "Always Allow" remembers it.
+- A binary built with `--no-default-features` has no keyring support and always falls back to the
+  file. The environment override `LINEAR_API_KEY_<NAME>` still comes first in every case.
+
 ### Client credentials (CI)
 
 A workspace can act as an **app** instead of a person, through Linear's OAuth client credentials
