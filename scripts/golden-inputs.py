@@ -60,7 +60,7 @@ def issue(identifier, **kw):
         'branchName': 'branch-' + identifier.lower(),
         'team': {'id': 't-1', 'key': 'KK', 'name': 'Team'}, 'state': state('unstarted'),
         'assignee': None, 'project': None, 'projectMilestone': None, 'labels': {'nodes': []},
-        'dueDate': None, 'estimate': None, 'sortOrder': 0.0, 'prioritySortOrder': 0.0,
+        'dueDate': None, 'estimate': None, 'priority': 0.0, 'sortOrder': 0.0, 'prioritySortOrder': 0.0,
         'createdAt': '2026-09-01T00:00:00Z', 'updatedAt': '2026-10-19T00:00:00Z',
         'startedAt': None, 'completedAt': None, 'canceledAt': None, 'parent': None,
         'attachments': {'nodes': []},
@@ -248,7 +248,7 @@ def phase1():
           {'snapshot': clean_snapshot(), 'config': {'staleDay': 3}, 'options': None, 'now': NOW})
 
     # ---- refresh
-    base = {'schemaVersion': 4}
+    base = {'schemaVersion': 5}
     cases = [
         ('never-fetched', 'No cache at all.', None, {'kind': 'read'}),
         ('fresh-read', 'Fetched a minute ago: leave it.', {**base, 'fetchedAt': '2026-10-20T11:59:00Z'}, {'kind': 'read'}),

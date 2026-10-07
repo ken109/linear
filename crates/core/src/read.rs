@@ -103,7 +103,6 @@ pub fn issue_search(vars: IssueSearchVars) -> Operation<IssueSearch, IssueSearch
 #[cynic(graphql_type = "Issue")]
 #[serde(rename_all = "camelCase")]
 pub struct IssueDetail {
-    pub priority: f64,
     pub priority_label: String,
     #[arguments(first: 50)]
     pub comments: CommentNodes,
@@ -226,9 +225,6 @@ pub struct IssueWriteDetail {
     /// The cycle the issue is in, if any (`issue create --held-on` only
     /// fills an empty one).
     pub cycle: Option<Cycle>,
-    /// Linear's priority number (0 none, 1 urgent, 2 high, 3 medium, 4 low), so that
-    /// `issue update --priority` can tell whether it would change anything.
-    pub priority: f64,
 }
 
 #[derive(cynic::QueryFragment, Debug, Clone, PartialEq)]

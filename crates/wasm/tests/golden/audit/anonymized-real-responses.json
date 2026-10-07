@@ -102,6 +102,7 @@
             ]
           },
           "parent": null,
+          "priority": 0.0,
           "prioritySortOrder": -2003.25,
           "project": {
             "id": "00000000-0000-4000-8000-000000000006",

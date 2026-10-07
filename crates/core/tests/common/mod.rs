@@ -65,6 +65,7 @@ pub fn issue(identifier: &str) -> IssueB {
         "dueDate": null,
         "estimate": null,
         "sortOrder": 0.0,
+        "priority": 0.0,
         "prioritySortOrder": 0.0,
         "createdAt": "2026-09-01T00:00:00Z",
         "updatedAt": "2026-10-19T00:00:00Z",

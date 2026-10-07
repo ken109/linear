@@ -70,6 +70,7 @@
       },
       "dueDate": "2026-11-01",
       "estimate": 3,
+      "priority": 2,
       "sortOrder": -1004.5,
       "prioritySortOrder": -2004.25,
       "createdAt": "2026-10-06T13:34:35.885Z",
@@ -93,7 +94,6 @@
       }
     },
     "detail": {
-      "priority": 2,
       "priorityLabel": "High",
       "comments": {
         "nodes": [

@@ -57,8 +57,9 @@ pub use workspace::InWorkspace;
 /// History: 3 renamed the remaining snake_case JSON keys of the audit and cache
 /// shapes (`stale_days`, `unresolved_issues`, `schema_version`, `age_secs`, ...)
 /// to camelCase, like every other shape. 4 added `branchName` to the issue and
-/// the `prOpenDays` setting and the two pull-request rules to the audit.
-pub const SCHEMA_VERSION: u32 = 4;
+/// the `prOpenDays` setting and the two pull-request rules to the audit. 5 added
+/// `priority` to the issue, so cached issues and `--json` output carry it.
+pub const SCHEMA_VERSION: u32 = 5;
 
 /// The default Linear GraphQL endpoint.
 pub const API_URL: &str = "https://api.linear.app/graphql";

@@ -323,9 +323,9 @@ impl View {
         self
     }
 
-    /// Has this priority number (the fixture issue has 3, medium).
+    /// Has this priority number (the fixture issue has 2, high).
     pub fn with_priority(mut self, priority: f64) -> View {
-        self.0["write"]["priority"] = json!(priority);
+        self.0["issue"]["priority"] = json!(priority);
         self
     }
 

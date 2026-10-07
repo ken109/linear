@@ -614,7 +614,7 @@ status = "implemented"
 via = ["types::Issue"]
 fields = [
   "assignee", "attachments", "branchName", "canceledAt", "completedAt", "createdAt",
-  "description", "dueDate", "estimate", "id", "identifier", "labels", "parent", "prioritySortOrder", "project",
+  "description", "dueDate", "estimate", "id", "identifier", "labels", "parent", "priority", "prioritySortOrder", "project",
   "projectMilestone", "sortOrder", "startedAt", "state", "team", "title", "updatedAt", "url",
 ]
 
@@ -679,7 +679,7 @@ type = "Issue"
 status = "unsupported"
 reason = "Not selected in the fixed fragment; use `linear api` if it is needed."
 fields = [
-  "customerTicketCount", "number", "priority", "trashed",
+  "customerTicketCount", "number", "trashed",
 ]
 
 [[entry]]

@@ -38,6 +38,7 @@
             "nodes": []
           },
           "parent": null,
+          "priority": 0.0,
           "prioritySortOrder": 0.0,
           "project": {
             "id": "p-ok",

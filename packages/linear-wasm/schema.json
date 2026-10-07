@@ -687,6 +687,11 @@
             }
           ]
         },
+        "priority": {
+          "description": "Linear's priority number: 0 none, 1 urgent, 2 high, 3 medium, 4 low.",
+          "format": "double",
+          "type": "number"
+        },
         "prioritySortOrder": {
           "description": "Position in a priority-order view, Linear's default (ascending, top first).\n`reorder` writes it together with `sort_order`.",
           "format": "double",
@@ -756,6 +761,7 @@
         "labels",
         "dueDate",
         "estimate",
+        "priority",
         "sortOrder",
         "prioritySortOrder",
         "createdAt",
@@ -871,10 +877,6 @@
           "$ref": "#/$defs/IssueRelationNodes",
           "description": "The relations that point at this issue (`blocks`: `issue` blocks this one)."
         },
-        "priority": {
-          "format": "double",
-          "type": "number"
-        },
         "priorityLabel": {
           "type": "string"
         },
@@ -884,7 +886,6 @@
         }
       },
       "required": [
-        "priority",
         "priorityLabel",
         "comments",
         "relations",
@@ -2603,6 +2604,6 @@
       }
     }
   },
-  "schemaVersion": 4,
+  "schemaVersion": 5,
   "title": "linear-wasm"
 }

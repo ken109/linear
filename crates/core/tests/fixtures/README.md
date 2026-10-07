@@ -13,7 +13,7 @@ Structure, nullability and value formats are exactly Linear's.
 | `projects.json`             | `queries::projects`           | status update, milestone                           |
 | `issue_list.json`           | `read::issue_list`            | `assigned_issues.json`'s page under `issues`       |
 | `issue_search.json`         | `read::issue_search`          | **derived**: `issue_list.json`'s page under `searchIssues` (an `IssueSearchResult` has the fields of an `Issue`); shape verified against the sandbox |
-| `issue_view.json`           | `read::issue_view`            | `issue.json` plus the live shape of the `detail` alias (description, priority, comments, relations) |
+| `issue_view.json`           | `read::issue_view`            | `issue.json` plus the live shape of the `detail` alias (description, priorityLabel, comments, relations) |
 | `project_view.json`         | `read::project_view`          | `projects.json` with a second, newer status update (newest first) and an initiative; `detail` shape verified live |
 | `milestones.json`           | `read::milestones_of_project` | `issue.json`'s milestone plus a second one, out of order |
 | `milestone_view.json`       | `read::milestone_view`        | `detail` alias: the milestone's issues             |
@@ -26,7 +26,7 @@ Structure, nullability and value formats are exactly Linear's.
 | `issue_comments.json`       | `queries::issue_comments`     |                                                    |
 | `templates.json`            | `queries::templates`          | `templateData` is a JSON document inside a string  |
 | `issue_update.json`         | `inputs::issue_update`        |                                                    |
-| `issue_write_view.json`     | `read::issue_write_view`      | **derived**: `issue.json` plus the `write` alias (team states, project with lead and milestone, `cycle`: null, `priority`: 3); shape verified against the sandbox |
+| `issue_write_view.json`     | `read::issue_write_view`      | **derived**: `issue.json` plus the `write` alias (team states, project with lead and milestone, `cycle`: null); shape verified against the sandbox |
 | `attachments_for_url.json`, `attachments_for_url_none.json` | `read::attachments_for_url` | **derived** from `issue.json`; shape verified against the sandbox |
 | `cycles.json`               | `read::cycles`                | **hand-written**: the sandbox team has no cycles. The shape (fields, nullability) was checked against lt-three's real cycles, read-only; cycle #41 is Tue 2026-10-05T15:00Z, a week long |
 | `webhooks.json`             | `read::webhooks`              | **hand-written**: a labelled webhook scoped to a team and an unlabelled, disabled one for all public teams; shape (fields, nullability) from Linear's schema |
@@ -77,6 +77,10 @@ The `description` and `canceledAt` of the issues in `issue.json`, `issue_view.js
 The `metadata` of the attachments in `issue.json`, `issue_view.json`, `issue_list.json`, `assigned_issues.json`,
 `issue_update.json` and `issue_write_view.json`, and the `title`, `subtitle` and `metadata` of `attachments_for_url.json`, were
 added by hand (the captures predate selecting them); `metadata` is the empty object, as Linear returns it for a plain attachment.
+
+The `priority` of the issues in `issue.json`, `issue_view.json`, `issue_list.json`, `issue_search.json`,
+`assigned_issues.json`, `issue_update.json` and `issue_write_view.json` was added by hand (the captures
+predate selecting it); it is 2 (High), the `priorityLabel` of `issue_view.json`.
 
 The `sortOrder` and `prioritySortOrder` of the issues in `issue.json`, `issue_view.json`, `issue_list.json`,
 `assigned_issues.json` and `issue_update.json` were added by hand (the captures predate selecting them).

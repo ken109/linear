@@ -65,6 +65,7 @@ fn search_json_is_the_shape_of_issue_list_json() {
     assert_eq!(found, stdout_json(&o));
     assert_eq!(found[0]["workspace"], "example");
     assert_eq!(found[0]["sourceUrl"], "https://example.com/source/1");
+    assert_eq!(found[0]["priority"], 2.0);
 }
 
 #[test]

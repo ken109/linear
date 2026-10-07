@@ -831,7 +831,7 @@ pub fn update(ctx: &Ctx, cmd: &UpdateCmd) -> Result<()> {
         }
     }
     if let Some(p) = cmd.priority {
-        let old = view.write.priority as i32;
+        let old = issue.priority as i32;
         if p != old {
             input.priority = Some(p);
             restore.priority = Some(old);

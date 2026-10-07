@@ -435,6 +435,8 @@ pub struct Issue {
     pub labels: LabelNodes,
     pub due_date: Option<NaiveDate>,
     pub estimate: Option<f64>,
+    /// Linear's priority number: 0 none, 1 urgent, 2 high, 3 medium, 4 low.
+    pub priority: f64,
     /// Position in a manual-order view (ascending, top first). `reorder` writes it.
     pub sort_order: f64,
     /// Position in a priority-order view, Linear's default (ascending, top first).
@@ -475,6 +477,8 @@ pub struct IssueSearchResult {
     pub labels: LabelNodes,
     pub due_date: Option<NaiveDate>,
     pub estimate: Option<f64>,
+    /// Linear's priority number: 0 none, 1 urgent, 2 high, 3 medium, 4 low.
+    pub priority: f64,
     /// Position in a manual-order view (ascending, top first). `reorder` writes it.
     pub sort_order: f64,
     /// Position in a priority-order view, Linear's default (ascending, top first).
@@ -509,6 +513,7 @@ impl From<IssueSearchResult> for Issue {
             labels: hit.labels,
             due_date: hit.due_date,
             estimate: hit.estimate,
+            priority: hit.priority,
             sort_order: hit.sort_order,
             priority_sort_order: hit.priority_sort_order,
             created_at: hit.created_at,

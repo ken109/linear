@@ -73,6 +73,8 @@ fn list_json_is_linears_shape_plus_the_workspace_and_the_origin_url() {
     assert_eq!(issue["assignee"]["isMe"], true);
     assert_eq!(issue["labels"]["nodes"][0]["parent"]["name"], "area");
     assert_eq!(issue["sourceUrl"], "https://example.com/source/1");
+    // Linear's priority number (2 is High), shown by every issue read.
+    assert_eq!(issue["priority"], 2.0);
     // No filter given: Linear gets a null filter, not an empty object.
     assert_eq!(request(&mock, 0)["variables"]["filter"], Value::Null);
 }

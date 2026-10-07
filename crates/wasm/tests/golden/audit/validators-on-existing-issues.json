@@ -107,6 +107,7 @@
             "nodes": []
           },
           "parent": null,
+          "priority": 0.0,
           "prioritySortOrder": 0.0,
           "project": null,
           "projectMilestone": null,
@@ -184,6 +185,7 @@
             ]
           },
           "parent": null,
+          "priority": 0.0,
           "prioritySortOrder": 0.0,
           "project": null,
           "projectMilestone": null,
@@ -238,6 +240,7 @@
             "nodes": []
           },
           "parent": null,
+          "priority": 0.0,
           "prioritySortOrder": 0.0,
           "project": null,
           "projectMilestone": null,
@@ -304,6 +307,7 @@
             ]
           },
           "parent": null,
+          "priority": 0.0,
           "prioritySortOrder": 0.0,
           "project": null,
           "projectMilestone": null,
@@ -358,6 +362,7 @@
             "nodes": []
           },
           "parent": null,
+          "priority": 0.0,
           "prioritySortOrder": 0.0,
           "project": null,
           "projectMilestone": null,

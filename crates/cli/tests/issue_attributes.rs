@@ -16,7 +16,7 @@ use write_support::*;
 const SOURCE: &str = "https://example.com/source/1";
 const NEW_SOURCE: &str = "https://example.com/source/2";
 
-/// The fixture issue (EX-23): mine, in a project I lead; priority 3 (medium), estimate 3,
+/// The fixture issue (EX-23): mine, in a project I lead; priority 2 (high), estimate 3,
 /// no parent, no cycle.
 fn mine() -> View {
     view("EX-23")
@@ -264,9 +264,9 @@ fn update_priority_sends_the_number_only_when_it_differs() {
         vec![json!({ "id": "id-EX-23", "input": { "priority": 1 } })]
     );
 
-    // Already medium (3): nothing is sent.
+    // Already high (2): nothing is sent.
     let mock = Routed::start(update_routes(mine(), vec![]));
-    let o = run(&sb, &mock, &update(&["--priority", "medium", "--json"]));
+    let o = run(&sb, &mock, &update(&["--priority", "high", "--json"]));
     assert_eq!(code(&o), 0, "{}", stderr(&o));
     assert_eq!(stdout_json(&o)["changed"], json!([]));
     mock.assert_read_only();
@@ -546,7 +546,7 @@ fn all_four_at_once_are_one_update_and_a_failed_source_puts_every_one_back() {
     assert_eq!(
         writes[1]["input"],
         json!({
-            "priority": 3, "estimate": 3, "parentId": null, "cycleId": null,
+            "priority": 2, "estimate": 3, "parentId": null, "cycleId": null,
         })
     );
 }

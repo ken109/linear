@@ -57,7 +57,6 @@
             }
           ]
         },
-        "priority": 2.0,
         "priorityLabel": "High",
         "relations": {
           "nodes": [
@@ -144,6 +143,7 @@
           ]
         },
         "parent": null,
+        "priority": 2.0,
         "prioritySortOrder": -2004.25,
         "project": {
           "id": "00000000-0000-4000-8000-000000000006",

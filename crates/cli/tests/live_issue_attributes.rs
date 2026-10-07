@@ -131,6 +131,10 @@ fn priority_estimate_parent_filters_and_search_end_to_end() {
         assert_eq!(live.update(&child, &["--priority", "urgent"]), ["priority"]);
         assert_eq!(live.view(&child)["priorityLabel"], "Urgent");
         assert_eq!(
+            live.json(&["issue", "list", "--parent", &parent])[0]["priority"],
+            1.0
+        );
+        assert_eq!(
             live.update(&child, &["--priority", "urgent"]),
             Vec::<String>::new()
         );

@@ -342,7 +342,7 @@ filters, and none can be combined with `--cached`.
 (top first); the default is the order Linear returns. Linear cannot sort by it, so every matching
 page is fetched first and `--limit` then keeps the first of the sorted list. The numbers only
 compare within one project, so use it with `--project`.
-`--json` prints Linear's own shape plus a `workspace` field; `--quiet` prints one key per line
+`--json` prints Linear's own shape (including `priority`, Linear's number: 0 none, 1 urgent, 2 high, 3 medium, 4 low) plus a `workspace` field; `--quiet` prints one key per line
 (issue identifier, project or initiative slug, milestone or template name, team key, user email).
 
 `issue search QUERY...` finds issues by their title and description with Linear's full-text and
