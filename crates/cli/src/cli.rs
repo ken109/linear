@@ -95,6 +95,9 @@ pub enum Command {
     /// --json prints the same facts as data. `--session` is for a SessionStart hook: it prints
     /// nothing in CI, prints nothing and exits 0 on any failure, and gives up after 4 seconds.
     Brief(crate::commands::brief::BriefArgs),
+    /// List, create and delete webhooks, and check the signature of a delivery
+    #[command(subcommand)]
+    Webhook(crate::commands::webhook::WebhookCommand),
     /// Print a shell completion script (bash, zsh, fish, elvish or powershell)
     ///
     /// Static: it completes commands, subcommands and flags, not issue ids or project

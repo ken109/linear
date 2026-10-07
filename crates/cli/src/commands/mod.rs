@@ -18,6 +18,7 @@ pub mod status;
 pub mod team;
 pub mod template;
 pub mod user;
+pub mod webhook;
 mod workspace;
 pub mod write;
 
@@ -40,8 +41,12 @@ pub struct Ctx {
 pub fn run(cli: &Cli, out: Output) -> Result<()> {
     // These touch neither the configuration nor Linear, so they must work on a
     // machine that has no config directory and no network.
-    if let Command::Completions(args) = &cli.command {
-        return completions::run(args);
+    match &cli.command {
+        Command::Completions(args) => return completions::run(args),
+        Command::Webhook(webhook::WebhookCommand::Verify(args)) => {
+            return webhook::verify(out, args)
+        }
+        _ => {}
     }
     crate::http::configure(crate::http::Settings::resolve(cli.timeout)?);
     let ctx = Ctx {
@@ -65,6 +70,7 @@ pub fn run(cli: &Cli, out: Output) -> Result<()> {
         Command::Cache(cmd) => cache::run(&ctx, cmd),
         Command::Status(args) => status::run(&ctx, args),
         Command::Brief(args) => brief::run(&ctx, args),
+        Command::Webhook(cmd) => webhook::run(&ctx, cmd),
         Command::Completions(_) => unreachable!("handled before the context is built"),
     }
 }
