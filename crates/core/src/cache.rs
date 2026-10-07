@@ -47,6 +47,7 @@ pub struct Failure {
 
 /// What the viewer looks at in one workspace, as of one successful fetch.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "camelCase")]
 pub struct Mine {
     /// The authenticated user ("me") in this workspace.
     pub viewer: User,
@@ -72,6 +73,7 @@ pub struct Fetched {
 
 /// The cache entry of one workspace.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "camelCase")]
 pub struct WorkspaceCache {
     pub schema_version: u32,
     pub workspace: String,
@@ -89,7 +91,11 @@ pub struct WorkspaceCache {
 
 /// Whether an entry may be trusted.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, JsonSchema)]
-#[serde(tag = "state", rename_all = "lowercase")]
+#[serde(
+    tag = "state",
+    rename_all = "lowercase",
+    rename_all_fields = "camelCase"
+)]
 pub enum Freshness {
     /// Fetched within the TTL.
     Fresh { age_secs: u64 },

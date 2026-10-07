@@ -73,7 +73,7 @@
       "additionalProperties": false,
       "description": "Audit settings, per workspace.",
       "properties": {
-        "source_kinds": {
+        "sourceKinds": {
           "default": [],
           "description": "`source-attachment`: the values `metadata.kind` of a source attachment\nmay take. Empty: the kind is not checked.",
           "items": {
@@ -81,14 +81,14 @@
           },
           "type": "array"
         },
-        "stale_days": {
+        "staleDays": {
           "default": 7,
           "description": "`stale-in-progress`: an In Progress issue with no update for this many\ndays is stale.",
           "format": "uint32",
           "minimum": 0,
           "type": "integer"
         },
-        "status_update_days": {
+        "statusUpdateDays": {
           "default": 14,
           "description": "`status-update-outdated`: a project's latest status update this many\ndays old is outdated.",
           "format": "uint32",
@@ -105,10 +105,10 @@
         }
       },
       "required": [
-        "stale_days",
-        "status_update_days",
+        "staleDays",
+        "statusUpdateDays",
         "validators",
-        "source_kinds"
+        "sourceKinds"
       ],
       "type": "object"
     },
@@ -152,7 +152,7 @@
           },
           "type": "array"
         },
-        "unresolved_issues": {
+        "unresolvedIssues": {
           "default": [],
           "description": "Issue identifiers asked for with `issues` that the snapshot does not\ncontain. They could not be checked, which is not the same as passing.",
           "items": {
@@ -163,7 +163,7 @@
       },
       "required": [
         "findings",
-        "unresolved_issues"
+        "unresolvedIssues"
       ],
       "type": "object"
     },
@@ -354,7 +354,7 @@
         {
           "description": "Fetched within the TTL.",
           "properties": {
-            "age_secs": {
+            "ageSecs": {
               "format": "uint64",
               "minimum": 0,
               "type": "integer"
@@ -366,14 +366,14 @@
           },
           "required": [
             "state",
-            "age_secs"
+            "ageSecs"
           ],
           "type": "object"
         },
         {
           "description": "Fetched, but longer ago than the TTL: treat as unknown.",
           "properties": {
-            "age_secs": {
+            "ageSecs": {
               "format": "uint64",
               "minimum": 0,
               "type": "integer"
@@ -385,7 +385,7 @@
           },
           "required": [
             "state",
-            "age_secs"
+            "ageSecs"
           ],
           "type": "object"
         },
@@ -1173,7 +1173,7 @@
           },
           "type": "array"
         },
-        "new_findings": {
+        "newFindings": {
           "description": "The findings that were not in the previous snapshot's audit: what a\nnotifier should report once.",
           "items": {
             "$ref": "#/$defs/Finding"
@@ -1197,7 +1197,7 @@
         "issues",
         "projects",
         "findings",
-        "new_findings"
+        "newFindings"
       ],
       "type": "object"
     },
@@ -1678,7 +1678,7 @@
           ]
         },
         "schemaVersion": {
-          "description": "The `schema_version` the snapshot was written with.",
+          "description": "The `schemaVersion` the snapshot was written with.",
           "format": "uint32",
           "minimum": 0,
           "type": "integer"
@@ -1708,7 +1708,7 @@
         },
         {
           "const": "schema-changed",
-          "description": "Refresh: the cache was written by a different `schema_version`, so it\nis treated as missing.",
+          "description": "Refresh: the cache was written by a different `schemaVersion`, so it\nis treated as missing.",
           "type": "string"
         },
         {
@@ -2320,7 +2320,7 @@
     "WorkspaceCache": {
       "description": "The cache entry of one workspace.",
       "properties": {
-        "attempted_at": {
+        "attemptedAt": {
           "description": "When the last attempt finished, whether it worked or not.",
           "format": "date-time",
           "type": "string"
@@ -2347,7 +2347,7 @@
           ],
           "description": "The last failure. Kept until a later refresh succeeds."
         },
-        "fetched_at": {
+        "fetchedAt": {
           "description": "When `data` was fetched. `None` while no fetch has ever succeeded.",
           "format": "date-time",
           "type": [
@@ -2355,7 +2355,7 @@
             "null"
           ]
         },
-        "schema_version": {
+        "schemaVersion": {
           "format": "uint32",
           "minimum": 0,
           "type": "integer"
@@ -2369,11 +2369,11 @@
         }
       },
       "required": [
-        "schema_version",
+        "schemaVersion",
         "workspace",
         "status",
-        "attempted_at",
-        "fetched_at",
+        "attemptedAt",
+        "fetchedAt",
         "failure",
         "data"
       ],
@@ -2503,6 +2503,6 @@
       }
     }
   },
-  "schemaVersion": 2,
+  "schemaVersion": 3,
   "title": "linear-wasm"
 }

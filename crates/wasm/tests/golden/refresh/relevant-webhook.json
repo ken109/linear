@@ -3,7 +3,7 @@
   "expected": {
     "data": {
       "freshness": {
-        "age_secs": 10,
+        "ageSecs": 10,
         "state": "fresh"
       },
       "reason": "webhook",
@@ -19,7 +19,7 @@
     },
     "meta": {
       "fetchedAt": "2026-10-20T11:59:50Z",
-      "schemaVersion": 2
+      "schemaVersion": 3
     },
     "now": "2026-10-20T12:00:00Z"
   }

@@ -187,7 +187,7 @@ def phase1():
     write('audit', 'rules-default', 'Every consistency and staleness rule fires once, at the default thresholds.',
           {'snapshot': rules, 'config': None, 'options': None, 'now': NOW})
     write('audit', 'rules-lenient-thresholds', 'The same snapshot with thresholds so long that the staleness rules stay quiet.',
-          {'snapshot': rules, 'config': {'stale_days': 30, 'status_update_days': 60, 'validators': []}, 'options': None, 'now': NOW})
+          {'snapshot': rules, 'config': {'staleDays': 30, 'statusUpdateDays': 60, 'validators': []}, 'options': None, 'now': NOW})
     write('audit', 'rules-an-empty-config-is-the-default', 'An empty config object means the defaults.',
           {'snapshot': rules, 'config': {}, 'options': None, 'now': NOW})
     write('audit', 'scoped-to-issues-since', 'Narrowed to named issues (matched without regard to case), one unknown, with a since time.',
@@ -195,29 +195,29 @@ def phase1():
     write('audit', 'scoped-without-since', 'Narrowed to the issues and their projects, no since time.',
           {'snapshot': rules, 'config': None, 'options': {'issues': ['KK-4']}, 'now': NOW})
     write('audit', 'validators-on-existing-issues', 'source-attachment, label-groups-exclusive and template-sections applied to existing issues.',
-          {'snapshot': validators_snapshot(), 'config': {'stale_days': 7, 'status_update_days': 14,
+          {'snapshot': validators_snapshot(), 'config': {'staleDays': 7, 'statusUpdateDays': 14,
                                                          'validators': ['source-attachment', 'label-groups-exclusive', 'template-sections']},
            'options': None, 'now': NOW})
-    write('audit', 'validators-source-kinds', 'source-attachment with source_kinds: the source attachment needs a metadata.kind from the list.',
-          {'snapshot': source_kinds_snapshot(), 'config': {'stale_days': 7, 'status_update_days': 14,
+    write('audit', 'validators-source-kinds', 'source-attachment with sourceKinds: the source attachment needs a metadata.kind from the list.',
+          {'snapshot': source_kinds_snapshot(), 'config': {'staleDays': 7, 'statusUpdateDays': 14,
                                                            'validators': ['source-attachment'],
-                                                           'source_kinds': ['slack', 'life-decision']},
+                                                           'sourceKinds': ['slack', 'life-decision']},
            'options': None, 'now': NOW})
     write('audit', 'healthy-workspace', 'Nothing is wrong: no findings.',
           {'snapshot': clean_snapshot(), 'config': None, 'options': None, 'now': NOW})
     write('audit', 'empty-snapshot', 'No issues and no projects.',
           {'snapshot': snapshot([], []), 'config': None, 'options': None, 'now': NOW})
     write('audit', 'anonymized-real-responses', "The issue and projects of the anonymized sandbox responses, with thresholds of one day, a fortnight later.",
-          {'snapshot': real_snapshot(), 'config': {'stale_days': 1, 'status_update_days': 1, 'validators': []}, 'options': None, 'now': NOW})
+          {'snapshot': real_snapshot(), 'config': {'staleDays': 1, 'statusUpdateDays': 1, 'validators': []}, 'options': None, 'now': NOW})
     write('audit', 'error-since-without-issues', 'since has no issues to be about: a usage error.',
           {'snapshot': rules, 'config': None, 'options': {'since': '2026-10-10T00:00:00Z'}, 'now': NOW})
     write('audit', 'error-snapshot-is-not-a-snapshot', 'A snapshot without its fields is a usage error, not a panic.',
           {'snapshot': {}, 'config': None, 'options': None, 'now': NOW})
     write('audit', 'error-unknown-config-key', 'An unknown key in the config is refused rather than ignored.',
-          {'snapshot': clean_snapshot(), 'config': {'stale_day': 3}, 'options': None, 'now': NOW})
+          {'snapshot': clean_snapshot(), 'config': {'staleDay': 3}, 'options': None, 'now': NOW})
 
     # ---- refresh
-    base = {'schemaVersion': 2}
+    base = {'schemaVersion': 3}
     cases = [
         ('never-fetched', 'No cache at all.', None, {'kind': 'read'}),
         ('fresh-read', 'Fetched a minute ago: leave it.', {**base, 'fetchedAt': '2026-10-20T11:59:00Z'}, {'kind': 'read'}),
@@ -338,15 +338,15 @@ def phase2():
     assert len(findings) >= 4, len(findings)
     write('diff', 'no-previous-report', 'There was no earlier audit: everything is new.', {'previous': None, 'current': full})
     write('diff', 'same-report', 'Nothing is new.', {'previous': full, 'current': full})
-    older = {'findings': findings[:-2], 'unresolved_issues': []}
+    older = {'findings': findings[:-2], 'unresolvedIssues': []}
     write('diff', 'two-new-findings', 'The last two findings are new, in the order of the current report.', {'previous': older, 'current': full})
     reworded = copy.deepcopy(full)
     for f in reworded['findings']:
         f['message'] = f['message'] + ' (reworded)'
     write('diff', 'a-changed-message-is-not-new', 'The message carries day counts that change daily: the same finding is not new.', {'previous': full, 'current': reworded})
-    gone = {'findings': findings[1:], 'unresolved_issues': []}
+    gone = {'findings': findings[1:], 'unresolvedIssues': []}
     write('diff', 'a-resolved-finding-is-not-reported', 'A finding that went away is not "new".', {'previous': full, 'current': gone})
-    write('diff', 'both-empty', 'Nothing before, nothing now.', {'previous': {'findings': [], 'unresolved_issues': []}, 'current': {'findings': [], 'unresolved_issues': []}})
+    write('diff', 'both-empty', 'Nothing before, nothing now.', {'previous': {'findings': [], 'unresolvedIssues': []}, 'current': {'findings': [], 'unresolvedIssues': []}})
     write('diff', 'error-current-is-not-a-report', 'The current report must be a report.', {'previous': None, 'current': {'findings': 'no'}})
 
 

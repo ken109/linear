@@ -3,7 +3,7 @@
   "expected": {
     "data": {
       "findings": [],
-      "unresolved_issues": []
+      "unresolvedIssues": []
     },
     "ok": true
   },

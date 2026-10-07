@@ -50,7 +50,7 @@ fn hours_ago(h: i64) -> Value {
 }
 
 fn age(sb: &Sandbox) {
-    edit_entry(sb, "example", |e| e["fetched_at"] = hours_ago(1));
+    edit_entry(sb, "example", |e| e["fetchedAt"] = hours_ago(1));
 }
 
 fn run(sb: &Sandbox, args: &[&str]) -> std::process::Output {
@@ -261,9 +261,9 @@ fn a_refresh_that_never_worked_is_unknown() {
 #[test]
 fn another_schema_version_is_unusable() {
     let sb = refreshed();
-    edit_entry(&sb, "example", |e| e["schema_version"] = json!(99));
+    edit_entry(&sb, "example", |e| e["schemaVersion"] = json!(99));
     for args in reads() {
-        assert_unknown(&run(&sb, &args), "schema_version 99", &args);
+        assert_unknown(&run(&sb, &args), "schemaVersion 99", &args);
     }
 }
 

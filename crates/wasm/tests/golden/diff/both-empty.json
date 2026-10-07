@@ -7,11 +7,11 @@
   "input": {
     "current": {
       "findings": [],
-      "unresolved_issues": []
+      "unresolvedIssues": []
     },
     "previous": {
       "findings": [],
-      "unresolved_issues": []
+      "unresolvedIssues": []
     }
   }
 }

@@ -42,7 +42,7 @@ pub struct Snapshot {
 
 /// Audit settings, per workspace.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
-#[serde(default, deny_unknown_fields)]
+#[serde(default, rename_all = "camelCase", deny_unknown_fields)]
 pub struct AuditConfig {
     /// `stale-in-progress`: an In Progress issue with no update for this many
     /// days is stale.

@@ -87,14 +87,23 @@ impl CacheDir {
         };
         // Another version may have written a shape this one cannot decode, so
         // the version is read before the rest.
-        match value.get("schema_version").and_then(|v| v.as_u64()) {
+        match value.get("schemaVersion").and_then(|v| v.as_u64()) {
             Some(v) if v == u64::from(SCHEMA_VERSION) => {}
             Some(v) => {
                 return Ok(Loaded::Unusable(format!(
-                    "written with schema_version {v}; this build reads {SCHEMA_VERSION}"
+                    "written with schemaVersion {v}; this build reads {SCHEMA_VERSION}"
                 )))
             }
-            None => return Ok(Loaded::Unusable("it has no schema_version".into())),
+            // Entries written before schema version 3 spelled every key in
+            // snake_case. Whatever number they carry, they are an older shape.
+            None => match value.get("schema_version").and_then(|v| v.as_u64()) {
+                Some(v) => {
+                    return Ok(Loaded::Unusable(format!(
+                        "written with schema_version {v}; this build reads {SCHEMA_VERSION}"
+                    )))
+                }
+                None => return Ok(Loaded::Unusable("it has no schemaVersion".into())),
+            },
         }
         match serde_json::from_value::<WorkspaceCache>(value) {
             Ok(c) => Ok(Loaded::Found(Box::new(c))),

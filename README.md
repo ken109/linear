@@ -273,7 +273,7 @@ linear cache clear              # remove every entry, or only the selected works
 
 One JSON file per workspace in `$LINEAR_CACHE_DIR`, else `$XDG_CACHE_HOME/linear`, else
 `~/.cache/linear` (mode 0600), written to a temporary file and renamed into place. An entry has
-`schema_version`, `status` (`ok` or `failed`), `attempted_at`, `fetched_at`, the last `failure`,
+`schemaVersion`, `status` (`ok` or `failed`), `attemptedAt`, `fetchedAt`, the last `failure`,
 and `data`: the viewer ("me"), the viewer's issues In Progress and their projects, the `audit`
 result, and the findings that are new since the previous snapshot.
 
@@ -282,8 +282,8 @@ result, and the findings that are new since the previous snapshot.
   the workspaces it could not reach (`unreachable` with `--json`) and exits 1.
 - An entry older than the TTL (5 minutes) is unknown, not healthy: `show` reports `expired`, and a
   reader must not display it as current.
-- A file written with another `schema_version` is treated as missing and replaced by the next
-  refresh.
+- A file written with another `schemaVersion` (or by an older build, which spelled its keys in
+  snake_case) is treated as missing and replaced by the next refresh.
 - Only one refresh per workspace runs at a time, so a statusline that starts one on every render
   does not start a dozen.
 
@@ -300,7 +300,7 @@ linear audit --cached
 `--cached` reads the file and nothing else: no credentials, no request. It never falls back to
 Linear, and it never serves a snapshot it cannot vouch for. When the workspace has no snapshot,
 the snapshot is older than `--ttl` (default 300 seconds), or the file is unusable (another
-`schema_version`, another workspace's entry, not valid JSON), the command prints nothing on stdout,
+`schemaVersion`, another workspace's entry, not valid JSON), the command prints nothing on stdout,
 says why on stderr and exits 1; run `linear cache refresh`. A snapshot that a failed refresh could
 not renew is served only while it is within the TTL. A successful read says on stderr how old the
 snapshot is (not with `--quiet`); stdout has the same shape as a live read.

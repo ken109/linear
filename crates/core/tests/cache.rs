@@ -210,9 +210,9 @@ fn the_entry_round_trips_through_json_with_snake_case_names() {
     }
 
     let v = serde_json::to_value(WorkspaceCache::failed(None, WS, "boom", now())).unwrap();
-    assert_eq!(v["schema_version"], SCHEMA_VERSION);
+    assert_eq!(v["schemaVersion"], SCHEMA_VERSION);
     assert_eq!(v["status"], "failed");
-    assert_eq!(v["fetched_at"], serde_json::Value::Null);
+    assert_eq!(v["fetchedAt"], serde_json::Value::Null);
     assert_eq!(v["failure"]["message"], "boom");
     assert_eq!(v["workspace"], WS);
 }
@@ -220,7 +220,7 @@ fn the_entry_round_trips_through_json_with_snake_case_names() {
 #[test]
 fn freshness_serializes_with_a_state_tag() {
     let v = serde_json::to_value(Freshness::Fresh { age_secs: 4 }).unwrap();
-    assert_eq!(v, json!({ "state": "fresh", "age_secs": 4 }));
+    assert_eq!(v, json!({ "state": "fresh", "ageSecs": 4 }));
     let v = serde_json::to_value(Freshness::Missing).unwrap();
     assert_eq!(v, json!({ "state": "missing" }));
 }

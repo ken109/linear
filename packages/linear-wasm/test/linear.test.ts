@@ -204,11 +204,11 @@ function snapshot(): Snapshot {
 }
 
 test("audit runs the rules over a snapshot built from parsed responses", () => {
-  const report = linear.audit(snapshot(), { stale_days: 1, status_update_days: 1 }, { now: NOW });
+  const report = linear.audit(snapshot(), { staleDays: 1, statusUpdateDays: 1 }, { now: NOW });
   assert.ok(auditReportSchema.safeParse(report).success);
   assert.ok(report.findings.length > 0);
   for (const f of report.findings) assert.equal(f.workspace, "example");
-  assert.deepEqual(report.unresolved_issues, []);
+  assert.deepEqual(report.unresolvedIssues, []);
 });
 
 test("audit uses the defaults for a config left out, and Date or milliseconds for now", () => {
@@ -223,7 +223,7 @@ test("audit can be narrowed to the issues a caller names", () => {
     {},
     { now: NOW, scope: { issues: ["EX-999"], since: new Date(NOW - 86_400_000) } },
   );
-  assert.deepEqual(report.unresolved_issues, ["EX-999"]);
+  assert.deepEqual(report.unresolvedIssues, ["EX-999"]);
 });
 
 test("audit reports bad input as a usage error", () => {
@@ -238,7 +238,7 @@ test("audit reports bad input as a usage error", () => {
 });
 
 test("diff reports only what the previous report did not have", () => {
-  const strict = linear.audit(snapshot(), { stale_days: 0, status_update_days: 0 }, { now: NOW });
+  const strict = linear.audit(snapshot(), { staleDays: 0, statusUpdateDays: 0 }, { now: NOW });
   const all = linear.diff(null, strict);
   assert.deepEqual(all, strict.findings);
   assert.deepEqual(linear.diff(strict, strict), []);
@@ -254,7 +254,7 @@ test("decideRefresh answers from a cache entry's times, an event and now", () =>
   assert.deepEqual(fresh, {
     refresh: false,
     reason: "fresh",
-    freshness: { state: "fresh", age_secs: 60 },
+    freshness: { state: "fresh", ageSecs: 60 },
   });
   assert.ok(refreshDecisionSchema.safeParse(fresh).success);
 
@@ -350,7 +350,7 @@ test("a trap without a recorded message still says what happened", () => {
       },
     }),
   );
-  assert.throws(() => broken.diff(null, { findings: [], unresolved_issues: [] }), (e: unknown) => {
+  assert.throws(() => broken.diff(null, { findings: [], unresolvedIssues: [] }), (e: unknown) => {
     return e instanceof LinearPanic && e.message === "unreachable";
   });
 });

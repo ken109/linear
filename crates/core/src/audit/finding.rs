@@ -125,6 +125,7 @@ impl Finding {
 
 /// The result of one audit of one workspace.
 #[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "camelCase")]
 pub struct AuditReport {
     /// Sorted by rule, then target kind, then target identifier.
     pub findings: Vec<Finding>,

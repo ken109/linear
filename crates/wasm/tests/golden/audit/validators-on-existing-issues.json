@@ -64,14 +64,14 @@
           "workspace": "ken109"
         }
       ],
-      "unresolved_issues": []
+      "unresolvedIssues": []
     },
     "ok": true
   },
   "input": {
     "config": {
-      "stale_days": 7,
-      "status_update_days": 14,
+      "staleDays": 7,
+      "statusUpdateDays": 14,
       "validators": [
         "source-attachment",
         "label-groups-exclusive",

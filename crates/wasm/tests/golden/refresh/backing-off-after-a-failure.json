@@ -3,7 +3,7 @@
   "expected": {
     "data": {
       "freshness": {
-        "age_secs": 7200,
+        "ageSecs": 7200,
         "state": "expired"
       },
       "reason": "backing-off",
@@ -18,7 +18,7 @@
     "meta": {
       "fetchedAt": "2026-10-20T10:00:00Z",
       "lastFailureAt": "2026-10-20T11:59:30Z",
-      "schemaVersion": 2
+      "schemaVersion": 3
     },
     "now": "2026-10-20T12:00:00Z"
   }

@@ -251,7 +251,7 @@ fn audit_matches_the_native_core() {
 #[test]
 fn audit_takes_a_config_and_options() {
     let snapshot_json = snapshot();
-    let config = json!({ "stale_days": 1, "status_update_days": 1, "validators": [] }).to_string();
+    let config = json!({ "staleDays": 1, "statusUpdateDays": 1, "validators": [] }).to_string();
     let all = data(api::audit(&snapshot_json, &config, NOW_MS, None));
     assert!(!all["findings"].as_array().unwrap().is_empty());
 
@@ -261,7 +261,7 @@ fn audit_takes_a_config_and_options() {
         NOW_MS,
         Some(r#"{"issues":["NO-SUCH-1"]}"#),
     ));
-    assert_eq!(narrowed["unresolved_issues"], json!(["NO-SUCH-1"]));
+    assert_eq!(narrowed["unresolvedIssues"], json!(["NO-SUCH-1"]));
 }
 
 #[test]
@@ -271,7 +271,7 @@ fn bad_inputs_to_audit_are_usage_errors() {
         ("{}", "", NOW_MS, None, "invalid snapshot"),
         (
             s.as_str(),
-            "{\"stale_days\":-1}",
+            "{\"staleDays\":-1}",
             NOW_MS,
             None,
             "invalid config",
@@ -299,7 +299,7 @@ fn bad_inputs_to_audit_are_usage_errors() {
 #[test]
 fn diff_reports_only_new_findings() {
     let s = snapshot();
-    let strict = json!({ "stale_days": 0, "status_update_days": 0, "validators": [] }).to_string();
+    let strict = json!({ "staleDays": 0, "statusUpdateDays": 0, "validators": [] }).to_string();
     let report = data(api::audit(&s, &strict, NOW_MS, None));
     let findings = report["findings"].as_array().unwrap();
     assert!(!findings.is_empty());
@@ -313,7 +313,7 @@ fn diff_reports_only_new_findings() {
     let none = data(api::diff(&report.to_string(), &report.to_string()));
     assert_eq!(none, json!([]));
 
-    let earlier = json!({ "findings": findings[..findings.len() - 1], "unresolved_issues": [] });
+    let earlier = json!({ "findings": findings[..findings.len() - 1], "unresolvedIssues": [] });
     let new = data(api::diff(&earlier.to_string(), &report.to_string()));
     assert_eq!(new, json!([findings[findings.len() - 1]]));
 }
@@ -344,7 +344,7 @@ fn decide_refresh_answers_from_meta_event_and_now() {
         json!({
             "refresh": false,
             "reason": "fresh",
-            "freshness": { "state": "fresh", "age_secs": 60 },
+            "freshness": { "state": "fresh", "ageSecs": 60 },
         })
     );
     let d = data(api::decide_refresh("", r#"{"kind":"read"}"#, NOW_MS));

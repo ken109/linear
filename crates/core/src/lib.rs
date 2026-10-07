@@ -45,7 +45,11 @@ pub use workspace::InWorkspace;
 /// boundary (cache files, `--json`, the WebAssembly package). Bump it whenever
 /// one of those shapes changes; a reader that finds another version must not
 /// trust what it read.
-pub const SCHEMA_VERSION: u32 = 2;
+///
+/// History: 3 renamed the remaining snake_case JSON keys of the audit and cache
+/// shapes (`stale_days`, `unresolved_issues`, `schema_version`, `age_secs`, ...)
+/// to camelCase, like every other shape.
+pub const SCHEMA_VERSION: u32 = 3;
 
 /// The default Linear GraphQL endpoint.
 pub const API_URL: &str = "https://api.linear.app/graphql";

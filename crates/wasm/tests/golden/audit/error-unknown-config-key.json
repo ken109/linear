@@ -3,13 +3,13 @@
   "expected": {
     "error": {
       "code": "usage",
-      "message": "invalid config: unknown field `stale_day`, expected one of `stale_days`, `status_update_days`, `validators`, `source_kinds` at line 1 column 12"
+      "message": "invalid config: unknown field `staleDay`, expected one of `staleDays`, `statusUpdateDays`, `validators`, `sourceKinds` at line 1 column 11"
     },
     "ok": false
   },
   "input": {
     "config": {
-      "stale_day": 3
+      "staleDay": 3
     },
     "now": "2026-10-20T12:00:00Z",
     "options": null,

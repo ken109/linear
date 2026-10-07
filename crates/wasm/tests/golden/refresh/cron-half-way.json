@@ -3,7 +3,7 @@
   "expected": {
     "data": {
       "freshness": {
-        "age_secs": 150,
+        "ageSecs": 150,
         "state": "fresh"
       },
       "reason": "cron-due",
@@ -17,7 +17,7 @@
     },
     "meta": {
       "fetchedAt": "2026-10-20T11:57:30Z",
-      "schemaVersion": 2
+      "schemaVersion": 3
     },
     "now": "2026-10-20T12:00:00Z"
   }

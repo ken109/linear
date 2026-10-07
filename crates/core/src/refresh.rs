@@ -41,7 +41,7 @@ pub const RELEVANT_WEBHOOK_TYPES: &[&str] = &[
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct RefreshMeta {
-    /// The `schema_version` the snapshot was written with.
+    /// The `schemaVersion` the snapshot was written with.
     pub schema_version: u32,
     /// When the last *successful* fetch finished. `None`: never fetched.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -120,7 +120,7 @@ pub enum RefreshEvent {
 pub enum RefreshReason {
     /// Refresh: there is nothing cached.
     NeverFetched,
-    /// Refresh: the cache was written by a different `schema_version`, so it
+    /// Refresh: the cache was written by a different `schemaVersion`, so it
     /// is treated as missing.
     SchemaChanged,
     /// Refresh: a person asked.

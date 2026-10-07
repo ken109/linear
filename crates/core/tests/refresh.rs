@@ -258,7 +258,7 @@ fn the_decision_serializes_with_the_freshness_the_cache_uses() {
         serde_json::json!({
             "refresh": false,
             "reason": "fresh",
-            "freshness": { "state": "fresh", "age_secs": 7 },
+            "freshness": { "state": "fresh", "ageSecs": 7 },
         })
     );
 }

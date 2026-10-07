@@ -84,11 +84,11 @@ fn a_refresh_stores_the_viewer_the_issues_in_progress_and_the_audit() {
     assert_eq!(names, ["Whoami", "IssueList", "Projects"]);
 
     let e = read_entry(&sb);
-    assert_eq!(e["schema_version"], linear_core::SCHEMA_VERSION);
+    assert_eq!(e["schemaVersion"], linear_core::SCHEMA_VERSION);
     assert_eq!(e["workspace"], "example");
     assert_eq!(e["status"], "ok");
     assert!(e["failure"].is_null());
-    assert!(e["fetched_at"].is_string());
+    assert!(e["fetchedAt"].is_string());
     assert_eq!(e["data"]["viewer"]["isMe"], true);
     // EX-23 is assigned to the viewer and In Progress; its project comes with it.
     assert_eq!(e["data"]["issues"][0]["identifier"], "EX-23");
@@ -146,12 +146,12 @@ fn an_entry_older_than_the_ttl_is_unknown() {
 
     let mut e = read_entry(&sb);
     let hour_ago = (chrono::Utc::now() - chrono::Duration::hours(1)).to_rfc3339();
-    e["fetched_at"] = json!(hour_ago);
+    e["fetchedAt"] = json!(hour_ago);
     std::fs::write(entry_file(&sb), e.to_string()).unwrap();
 
     let rows = show(&sb, &[]);
     assert_eq!(rows[0]["freshness"]["state"], "expired");
-    assert!(rows[0]["freshness"]["age_secs"].as_u64().unwrap() >= 3600);
+    assert!(rows[0]["freshness"]["ageSecs"].as_u64().unwrap() >= 3600);
     // The data is still shown for people; it is just not vouched for.
     assert!(rows[0]["entry"]["data"].is_object());
 
@@ -187,7 +187,7 @@ fn a_failed_refresh_keeps_the_old_snapshot_and_records_the_failure() {
         after["data"], before["data"],
         "the snapshot is kept, not emptied"
     );
-    assert_eq!(after["fetched_at"], before["fetched_at"]);
+    assert_eq!(after["fetchedAt"], before["fetchedAt"]);
     assert!(after["failure"]["message"]
         .as_str()
         .unwrap()
@@ -225,7 +225,7 @@ fn a_workspace_without_credentials_fails_without_a_request() {
     // The failure is recorded even with nothing to keep.
     let e = read_entry(&sb);
     assert_eq!(e["status"], "failed");
-    assert!(e["data"].is_null() && e["fetched_at"].is_null());
+    assert!(e["data"].is_null() && e["fetchedAt"].is_null());
     assert_eq!(show(&sb, &[])[0]["freshness"]["state"], "missing");
 }
 
@@ -253,7 +253,7 @@ fn only_findings_that_are_new_since_the_last_refresh_are_reported() {
         second["workspaces"][0]["findings"]
     );
     assert_eq!(second["workspaces"][0]["new_findings"], json!([]));
-    assert_eq!(read_entry(&sb)["data"]["new_findings"], json!([]));
+    assert_eq!(read_entry(&sb)["data"]["newFindings"], json!([]));
 }
 
 #[test]
@@ -330,8 +330,63 @@ fn an_entry_of_another_schema_version_is_unusable_and_a_refresh_replaces_it() {
     let mock = Mock::start(replies());
     assert_eq!(code(&linear(&sb, &mock, &["cache", "refresh"])), 0);
     assert_eq!(
-        read_entry(&sb)["schema_version"],
+        read_entry(&sb)["schemaVersion"],
         linear_core::SCHEMA_VERSION
+    );
+    assert!(show(&sb, &[])[0]["problem"].is_null());
+}
+
+/// What v0.1.0 and v0.2.0 wrote: schema version 2, every key in snake_case.
+fn written_by_schema_version_2() -> Value {
+    json!({
+        "schema_version": 2,
+        "workspace": "example",
+        "status": "ok",
+        "attempted_at": chrono::Utc::now().to_rfc3339(),
+        "fetched_at": chrono::Utc::now().to_rfc3339(),
+        "failure": null,
+        "data": {
+            "viewer": {},
+            "issues": [],
+            "projects": [],
+            "findings": [],
+            "new_findings": []
+        }
+    })
+}
+
+#[test]
+fn an_entry_written_before_the_camel_case_keys_is_discarded_not_an_error() {
+    let sb = workspace();
+    std::fs::create_dir_all(cache_dir(&sb)).unwrap();
+    std::fs::write(entry_file(&sb), written_by_schema_version_2().to_string()).unwrap();
+
+    // It is within the TTL, but this build cannot read it: unknown, with the reason.
+    let rows = show(&sb, &[]);
+    assert_eq!(rows[0]["freshness"]["state"], "missing");
+    assert!(rows[0]["entry"].is_null());
+    assert!(
+        rows[0]["problem"]
+            .as_str()
+            .unwrap()
+            .contains("schema_version 2"),
+        "{}",
+        rows[0]["problem"]
+    );
+    let o = sb.run(&["audit", "--cached"], None, &[]);
+    assert_eq!(code(&o), 1, "{}", stderr(&o));
+    assert!(stderr(&o).contains("unusable cache file"), "{}", stderr(&o));
+
+    // A refresh replaces it, and treats it as no previous snapshot (everything is new).
+    let mock = Mock::start(replies());
+    let o = linear(&sb, &mock, &["cache", "refresh", "--json"]);
+    assert_eq!(code(&o), 0, "{}", stderr(&o));
+    let e = read_entry(&sb);
+    assert_eq!(e["schemaVersion"], linear_core::SCHEMA_VERSION);
+    assert!(e.get("schema_version").is_none());
+    assert_eq!(
+        e["data"]["newFindings"].as_array().unwrap().len(),
+        e["data"]["findings"].as_array().unwrap().len()
     );
     assert!(show(&sb, &[])[0]["problem"].is_null());
 }

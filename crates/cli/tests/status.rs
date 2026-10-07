@@ -58,7 +58,7 @@ fn counts(sb: &Sandbox) -> (usize, usize, usize, usize) {
         .iter()
         .filter(|f| f["actionable"] == true)
         .count();
-    (n("issues"), n("findings"), actionable, n("new_findings"))
+    (n("issues"), n("findings"), actionable, n("newFindings"))
 }
 
 #[test]
@@ -122,7 +122,7 @@ fn it_makes_no_request_and_needs_no_credentials() {
 fn a_stale_snapshot_is_unknown_and_shows_no_numbers() {
     let sb = refreshed();
     edit_entry(&sb, "example", |e| {
-        e["fetched_at"] = json!((chrono::Utc::now() - chrono::Duration::hours(2)).to_rfc3339());
+        e["fetchedAt"] = json!((chrono::Utc::now() - chrono::Duration::hours(2)).to_rfc3339());
     });
     let o = status(&sb, &[]);
     assert_eq!(
@@ -178,14 +178,14 @@ fn nothing_cached_is_unknown() {
 #[test]
 fn another_schema_version_or_workspace_or_garbage_is_unusable() {
     let sb = refreshed();
-    edit_entry(&sb, "example", |e| e["schema_version"] = json!(99));
+    edit_entry(&sb, "example", |e| e["schemaVersion"] = json!(99));
     assert_eq!(
         stdout(&status(&sb, &[])),
         "example: unknown (unusable cache file)\n"
     );
     let r = &stdout_json(&status(&sb, &["--json"]))[0];
     assert_eq!(r["state"], "unusable");
-    assert!(r["reason"].as_str().unwrap().contains("schema_version 99"));
+    assert!(r["reason"].as_str().unwrap().contains("schemaVersion 99"));
 
     let sb = refreshed();
     edit_entry(&sb, "example", |e| e["workspace"] = json!("other"));

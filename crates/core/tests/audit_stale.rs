@@ -440,7 +440,7 @@ fn informational_findings_alone_never_count_as_actionable() {
 
 #[test]
 fn thresholds_come_from_workspace_settings_with_defaults_for_what_is_absent() {
-    let c: AuditConfig = serde_json::from_str(r#"{ "stale_days": 3 }"#).unwrap();
+    let c: AuditConfig = serde_json::from_str(r#"{ "staleDays": 3 }"#).unwrap();
     assert_eq!(
         c,
         AuditConfig {
@@ -464,6 +464,10 @@ fn thresholds_come_from_workspace_settings_with_defaults_for_what_is_absent() {
         }
     );
     assert!(serde_json::from_str::<AuditConfig>(r#"{ "stale": 3 }"#).is_err());
+    // The JSON keys are camelCase, like every other shape; the snake_case
+    // spelling of schema version 2 is refused rather than silently ignored.
+    assert!(serde_json::from_str::<AuditConfig>(r#"{ "stale_days": 3 }"#).is_err());
+    assert!(serde_json::from_str::<AuditConfig>(r#"{ "sourceKinds": ["slack"] }"#).is_ok());
 }
 
 // ------------------------------------------- real (anonymized) responses

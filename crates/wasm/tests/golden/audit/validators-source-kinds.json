@@ -1,5 +1,5 @@
 {
-  "description": "source-attachment with source_kinds: the source attachment needs a metadata.kind from the list.",
+  "description": "source-attachment with sourceKinds: the source attachment needs a metadata.kind from the list.",
   "expected": {
     "data": {
       "findings": [
@@ -49,18 +49,18 @@
           "workspace": "ken109"
         }
       ],
-      "unresolved_issues": []
+      "unresolvedIssues": []
     },
     "ok": true
   },
   "input": {
     "config": {
-      "source_kinds": [
+      "sourceKinds": [
         "slack",
         "life-decision"
       ],
-      "stale_days": 7,
-      "status_update_days": 14,
+      "staleDays": 7,
+      "statusUpdateDays": 14,
       "validators": [
         "source-attachment"
       ]
