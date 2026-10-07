@@ -11,7 +11,7 @@
 //! ask the ownership rules about the project, as `project update --initiative`
 //! does.
 
-use super::{read_text, resolve, WriteSession};
+use super::{read_text, resolve, ForceArg, WriteSession};
 use crate::commands::format::initiative_status;
 use crate::commands::listing::paginate;
 use crate::commands::Ctx;
@@ -390,6 +390,8 @@ pub struct ProjectLinkCmd {
     pub initiative: String,
     /// Project id, slug id, URL or name
     pub project: String,
+    #[command(flatten)]
+    pub force: ForceArg,
 }
 
 /// What `add-project` and `remove-project` print.
@@ -431,12 +433,13 @@ pub fn remove_project(ctx: &Ctx, cmd: &ProjectLinkCmd) -> Result<()> {
 }
 
 fn link_change(ctx: &Ctx, cmd: &ProjectLinkCmd, add: bool) -> Result<()> {
-    let ws = ctx.write_session()?;
+    let ws = ctx.write_session_with(cmd.force)?;
     let all = list_initiatives(&ws)?;
     let initiative = match_initiative(&all, &cmd.initiative)?;
     let project: ProjectOwnership = resolve::project(&ws, &cmd.project)?;
     // The project's initiatives change, so the project's ownership applies.
     ws.guard(
+        &format!("project {:?}", project.name),
         &Write::ProjectUpdate {
             lead: project.lead.as_ref().map(|u| u.id.inner()),
         },
@@ -499,7 +502,7 @@ fn link_change(ctx: &Ctx, cmd: &ProjectLinkCmd, add: bool) -> Result<()> {
         action,
         unchanged,
     };
-    ctx.out.emit(
+    ws.emit(
         &value,
         || {
             let how = match (add, unchanged) {

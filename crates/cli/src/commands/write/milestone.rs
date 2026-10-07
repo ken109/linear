@@ -7,7 +7,7 @@
 //! milestone needs a name and a target date (without one it does not show on
 //! the timeline), and a project never gets two milestones with the same name.
 
-use super::{read_text, resolve, WriteSession};
+use super::{read_text, resolve, ForceArg, WriteSession};
 use crate::commands::format::{milestone_status, opt_date};
 use crate::commands::Ctx;
 use crate::error::{CliError, Result};
@@ -42,6 +42,8 @@ pub struct CreateCmd {
     /// Read the description from a file (`-` for standard input)
     #[arg(long, value_name = "FILE")]
     pub description_file: Option<PathBuf>,
+    #[command(flatten)]
+    pub force: ForceArg,
 }
 
 /// What `create` prints: the milestone, and whether it was already there.
@@ -59,12 +61,12 @@ pub fn create(ctx: &Ctx, cmd: &CreateCmd) -> Result<()> {
     let name = non_blank(&cmd.name, "--name")?;
     let description = description(cmd.description_file.as_deref())?;
 
-    let ws = ctx.write_session()?;
+    let ws = ctx.write_session_with(cmd.force)?;
     let project = resolve::project(&ws, &cmd.project)?;
-    ws.guard(&led_by(&project), false)?;
+    ws.guard(&target(&project), &led_by(&project), false)?;
 
     if let Some(existing) = project.project_milestones.iter().find(|m| m.name == name) {
-        emit_created(ctx, &ws, existing, true);
+        emit_created(&ws, existing, true);
         return Ok(());
     }
 
@@ -80,17 +82,17 @@ pub fn create(ctx: &Ctx, cmd: &CreateCmd) -> Result<()> {
     if !payload.success {
         return Err(CliError::general("Linear could not create the milestone"));
     }
-    emit_created(ctx, &ws, &payload.project_milestone, false);
+    emit_created(&ws, &payload.project_milestone, false);
     Ok(())
 }
 
-fn emit_created(ctx: &Ctx, ws: &WriteSession, milestone: &Milestone, existing: bool) {
+fn emit_created(ws: &WriteSession, milestone: &Milestone, existing: bool) {
     let value = Created {
         workspace: &ws.workspace,
         existing,
         milestone,
     };
-    ctx.out.emit(
+    ws.emit(
         &value,
         || {
             let how = if existing {
@@ -126,6 +128,8 @@ pub struct UpdateCmd {
     /// Replace the description with the contents of a file (`-` for standard input)
     #[arg(long, value_name = "FILE")]
     pub description_file: Option<PathBuf>,
+    #[command(flatten)]
+    pub force: ForceArg,
 }
 
 /// What `update` prints.
@@ -159,10 +163,10 @@ pub fn update(ctx: &Ctx, cmd: &UpdateCmd) -> Result<()> {
         None => None,
     };
 
-    let ws = ctx.write_session()?;
+    let ws = ctx.write_session_with(cmd.force)?;
     let project = resolve::project(&ws, &cmd.project)?;
     let current = resolve::milestone(&project, &cmd.milestone)?;
-    ws.guard(&led_by(&project), false)?;
+    ws.guard(&target(&project), &led_by(&project), false)?;
 
     // Only what differs from now is sent.
     let mut input = MilestoneUpdateInput::default();
@@ -185,7 +189,7 @@ pub fn update(ctx: &Ctx, cmd: &UpdateCmd) -> Result<()> {
 
     if input.is_empty() {
         ws.note("nothing to change: the milestone already has these values");
-        emit_updated(ctx, &ws, current, false);
+        emit_updated(&ws, current, false);
         return Ok(());
     }
 
@@ -196,17 +200,17 @@ pub fn update(ctx: &Ctx, cmd: &UpdateCmd) -> Result<()> {
     if !payload.success {
         return Err(CliError::general("Linear could not update the milestone"));
     }
-    emit_updated(ctx, &ws, &payload.project_milestone, true);
+    emit_updated(&ws, &payload.project_milestone, true);
     Ok(())
 }
 
-fn emit_updated(ctx: &Ctx, ws: &WriteSession, milestone: &Milestone, changed: bool) {
+fn emit_updated(ws: &WriteSession, milestone: &Milestone, changed: bool) {
     let value = Updated {
         workspace: &ws.workspace,
         changed,
         milestone,
     };
-    ctx.out.emit(
+    ws.emit(
         &value,
         || {
             format!(
@@ -230,6 +234,8 @@ pub struct DeleteCmd {
     /// Project: id, slug id, URL or name
     #[arg(long, value_name = "PROJECT")]
     pub project: String,
+    #[command(flatten)]
+    pub force: ForceArg,
 }
 
 /// What `delete` prints.
@@ -243,10 +249,10 @@ struct Deleted<'a> {
 }
 
 pub fn delete(ctx: &Ctx, cmd: &DeleteCmd) -> Result<()> {
-    let ws = ctx.write_session()?;
+    let ws = ctx.write_session_with(cmd.force)?;
     let project = resolve::project(&ws, &cmd.project)?;
     let found = resolve::milestone(&project, &cmd.milestone)?;
-    ws.guard(&led_by(&project), false)?;
+    ws.guard(&target(&project), &led_by(&project), false)?;
 
     // Deleting a milestone silently unfiles its issues, and what stage they
     // belonged to is lost. Refuse until they have been moved.
@@ -281,7 +287,7 @@ pub fn delete(ctx: &Ctx, cmd: &DeleteCmd) -> Result<()> {
         name: &found.name,
         deleted: true,
     };
-    ctx.out.emit(
+    ws.emit(
         &value,
         || format!("{}  (deleted)", found.name),
         || found.name.clone(),
@@ -290,6 +296,11 @@ pub fn delete(ctx: &Ctx, cmd: &DeleteCmd) -> Result<()> {
 }
 
 // ---------------------------------------------------------------- shared
+
+/// What a milestone write is refused (or forced) on: the project it belongs to.
+fn target(project: &ProjectOwnership) -> String {
+    format!("project {:?} (a milestone of it)", project.name)
+}
 
 /// The ownership question a milestone write asks: does the viewer lead the project?
 fn led_by(project: &ProjectOwnership) -> Write<'_> {

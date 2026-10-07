@@ -1,6 +1,6 @@
 //! `linear project create|update|reorder|status-update|delete|unarchive`.
 
-use super::{read_text, resolve, retry, Rollback, WriteSession, ATTACH_WAITS};
+use super::{read_text, resolve, retry, ForceArg, Rollback, WriteSession, ATTACH_WAITS};
 use crate::commands::format::{health, person};
 use crate::commands::listing::{paginate, resolve_project};
 use crate::commands::project::{out as project_out, ProjectOut};
@@ -61,6 +61,8 @@ pub struct CreateCmd {
     /// Team key (default: the workspace's `default_team`)
     #[arg(long, value_name = "KEY")]
     pub team: Option<String>,
+    #[command(flatten)]
+    pub force: ForceArg,
 }
 
 /// What `create` prints.
@@ -85,7 +87,7 @@ pub fn create(ctx: &Ctx, cmd: &CreateCmd) -> Result<()> {
     let summary = non_blank(cmd.summary.as_deref(), "the summary")?;
     let body = read_body(cmd.body_file.as_deref())?;
 
-    let ws = ctx.write_session()?;
+    let ws = ctx.write_session_with(cmd.force)?;
 
     // Resolve names to ids (read-only; unknown names stop here).
     let team = resolve::team(&ws, cmd.team.as_deref())?;
@@ -100,11 +102,14 @@ pub fn create(ctx: &Ctx, cmd: &CreateCmd) -> Result<()> {
         .transpose()?;
 
     // Guard, then the idempotence check, then validators.
-    ws.guard(&Write::ProjectCreate { lead: Some(&lead) }, false)?;
+    ws.guard(
+        &format!("new project {name:?}"),
+        &Write::ProjectCreate { lead: Some(&lead) },
+        false,
+    )?;
     let existing: pw::UnfinishedNamed = ws.client.execute(&pw::unfinished_named(name))?;
     if let Some(found) = existing.projects.nodes.first() {
         emit_created(
-            ctx,
             &ws,
             found.id.inner(),
             &found.slug_id,
@@ -165,7 +170,6 @@ pub fn create(ctx: &Ctx, cmd: &CreateCmd) -> Result<()> {
     }
 
     emit_created(
-        ctx,
         &ws,
         project.id.inner(),
         &project.slug_id,
@@ -176,15 +180,7 @@ pub fn create(ctx: &Ctx, cmd: &CreateCmd) -> Result<()> {
     Ok(())
 }
 
-fn emit_created(
-    ctx: &Ctx,
-    ws: &WriteSession,
-    id: &str,
-    slug_id: &str,
-    name: &str,
-    url: &str,
-    existing: bool,
-) {
+fn emit_created(ws: &WriteSession, id: &str, slug_id: &str, name: &str, url: &str, existing: bool) {
     let value = Created {
         workspace: &ws.workspace,
         id,
@@ -193,7 +189,7 @@ fn emit_created(
         url,
         existing,
     };
-    ctx.out.emit(
+    ws.emit(
         &value,
         || {
             let how = if existing {
@@ -239,6 +235,8 @@ pub struct UpdateCmd {
     /// New lead: `me`, an email or a name
     #[arg(long, value_name = "WHO")]
     pub lead: Option<String>,
+    #[command(flatten)]
+    pub force: ForceArg,
 }
 
 /// What `update` prints: the project as it is now, and which fields were written.
@@ -268,7 +266,7 @@ pub fn update(ctx: &Ctx, cmd: &UpdateCmd) -> Result<()> {
     let summary = non_blank(cmd.summary.as_deref(), "the summary")?;
     let body = read_body(cmd.body_file.as_deref())?;
 
-    let ws = ctx.write_session()?;
+    let ws = ctx.write_session_with(cmd.force)?;
     let found = resolve_project(&ws.client, &cmd.project)?;
     let view: ProjectView = ws.client.execute(&read::project_view(found.id.inner()))?;
     let (project, detail) = (&view.project, &view.detail);
@@ -302,7 +300,11 @@ pub fn update(ctx: &Ctx, cmd: &UpdateCmd) -> Result<()> {
     }
 
     // Guard, then validators.
-    ws.guard(&Write::update_project(project), false)?;
+    ws.guard(
+        &format!("project {:?}", project.name),
+        &Write::update_project(project),
+        false,
+    )?;
     if cmd.template.is_some()
         && !ws
             .rules
@@ -415,7 +417,7 @@ pub fn update(ctx: &Ctx, cmd: &UpdateCmd) -> Result<()> {
         changed: changed.clone(),
     };
     let p = &now.project;
-    ctx.out.emit(
+    ws.emit(
         &value,
         || {
             let verb = if changed.is_empty() {
@@ -449,6 +451,8 @@ pub struct StatusUpdateCmd {
     /// Read the update from a file (`-` for standard input)
     #[arg(long, value_name = "FILE")]
     pub body_file: PathBuf,
+    #[command(flatten)]
+    pub force: ForceArg,
 }
 
 /// What `status-update` prints.
@@ -472,10 +476,11 @@ pub fn status_update(ctx: &Ctx, cmd: &StatusUpdateCmd) -> Result<()> {
         _ => ProjectUpdateHealthType::OffTrack,
     };
 
-    let ws = ctx.write_session()?;
+    let ws = ctx.write_session_with(cmd.force)?;
     let project = resolve::project(&ws, &cmd.project)?;
     // A status update is a write to the project: it follows the same ownership as changing it.
     ws.guard(
+        &format!("project {:?}", project.name),
         &Write::ProjectUpdate {
             lead: project.lead.as_ref().map(|u| u.id.inner()),
         },
@@ -499,7 +504,7 @@ pub fn status_update(ctx: &Ctx, cmd: &StatusUpdateCmd) -> Result<()> {
         workspace: &ws.workspace,
         update,
     };
-    ctx.out.emit(
+    ws.emit(
         &value,
         || {
             format!(
@@ -522,6 +527,8 @@ pub struct ReorderCmd {
     /// ids, URLs or names; space- or comma-separated)
     #[arg(required = true, num_args = 1.., value_delimiter = ',', value_name = "PROJECT")]
     pub projects: Vec<String>,
+    #[command(flatten)]
+    pub force: ForceArg,
 }
 
 /// What `reorder` prints.
@@ -540,7 +547,7 @@ pub fn reorder(ctx: &Ctx, cmd: &ReorderCmd) -> Result<()> {
     if cmd.projects.len() < 2 {
         return Err(CliError::usage("reordering needs at least two projects"));
     }
-    let ws = ctx.write_session()?;
+    let ws = ctx.write_session_with(cmd.force)?;
 
     let mut projects = Vec::new();
     for reference in &cmd.projects {
@@ -552,6 +559,7 @@ pub fn reorder(ctx: &Ctx, cmd: &ReorderCmd) -> Result<()> {
     // Every project must be writable before the first one is written.
     for p in &projects {
         ws.guard(
+            &format!("project {:?}", p.name),
             &Write::ProjectUpdate {
                 lead: p.lead.as_ref().map(|u| u.id.inner()),
             },
@@ -619,7 +627,7 @@ pub fn reorder(ctx: &Ctx, cmd: &ReorderCmd) -> Result<()> {
         updated: plan.iter().map(|c| c.identifier.as_str()).collect(),
         unchanged: plan.is_empty(),
     };
-    ctx.out.emit(
+    ws.emit(
         &value,
         || {
             if plan.is_empty() {
@@ -644,6 +652,8 @@ pub fn reorder(ctx: &Ctx, cmd: &ReorderCmd) -> Result<()> {
 pub struct ProjectTargetCmd {
     /// Project id, slug id, URL or name
     pub project: String,
+    #[command(flatten)]
+    pub force: ForceArg,
 }
 
 /// What `delete` and `unarchive` print.
@@ -685,7 +695,7 @@ fn change_trash(
     include_archived: bool,
     mutate: impl FnOnce(&WriteSession, &str) -> Result<bool>,
 ) -> Result<()> {
-    let ws = ctx.write_session()?;
+    let ws = ctx.write_session_with(cmd.force)?;
     let found = if include_archived {
         let rows = paginate(PROJECT_REFS_PAGE_SIZE, None, |vars| {
             let data: ProjectRefsWithArchived =
@@ -701,6 +711,7 @@ fn change_trash(
         .client
         .execute(&read::project_ownership(found.id.inner()))?;
     ws.guard(
+        &format!("project {:?}", found.name),
         &Write::ProjectUpdate {
             lead: owned.project.lead.as_ref().map(|u| u.id.inner()),
         },
@@ -720,7 +731,7 @@ fn change_trash(
         url: &found.url,
         action,
     };
-    ctx.out.emit(
+    ws.emit(
         &value,
         || format!("{}  {}  ({action})", found.slug_id, found.name),
         || found.slug_id.clone(),

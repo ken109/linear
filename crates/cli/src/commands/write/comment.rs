@@ -4,7 +4,7 @@
 //! the issue it is on ([`Write::CommentUpdate`], [`Write::CommentDelete`]). Neither write
 //! changes the issue itself, so no validator applies.
 
-use super::{read_text, WriteSession};
+use super::{read_text, ForceArg, WriteSession};
 use crate::commands::Ctx;
 use crate::error::{CliError, Result};
 use clap::Args;
@@ -22,6 +22,8 @@ pub struct UpdateCmd {
     /// Read the new text from a file (`-` for standard input)
     #[arg(long, value_name = "FILE")]
     pub body_file: PathBuf,
+    #[command(flatten)]
+    pub force: ForceArg,
 }
 
 #[derive(Debug, Args)]
@@ -31,6 +33,8 @@ pub struct DeleteCmd {
     /// Confirm the deletion (a deleted comment cannot be restored)
     #[arg(long)]
     pub yes: bool,
+    #[command(flatten)]
+    pub force: ForceArg,
 }
 
 /// What `update` prints.
@@ -87,9 +91,10 @@ pub fn update(ctx: &Ctx, cmd: &UpdateCmd) -> Result<()> {
         return Err(CliError::usage("the comment is empty"));
     }
 
-    let ws = ctx.write_session()?;
+    let ws = ctx.write_session_with(cmd.force)?;
     let comment = fetch(&ws, &cmd.comment)?;
     ws.guard(
+        &format!("comment {} on {}", cmd.comment, issue_of(&comment)),
         &Write::CommentUpdate {
             author: author(&comment),
         },
@@ -119,7 +124,7 @@ pub fn update(ctx: &Ctx, cmd: &UpdateCmd) -> Result<()> {
         issue: issue_of(&comment),
         changed,
     };
-    ctx.out.emit(
+    ws.emit(
         &value,
         || {
             let note = if changed {
@@ -142,11 +147,12 @@ pub fn delete(ctx: &Ctx, cmd: &DeleteCmd) -> Result<()> {
         ));
     }
 
-    let ws = ctx.write_session()?;
+    let ws = ctx.write_session_with(cmd.force)?;
     let comment = fetch(&ws, &cmd.comment)?;
     // Refused in a lenient workspace too: this is the one write of a comment that cannot be
     // taken back.
     ws.guard(
+        &format!("comment {} on {}", cmd.comment, issue_of(&comment)),
         &Write::CommentDelete {
             author: author(&comment),
         },
@@ -165,7 +171,7 @@ pub fn delete(ctx: &Ctx, cmd: &DeleteCmd) -> Result<()> {
         issue: issue_of(&comment),
         deleted: true,
     };
-    ctx.out.emit(
+    ws.emit(
         &value,
         || format!("{}  deleted {}", issue_of(&comment), comment.url),
         || comment.id.inner().to_owned(),

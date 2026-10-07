@@ -19,7 +19,7 @@
 //!   named as well.
 
 use super::issue::{fetch_issue, placement_of};
-use super::{retry, WriteSession, ATTACH_WAITS};
+use super::{retry, ForceArg, WriteSession, ATTACH_WAITS};
 use crate::commands::Ctx;
 use crate::error::{CliError, Result};
 use clap::Args;
@@ -60,6 +60,8 @@ pub struct AttachFileCmd {
     /// The MIME type [default: from the file's extension]
     #[arg(long, value_name = "TYPE")]
     pub content_type: Option<String>,
+    #[command(flatten)]
+    pub force: ForceArg,
 }
 
 /// A file that has been read and checked, ready to send.
@@ -227,10 +229,11 @@ pub fn attach_file(ctx: &Ctx, cmd: &AttachFileCmd) -> Result<()> {
         None => file.name.clone(),
     };
 
-    let ws = ctx.write_session()?;
+    let ws = ctx.write_session_with(cmd.force)?;
     let view = fetch_issue(&ws, &cmd.issue)?;
     // Attaching is a write to the issue: it follows the same ownership as changing it.
     ws.guard(
+        &format!("issue {}", view.issue.identifier),
         &Write::update_issue(&view.issue, placement_of(&view)),
         false,
     )?;
@@ -278,7 +281,7 @@ pub fn attach_file(ctx: &Ctx, cmd: &AttachFileCmd) -> Result<()> {
         size: file.bytes.len(),
         markdown,
     };
-    ctx.out.emit(
+    ws.emit(
         &value,
         || {
             format!(

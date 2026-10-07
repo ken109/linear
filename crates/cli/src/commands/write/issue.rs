@@ -5,7 +5,7 @@
 //! differs from now, and puts the issue's fields back if the attachment, the
 //! last step, cannot be made.
 
-use super::{read_text, resolve, retry, Rollback, WriteSession, ATTACH_WAITS};
+use super::{read_text, resolve, retry, ForceArg, Rollback, WriteSession, ATTACH_WAITS};
 use crate::commands::cycle;
 use crate::commands::format::person;
 use crate::commands::issue::{out as issue_out, IssueOut};
@@ -106,6 +106,8 @@ pub struct CreateCmd {
     /// Allow creating, in a project somebody else leads, an issue assigned to you
     #[arg(long)]
     pub allow_foreign: bool,
+    #[command(flatten)]
+    pub force: ForceArg,
 }
 
 /// What `create` prints.
@@ -142,7 +144,7 @@ pub fn create(ctx: &Ctx, cmd: &CreateCmd) -> Result<()> {
         )
     };
 
-    let ws = ctx.write_session()?;
+    let ws = ctx.write_session_with(cmd.force)?;
 
     // An origin that is not an http(s) URL is never attached. With the
     // `source-attachment` rule on, the validators report it (exit 5) together
@@ -186,6 +188,7 @@ pub fn create(ctx: &Ctx, cmd: &CreateCmd) -> Result<()> {
 
     // Guard, then validators.
     ws.guard(
+        &format!("new issue in project {:?}", project.name),
         &Write::IssueCreate {
             assignee: Some(&assignee),
             placement: project.placement(),
@@ -248,7 +251,6 @@ pub fn create(ctx: &Ctx, cmd: &CreateCmd) -> Result<()> {
             None => (None, Vec::new()),
         };
         emit_created(
-            ctx,
             &ws,
             Made {
                 id: existing.id.inner(),
@@ -321,7 +323,6 @@ pub fn create(ctx: &Ctx, cmd: &CreateCmd) -> Result<()> {
     }
 
     emit_created(
-        ctx,
         &ws,
         Made {
             id: issue.id.inner(),
@@ -361,6 +362,7 @@ fn put_in_cycle(
         return Ok((Some(current), Vec::new()));
     }
     ws.guard(
+        &format!("issue {}", view.issue.identifier),
         &Write::IssueUpdate {
             assignee: view.issue.assignee.as_ref().map(|u| u.id.inner()),
             placement: placement_of(&view),
@@ -428,7 +430,7 @@ fn refresh_source_metadata(
     }
 }
 
-fn emit_created(ctx: &Ctx, ws: &WriteSession, made: Made<'_>, source: Option<&str>) {
+fn emit_created(ws: &WriteSession, made: Made<'_>, source: Option<&str>) {
     let Made {
         id,
         identifier,
@@ -449,7 +451,7 @@ fn emit_created(ctx: &Ctx, ws: &WriteSession, made: Made<'_>, source: Option<&st
         cycle,
         changed: changed.clone(),
     };
-    ctx.out.emit(
+    ws.emit(
         &value,
         || {
             let mut how = match (existing, metadata_updated) {
@@ -547,6 +549,8 @@ pub struct UpdateCmd {
     /// take it out of its cycle
     #[arg(long, value_name = "N", value_parser = cycle_or_none)]
     pub cycle: Option<Patch<u32>>,
+    #[command(flatten)]
+    pub force: ForceArg,
 }
 
 /// `--estimate`: a whole number, at least 0.
@@ -631,7 +635,7 @@ pub fn update(ctx: &Ctx, cmd: &UpdateCmd) -> Result<()> {
         )
     };
 
-    let ws = ctx.write_session()?;
+    let ws = ctx.write_session_with(cmd.force)?;
     // An origin that is not an http(s) URL is never attached. With the
     // `source-attachment` rule on, the validators report it (exit 5) together
     // with any other violation; without it, it is a usage error.
@@ -714,6 +718,7 @@ pub fn update(ctx: &Ctx, cmd: &UpdateCmd) -> Result<()> {
 
     // Guard, then validators.
     ws.guard(
+        &format!("issue {}", issue.identifier),
         &Write::IssueUpdate {
             assignee: issue.assignee.as_ref().map(|u| u.id.inner()),
             placement: placement_of(&view),
@@ -727,6 +732,7 @@ pub fn update(ctx: &Ctx, cmd: &UpdateCmd) -> Result<()> {
             && matches!(s.state_type(), StateType::Canceled | StateType::Duplicate)
     }) {
         ws.guard(
+            &format!("issue {}", issue.identifier),
             &Write::IssueCancel {
                 assignee: issue.assignee.as_ref().map(|u| u.id.inner()),
                 placement: placement_of(&view),
@@ -940,7 +946,7 @@ pub fn update(ctx: &Ctx, cmd: &UpdateCmd) -> Result<()> {
         None if changed.is_empty() => view.issue.clone(),
         None => fetch_issue(&ws, issue.id.inner())?.issue,
     };
-    show_issue(ctx, &ws, &now, &changed);
+    show_issue(&ws, &now, &changed);
     Ok(())
 }
 
@@ -1004,12 +1010,12 @@ fn source_step(
     })
 }
 
-fn show_issue(ctx: &Ctx, ws: &WriteSession, issue: &Issue, changed: &[&'static str]) {
+fn show_issue(ws: &WriteSession, issue: &Issue, changed: &[&'static str]) {
     let value = Updated {
         issue: issue_out(&ws.workspace, issue),
         changed: changed.to_vec(),
     };
-    ctx.out.emit(
+    ws.emit(
         &value,
         || {
             let verb = if changed.is_empty() {
@@ -1043,6 +1049,8 @@ pub struct CommentCmd {
     /// Read the comment from a file (`-` for standard input)
     #[arg(long, value_name = "FILE")]
     pub body_file: PathBuf,
+    #[command(flatten)]
+    pub force: ForceArg,
 }
 
 /// What `comment` prints.
@@ -1061,10 +1069,11 @@ pub fn comment(ctx: &Ctx, cmd: &CommentCmd) -> Result<()> {
         return Err(CliError::usage("the comment is empty"));
     }
 
-    let ws = ctx.write_session()?;
+    let ws = ctx.write_session_with(cmd.force)?;
     let view = fetch_issue(&ws, &cmd.issue)?;
     // A comment is a write to the issue: it follows the same ownership as changing it.
     ws.guard(
+        &format!("issue {}", view.issue.identifier),
         &Write::IssueUpdate {
             assignee: view.issue.assignee.as_ref().map(|u| u.id.inner()),
             placement: placement_of(&view),
@@ -1089,7 +1098,7 @@ pub fn comment(ctx: &Ctx, cmd: &CommentCmd) -> Result<()> {
         url: &comment.url,
         issue: &view.issue.identifier,
     };
-    ctx.out.emit(
+    ws.emit(
         &value,
         || format!("{}  {}", view.issue.identifier, comment.url),
         || comment.url.clone(),
@@ -1105,6 +1114,8 @@ pub struct LinkPrCmd {
     pub issue: String,
     /// The pull request's URL: https://github.com/<owner>/<repo>/pull/<number>
     pub url: String,
+    #[command(flatten)]
+    pub force: ForceArg,
 }
 
 /// What `link-pr` prints.
@@ -1130,10 +1141,11 @@ pub fn link_pr(ctx: &Ctx, cmd: &LinkPrCmd) -> Result<()> {
         )));
     };
 
-    let ws = ctx.write_session()?;
+    let ws = ctx.write_session_with(cmd.force)?;
     let view = fetch_issue(&ws, &cmd.issue)?;
     // Linking is a write to the issue: it follows the same ownership as changing it.
     ws.guard(
+        &format!("issue {}", view.issue.identifier),
         &Write::update_issue(&view.issue, placement_of(&view)),
         false,
     )?;
@@ -1147,15 +1159,7 @@ pub fn link_pr(ctx: &Ctx, cmd: &LinkPrCmd) -> Result<()> {
         .iter()
         .find(|a| a.pull_request().is_some_and(|p| p.url == url));
     if let Some(attachment) = linked {
-        return emit_linked(
-            ctx,
-            &ws.workspace,
-            identifier,
-            &url,
-            number,
-            true,
-            attachment,
-        );
+        return emit_linked(&ws, identifier, &url, number, true, attachment);
     }
 
     // Linear refuses a link the workspace has no GitHub integration for with an error that
@@ -1188,20 +1192,11 @@ pub fn link_pr(ctx: &Ctx, cmd: &LinkPrCmd) -> Result<()> {
             payload.attachment.source_type
         );
     }
-    emit_linked(
-        ctx,
-        &ws.workspace,
-        identifier,
-        &url,
-        number,
-        false,
-        &payload.attachment,
-    )
+    emit_linked(&ws, identifier, &url, number, false, &payload.attachment)
 }
 
 fn emit_linked(
-    ctx: &Ctx,
-    workspace: &str,
+    ws: &WriteSession,
     identifier: &str,
     url: &str,
     number: u64,
@@ -1210,14 +1205,14 @@ fn emit_linked(
 ) -> Result<()> {
     let pull_request = attachment.pull_request();
     let value = Linked {
-        workspace,
+        workspace: &ws.workspace,
         issue: identifier,
         url,
         already_linked,
         attachment: Some(attachment),
         pull_request: pull_request.clone(),
     };
-    ctx.out.emit(
+    ws.emit(
         &value,
         || {
             let state = pull_request
@@ -1248,6 +1243,8 @@ pub struct UnlinkCmd {
     /// (without it, the command prints what it would delete and sends nothing)
     #[arg(long)]
     pub yes: bool,
+    #[command(flatten)]
+    pub force: ForceArg,
 }
 
 /// What `unlink` prints.
@@ -1269,10 +1266,11 @@ pub fn unlink(ctx: &Ctx, cmd: &UnlinkCmd) -> Result<()> {
         return Err(CliError::usage("the URL is empty"));
     }
 
-    let ws = ctx.write_session()?;
+    let ws = ctx.write_session_with(cmd.force)?;
     let view = fetch_issue(&ws, &cmd.issue)?;
     // Deleting an attachment is a write to the issue: it follows the same ownership as changing it.
     ws.guard(
+        &format!("issue {}", view.issue.identifier),
         &Write::update_issue(&view.issue, placement_of(&view)),
         false,
     )?;
@@ -1292,7 +1290,7 @@ pub fn unlink(ctx: &Ctx, cmd: &UnlinkCmd) -> Result<()> {
             not_linked: true,
             attachment_id: None,
         };
-        ctx.out.emit(
+        ws.emit(
             &value,
             || format!("{identifier}  {url}  (not linked, nothing sent)"),
             || url.to_owned(),
@@ -1322,7 +1320,7 @@ pub fn unlink(ctx: &Ctx, cmd: &UnlinkCmd) -> Result<()> {
         not_linked: false,
         attachment_id: Some(target.id.inner()),
     };
-    ctx.out.emit(
+    ws.emit(
         &value,
         || format!("{identifier}  {url}  (unlinked)"),
         || url.to_owned(),
@@ -1336,6 +1334,8 @@ pub fn unlink(ctx: &Ctx, cmd: &UnlinkCmd) -> Result<()> {
 pub struct IssueTargetCmd {
     /// Issue identifier (such as KK-12) or id
     pub issue: String,
+    #[command(flatten)]
+    pub force: ForceArg,
 }
 
 /// What `delete`, `archive` and `unarchive` print.
@@ -1380,9 +1380,10 @@ fn change_archive(
     action: &'static str,
     mutate: impl FnOnce(&crate::http::Client, &str) -> Result<bool>,
 ) -> Result<()> {
-    let ws = ctx.write_session()?;
+    let ws = ctx.write_session_with(cmd.force)?;
     let view = fetch_issue(&ws, &cmd.issue)?;
     ws.guard(
+        &format!("issue {}", view.issue.identifier),
         &Write::update_issue(&view.issue, placement_of(&view)),
         false,
     )?;
@@ -1400,7 +1401,7 @@ fn change_archive(
         url: &issue.url,
         action,
     };
-    ctx.out.emit(
+    ws.emit(
         &value,
         || format!("{}  {}  ({action})", issue.identifier, issue.title),
         || issue.identifier.clone(),
@@ -1444,6 +1445,8 @@ pub struct RelateCmd {
     pub issue: String,
     #[command(flatten)]
     pub relation: RelationFlag,
+    #[command(flatten)]
+    pub force: ForceArg,
 }
 
 #[derive(Debug, Args)]
@@ -1452,6 +1455,8 @@ pub struct UnrelateCmd {
     pub issue: String,
     #[command(flatten)]
     pub relation: RelationFlag,
+    #[command(flatten)]
+    pub force: ForceArg,
 }
 
 /// What `relate` prints.
@@ -1507,6 +1512,7 @@ fn pair(ws: &WriteSession, issue: &str, closes: bool, other: &str) -> Result<Pai
     let view = fetch_issue(ws, issue)?;
     // A relation is a write to the issue it starts from: the same ownership as changing it.
     ws.guard(
+        &format!("issue {}", view.issue.identifier),
         &Write::update_issue(&view.issue, placement_of(&view)),
         false,
     )?;
@@ -1514,6 +1520,7 @@ fn pair(ws: &WriteSession, issue: &str, closes: bool, other: &str) -> Result<Pai
     // workspace does not relax. (Removing the relation puts the issue back, which is not a cancel.)
     if closes {
         ws.guard(
+            &format!("issue {}", view.issue.identifier),
             &Write::IssueCancel {
                 assignee: view.issue.assignee.as_ref().map(|u| u.id.inner()),
                 placement: placement_of(&view),
@@ -1552,7 +1559,7 @@ pub fn relate(ctx: &Ctx, cmd: &RelateCmd) -> Result<()> {
     let (kind, other) = cmd.relation.parts();
     check_references(&cmd.issue, other)?;
 
-    let ws = ctx.write_session()?;
+    let ws = ctx.write_session_with(cmd.force)?;
     let Pair { issue, other } = pair(&ws, &cmd.issue, kind == IssueRelationType::Duplicate, other)?;
     let (a, b) = (
         issue.issue.identifier.as_str(),
@@ -1594,7 +1601,7 @@ pub fn relate(ctx: &Ctx, cmd: &RelateCmd) -> Result<()> {
         related_issue: b,
         already_related: already,
     };
-    ctx.out.emit(
+    ws.emit(
         &value,
         || {
             let note = if already {
@@ -1613,7 +1620,7 @@ pub fn unrelate(ctx: &Ctx, cmd: &UnrelateCmd) -> Result<()> {
     let (kind, other) = cmd.relation.parts();
     check_references(&cmd.issue, other)?;
 
-    let ws = ctx.write_session()?;
+    let ws = ctx.write_session_with(cmd.force)?;
     let Pair { issue, other } = pair(&ws, &cmd.issue, false, other)?;
     let (a, b) = (
         issue.issue.identifier.as_str(),
@@ -1640,7 +1647,7 @@ pub fn unrelate(ctx: &Ctx, cmd: &UnrelateCmd) -> Result<()> {
         related_issue: b,
         removed: removed.clone(),
     };
-    ctx.out.emit(
+    ws.emit(
         &value,
         || {
             let note = if removed.is_empty() {
@@ -1663,6 +1670,8 @@ pub struct ReorderCmd {
     /// space- or comma-separated). They must all be in the same project
     #[arg(required = true, num_args = 1.., value_delimiter = ',', value_name = "ISSUE")]
     pub issues: Vec<String>,
+    #[command(flatten)]
+    pub force: ForceArg,
 }
 
 /// What `reorder` prints.
@@ -1687,7 +1696,7 @@ pub fn reorder(ctx: &Ctx, cmd: &ReorderCmd) -> Result<()> {
     if references.len() < 2 {
         return Err(CliError::usage("reordering needs at least two issues"));
     }
-    let ws = ctx.write_session()?;
+    let ws = ctx.write_session_with(cmd.force)?;
 
     let views = references
         .iter()
@@ -1706,6 +1715,7 @@ pub fn reorder(ctx: &Ctx, cmd: &ReorderCmd) -> Result<()> {
     // Every issue must be writable before the first one is written.
     for view in &views {
         ws.guard(
+            &format!("issue {}", view.issue.identifier),
             &Write::IssueUpdate {
                 assignee: view.issue.assignee.as_ref().map(|u| u.id.inner()),
                 placement: placement_of(view),
@@ -1766,7 +1776,7 @@ pub fn reorder(ctx: &Ctx, cmd: &ReorderCmd) -> Result<()> {
         updated: plan.iter().map(|c| c.identifier.as_str()).collect(),
         unchanged: plan.is_empty(),
     };
-    ctx.out.emit(
+    ws.emit(
         &value,
         || {
             if plan.is_empty() {

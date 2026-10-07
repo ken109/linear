@@ -714,6 +714,58 @@ fn a_strict_workspace_refuses_every_change_to_issues_owned_by_others() {
 }
 
 #[test]
+fn force_reports_each_ownership_question_it_overrode() {
+    let canceled = update(&["--state", "Canceled", "--force", "--json"]);
+
+    // Strict: the issue is not mine (one refusal) and neither is canceling it (a second).
+    let sb = workspace_with_setting(&[], "allow_force = true");
+    let mock = Routed::start(routes(foreign_with_canceled_state(), vec![]));
+    let o = run(&sb, &mock, &canceled);
+    assert_eq!(code(&o), 0, "{}", stderr(&o));
+    assert_eq!(mock.of("IssueUpdate").len(), 1);
+    let v = stdout_json(&o);
+    assert_eq!(v["forced"], true);
+    let overridden = v["overridden"].as_array().unwrap();
+    assert_eq!(overridden.len(), 2, "{v}");
+    assert!(overridden.iter().all(|r| r["target"] == "issue EX-23"));
+    assert!(overridden[0]["message"]
+        .as_str()
+        .unwrap()
+        .contains("not assigned to you"));
+    assert!(overridden[1]["message"]
+        .as_str()
+        .unwrap()
+        .contains("canceling"));
+    assert_eq!(
+        overridden[1]["held"],
+        json!([{ "role": "assignee", "user": BOT }, { "role": "lead", "user": BOT }])
+    );
+
+    // Lenient: only canceling is refused, so only canceling is reported.
+    let sb = workspace_with_setting(&[], "ownership = \"lenient\"\nallow_force = true");
+    let mock = Routed::start(routes(foreign_with_canceled_state(), vec![]));
+    let o = run(&sb, &mock, &canceled);
+    assert_eq!(code(&o), 0, "{}", stderr(&o));
+    let v = stdout_json(&o);
+    assert_eq!(v["overridden"].as_array().unwrap().len(), 1, "{v}");
+    assert!(v["overridden"][0]["message"]
+        .as_str()
+        .unwrap()
+        .contains("canceling"));
+
+    // A change lenient allows is not reported, forced or not.
+    let mock = Routed::start(routes(foreign_with_canceled_state(), vec![]));
+    let o = run(
+        &sb,
+        &mock,
+        &update(&["--state", "Done", "--force", "--json"]),
+    );
+    assert_eq!(code(&o), 0, "{}", stderr(&o));
+    assert!(stdout_json(&o).get("forced").is_none());
+    assert!(!stderr(&o).contains("overrides"), "{}", stderr(&o));
+}
+
+#[test]
 fn a_source_that_cannot_be_attached_puts_the_other_fields_back() {
     let sb = workspace_with_rules(&[]);
     let body = write_file(&sb, "body.md", "A new body.\n");

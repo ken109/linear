@@ -185,6 +185,17 @@ pub enum Role {
     Author,
 }
 
+impl fmt::Display for Role {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(match self {
+            Self::Lead => "lead",
+            Self::Owner => "owner",
+            Self::Assignee => "assignee",
+            Self::Author => "author",
+        })
+    }
+}
+
 /// Somebody the refused write would have needed to be the viewer: who holds the
 /// role now (`None`: nobody does).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]

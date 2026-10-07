@@ -13,7 +13,7 @@
 //! title, a title is not given twice under one parent (a second `create` returns
 //! the first), and a body file is not empty.
 
-use super::{read_text, resolve, WriteSession};
+use super::{read_text, resolve, ForceArg, WriteSession};
 use crate::commands::document::{find_initiative, key_of};
 use crate::commands::format::date_time;
 use crate::commands::listing::paginate;
@@ -52,6 +52,8 @@ pub struct CreateCmd {
     /// `template-sections` rule is on; otherwise ignored)
     #[arg(long, value_name = "NAME")]
     pub template: Option<String>,
+    #[command(flatten)]
+    pub force: ForceArg,
 }
 
 /// What `create` prints: the document, and whether it was already there.
@@ -69,7 +71,7 @@ pub fn create(ctx: &Ctx, cmd: &CreateCmd) -> Result<()> {
     let title = non_blank(&cmd.title, "--title")?;
     let body = body(cmd.body_file.as_deref())?;
 
-    let ws = ctx.write_session()?;
+    let ws = ctx.write_session_with(cmd.force)?;
     let (project_id, initiative_id) =
         guarded_parent(&ws, cmd.project.as_deref(), cmd.initiative.as_deref())?;
 
@@ -87,7 +89,7 @@ pub fn create(ctx: &Ctx, cmd: &CreateCmd) -> Result<()> {
     })?
     .items;
     if let Some(existing) = same.iter().find(|d| d.title == title) {
-        emit_created(ctx, &ws, existing, true);
+        emit_created(&ws, existing, true);
         return Ok(());
     }
 
@@ -108,17 +110,17 @@ pub fn create(ctx: &Ctx, cmd: &CreateCmd) -> Result<()> {
     if !payload.success {
         return Err(CliError::general("Linear could not create the document"));
     }
-    emit_created(ctx, &ws, &payload.document, false);
+    emit_created(&ws, &payload.document, false);
     Ok(())
 }
 
-fn emit_created(ctx: &Ctx, ws: &WriteSession, document: &Doc, existing: bool) {
+fn emit_created(ws: &WriteSession, document: &Doc, existing: bool) {
     let value = Created {
         workspace: &ws.workspace,
         existing,
         document,
     };
-    ctx.out.emit(
+    ws.emit(
         &value,
         || {
             let how = if existing {
@@ -153,6 +155,8 @@ pub struct UpdateCmd {
     /// when the `template-sections` rule is on; otherwise ignored)
     #[arg(long, value_name = "NAME")]
     pub template: Option<String>,
+    #[command(flatten)]
+    pub force: ForceArg,
 }
 
 /// What `update` prints.
@@ -184,7 +188,7 @@ pub fn update(ctx: &Ctx, cmd: &UpdateCmd) -> Result<()> {
         None => None,
     };
 
-    let ws = ctx.write_session()?;
+    let ws = ctx.write_session_with(cmd.force)?;
     let data: DocView = ws.client.execute(&docs::doc_view(key_of(&cmd.document)))?;
     let current = &data.document;
 
@@ -193,6 +197,7 @@ pub fn update(ctx: &Ctx, cmd: &UpdateCmd) -> Result<()> {
         (Some(project), _) => {
             let owned = resolve::project(&ws, project.id.inner())?;
             ws.guard(
+                &format!("project {:?} (document {:?})", owned.name, current.title),
                 &Write::ProjectUpdate {
                     lead: owned.lead.as_ref().map(|u| u.id.inner()),
                 },
@@ -202,6 +207,10 @@ pub fn update(ctx: &Ctx, cmd: &UpdateCmd) -> Result<()> {
         (None, Some(initiative)) => {
             let owned = find_initiative(&ws.client, initiative.id.inner())?;
             ws.guard(
+                &format!(
+                    "initiative {:?} (document {:?})",
+                    owned.name, current.title
+                ),
                 &Write::InitiativeUpdate {
                     owner: owned.owner.as_ref().map(|u| u.id.inner()),
                 },
@@ -232,7 +241,7 @@ pub fn update(ctx: &Ctx, cmd: &UpdateCmd) -> Result<()> {
     };
     if input.is_empty() {
         ws.note("nothing to change: the document already has these values");
-        emit_updated(ctx, &ws, current, false);
+        emit_updated(&ws, current, false);
         return Ok(());
     }
 
@@ -243,17 +252,17 @@ pub fn update(ctx: &Ctx, cmd: &UpdateCmd) -> Result<()> {
     if !payload.success {
         return Err(CliError::general("Linear could not update the document"));
     }
-    emit_updated(ctx, &ws, &payload.document, true);
+    emit_updated(&ws, &payload.document, true);
     Ok(())
 }
 
-fn emit_updated(ctx: &Ctx, ws: &WriteSession, document: &Doc, changed: bool) {
+fn emit_updated(ws: &WriteSession, document: &Doc, changed: bool) {
     let value = Updated {
         workspace: &ws.workspace,
         changed,
         document,
     };
-    ctx.out.emit(
+    ws.emit(
         &value,
         || {
             format!(
@@ -280,6 +289,7 @@ fn guarded_parent(
     if let Some(reference) = project {
         let project = resolve::project(ws, reference)?;
         ws.guard(
+            &format!("project {:?} (a document under it)", project.name),
             &Write::ProjectUpdate {
                 lead: project.lead.as_ref().map(|u| u.id.inner()),
             },
@@ -290,6 +300,7 @@ fn guarded_parent(
     let reference = initiative.ok_or_else(|| CliError::usage("pass --project or --initiative"))?;
     let initiative = find_initiative(&ws.client, reference)?;
     ws.guard(
+        &format!("initiative {:?} (a document under it)", initiative.name),
         &Write::InitiativeUpdate {
             owner: initiative.owner.as_ref().map(|u| u.id.inner()),
         },

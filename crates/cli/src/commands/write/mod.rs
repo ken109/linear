@@ -8,7 +8,10 @@
 //!    belong to it, and learns who "me" is (the viewer).
 //! 2. [`WriteSession::guard`] asks the ownership rules (as strict as the
 //!    workspace's `ownership` setting says) whether the viewer may make this
-//!    write (exit code 4 when not).
+//!    write (exit code 4 when not). With `--force`, in a workspace that sets
+//!    `allow_force`, a refusal is overridden instead, and reported: on stderr
+//!    when it happens, and in the `--json` output of the command
+//!    ([`WriteSession::emit`]). Only this step is bypassed.
 //! 3. [`WriteSession::validate`] runs the workspace's enabled validator rules
 //!    (exit code 5 when one fails), fetching whatever they need first. It may
 //!    also answer "this already exists" (source idempotence).
@@ -39,15 +42,37 @@ use super::Ctx;
 use crate::error::{CliError, Result};
 use crate::http::Client;
 use crate::output::Output;
+use clap::Args;
 use linear_core::config::Ownership;
 use linear_core::error::ErrorCode;
-use linear_core::guard::{self, Denied, Viewer, Write};
+use linear_core::guard::{self, Denied, Verdict, Viewer, Write};
 use linear_core::queries;
 use linear_core::read;
 use linear_core::rules::{Draft, Fetched, Needs, Outcome, Rejected, RuleSet};
+use serde::Serialize;
+use std::cell::RefCell;
 use std::io::Read as _;
 use std::path::Path;
 use std::time::Duration;
+
+/// `--force`, on every command that asks the ownership rules.
+#[derive(Debug, Args, Clone, Copy, Default)]
+pub struct ForceArg {
+    /// Write even where the ownership rules would refuse (exit 4). Needs `allow_force = true`
+    /// for the workspace in workspaces.toml (exit 2 otherwise). Validators and `--yes` still
+    /// apply. An override is reported on stderr, and as `forced` in the --json output
+    #[arg(long)]
+    pub force: bool,
+}
+
+/// An ownership refusal that `--force` overrode.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct Overridden {
+    /// What was written: `project "Roadmap"`, `issue KK-12`.
+    pub target: String,
+    #[serde(flatten)]
+    pub denied: Denied,
+}
 
 impl From<Denied> for CliError {
     /// A write refused by the ownership rules: exit code 4.
@@ -77,6 +102,10 @@ pub struct WriteSession {
     pub viewer: Viewer,
     /// How strictly the ownership rules apply in this workspace.
     pub ownership: Ownership,
+    /// `--force` was given (and the workspace allows it).
+    force: bool,
+    /// The ownership refusals `--force` has overridden so far in this run.
+    forced: RefCell<Vec<Overridden>>,
     pub out: Output,
 }
 
@@ -88,15 +117,32 @@ impl Ctx {
     /// never write), and fetches the viewer the ownership rules compare
     /// against. The viewer is looked up once per run.
     pub fn write_session(&self) -> Result<WriteSession> {
+        self.write_session_with(ForceArg::default())
+    }
+
+    /// [`Ctx::write_session`] for a command that takes `--force`. `--force` in a workspace
+    /// that does not set `allow_force` is a usage error, before anything is sent.
+    pub fn write_session_with(&self, force: ForceArg) -> Result<WriteSession> {
+        let stored = crate::store::read_config(&self.dirs)?;
+        let resolved = self.resolve(&stored)?;
+        if force.force && !resolved.config.allow_force {
+            return Err(CliError::usage(format!(
+                "--force needs `allow_force = true` for workspace {:?} in workspaces.toml; \
+                 nothing was sent",
+                resolved.name
+            )));
+        }
         let Session {
             workspace,
             config,
             client,
-        } = self.session()?;
+        } = self.session_for(&resolved.name, resolved.config)?;
         let who = super::verify(&client, &workspace, &config.url_key)?;
         Ok(WriteSession {
             viewer: Viewer::from_user(&workspace, &who.viewer),
             ownership: config.ownership,
+            force: force.force,
+            forced: RefCell::default(),
             rules: RuleSet::from_workspace(&config),
             default_team: config.default_team.clone(),
             source_title: config.default_source_title().to_owned(),
@@ -108,14 +154,60 @@ impl Ctx {
 }
 
 impl WriteSession {
-    /// Step 2: may the viewer make this write? Exit code 4 when not.
-    pub fn guard(&self, write: &Write<'_>, allow_foreign: bool) -> Result<()> {
-        Ok(guard::check_with(
+    /// Step 2: may the viewer make this write to `target`? Exit code 4 when not.
+    ///
+    /// With `--force` a refusal is overridden instead: it is reported on stderr now,
+    /// before anything is sent, and kept for [`WriteSession::emit`]. A write the rules
+    /// allow is not reported, forced or not.
+    pub fn guard(&self, target: &str, write: &Write<'_>, allow_foreign: bool) -> Result<()> {
+        let verdict = guard::check_forced(
             &self.viewer,
             self.ownership,
             write,
             allow_foreign,
-        )?)
+            self.force,
+        )?;
+        if let Verdict::Forced(denied) = verdict {
+            self.out.status(&format!(
+                "warning: --force overrides the ownership rules for {target} ({}): {}{}",
+                denied.operation,
+                denied.message,
+                held_by(&denied)
+            ));
+            self.forced.borrow_mut().push(Overridden {
+                target: target.to_owned(),
+                denied,
+            });
+        }
+        Ok(())
+    }
+
+    /// The refusals `--force` overrode in this run.
+    pub fn overridden(&self) -> Vec<Overridden> {
+        self.forced.borrow().clone()
+    }
+
+    /// [`Output::emit`], with `forced: true` and the refusals that were overridden added to
+    /// the `--json` output when `--force` overrode any. Otherwise the output is unchanged.
+    pub fn emit<T: Serialize>(
+        &self,
+        value: &T,
+        human: impl FnOnce() -> String,
+        quiet: impl FnOnce() -> String,
+    ) {
+        let overridden = self.overridden();
+        if !self.out.json || overridden.is_empty() {
+            return self.out.emit(value, human, quiet);
+        }
+        let mut json = serde_json::to_value(value).expect("output always serializes");
+        if let serde_json::Value::Object(map) = &mut json {
+            map.insert("forced".into(), true.into());
+            map.insert(
+                "overridden".into(),
+                serde_json::to_value(&overridden).expect("output always serializes"),
+            );
+        }
+        self.out.emit(&json, human, quiet)
     }
 
     /// Step 3: run the enabled validators on what is about to be written.
@@ -150,6 +242,19 @@ impl WriteSession {
     pub fn note(&self, message: &str) {
         self.out.status(&format!("note: {message}"));
     }
+}
+
+/// `; held by: lead user-bob, assignee nobody`: who the write would have needed to be you.
+fn held_by(denied: &Denied) -> String {
+    if denied.held.is_empty() {
+        return String::new();
+    }
+    let holders: Vec<String> = denied
+        .held
+        .iter()
+        .map(|h| format!("{} {}", h.role, h.user.as_deref().unwrap_or("nobody")))
+        .collect();
+    format!("; held by: {}", holders.join(", "))
 }
 
 // ---------------------------------------------------------------- rollback
