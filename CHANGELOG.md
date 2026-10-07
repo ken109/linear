@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.5.0](https://github.com/ken109/linear/compare/v0.4.0...v0.5.0) (2026-10-07)
+
+
+### ⚠ BREAKING CHANGES
+
+* **cli:** camelCase the remaining snake_case keys of --json output
+
+### Features
+
+* **cli:** camelCase the remaining snake_case keys of --json output ([8afa1f6](https://github.com/ken109/linear/commit/8afa1f64c5faa0fdad6e04c9cfa0e794e1b52a75))
+
 ## [0.4.0](https://github.com/ken109/linear/compare/v0.3.0...v0.4.0) (2026-10-07)
 
 
