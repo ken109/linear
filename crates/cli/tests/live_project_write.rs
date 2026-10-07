@@ -12,9 +12,8 @@
 //! delete a project, so the projects it makes are canceled at the end:
 //! repeated runs leave only canceled projects behind.
 //!
-//! Initiatives are disabled on the free plan the sandbox runs on, so
-//! `--initiative` (and the rollback of a failed link) is only covered by the
-//! mock tests in `project_write.rs`.
+//! `--initiative` is checked live in `live_structure.rs`; the rollback of a
+//! failed link is only covered by the mock tests in `project_write.rs`.
 
 mod common;
 

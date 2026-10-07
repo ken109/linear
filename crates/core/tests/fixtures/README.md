@@ -16,7 +16,7 @@ Structure, nullability and value formats are exactly Linear's.
 | `project_view.json`         | `read::project_view`          | `projects.json` with a second, newer status update (newest first) and an initiative; `detail` shape verified live |
 | `milestones.json`           | `read::milestones_of_project` | `issue.json`'s milestone plus a second one, out of order |
 | `milestone_view.json`       | `read::milestone_view`        | `detail` alias: the milestone's issues             |
-| `initiative_view.json`      | `read::initiative_view`       | **hand-written** (initiatives are disabled on the free plan) |
+| `initiative_view.json`      | `read::initiative_view`       | **hand-written** (the sandbox only ever holds archived test initiatives) |
 | `labels.json`               | `read::labels`                | a group, a child and a plain label, in creation order |
 | `teams.json`, `users.json`  | `read::teams`, `read::users`  | `users.json` includes Linear's own bot user        |
 | `templates_sections.json`   | `queries::templates`          | `templates.json` plus a template with real heading nodes and a project template |
@@ -28,7 +28,7 @@ Structure, nullability and value formats are exactly Linear's.
 | `cycles.json`               | `read::cycles`                | **hand-written**: the sandbox team has no cycles. The shape (fields, nullability) was checked against lt-three's real cycles, read-only; cycle #41 is Tue 2026-10-05T15:00Z, a week long |
 | `error_unauthenticated.json`| any, with a bad key           | HTTP 401                                           |
 | `error_too_complex.json`    | `projects` at 20 per page     | HTTP 400, `INPUT_ERROR`                            |
-| `initiatives.json`          | `queries::initiatives`        | **hand-written**: the free plan disables initiatives, so the sandbox cannot produce one |
+| `initiatives.json`          | `queries::initiatives`        | **hand-written**: the sandbox only ever holds archived test initiatives, so it has no stable one to capture |
 
 The live read tests (`crates/cli/tests/live_read.rs`) also rely on this seed data in the sandbox: a second
 status update on `Fixture Project` and a completed project without a lead (`Finished Project`), and an issue template with heading
@@ -44,7 +44,10 @@ issues behind; it needs no other seed data.
 The live structure test (`crates/cli/tests/live_structure.rs`) uses `Fixture Project` (and `Milestone 1`, which must keep an
 issue in it: the test checks that such a milestone cannot be deleted) and `Finished Project`. It removes the milestones it
 creates. It creates the issue template `Live Created Template` once and leaves it (the CLI cannot delete a template); later runs
-find it. Initiatives cannot be created on the free plan, so the test only checks that Linear's refusal is reported.
+find it. The initiative scenario creates one initiative (`live initiative <nanoseconds>`) and two projects per run, links the
+projects to it, and at the end cancels the projects and archives the initiative (a raw `initiativeArchive` mutation, since the
+CLI has no archive command), even when an assertion fails. What remains after each run: those canceled projects and that
+archived initiative. The rollback of a failed link is not provoked live (it cannot be done safely); the mock tests cover it.
 
 The live audit test (`crates/cli/tests/live_audit.rs`) relies on the projects, milestone and issues named
 `audit-seed ...` that `scripts/seed-sandbox-audit.py` plants (an overdue project without a lead, a completed project with

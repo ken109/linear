@@ -234,9 +234,9 @@ fn templates_labels_teams_and_users_are_read() {
 
 #[test]
 #[ignore = "needs LINEAR_API_KEY_SANDBOX and network access"]
-fn initiatives_list_without_error_even_where_the_plan_has_none() {
-    // The free plan disables initiatives, so the sandbox returns an empty
-    // list; this only checks that the query is accepted.
+fn initiatives_list_without_error_even_where_the_workspace_has_none() {
+    // This only checks that the query is accepted; what a created initiative
+    // looks like to `list` and `view` is checked in `live_structure.rs`.
     let (sb, key) = sandbox();
     assert!(json(&sb, &key, &["initiative", "list"]).is_array());
 }
