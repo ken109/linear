@@ -29,6 +29,7 @@
 //! `issue` holds the issue commands built on this path; the project,
 //! milestone, initiative and template writes use the same pieces.
 
+pub mod batch;
 pub mod comment;
 pub mod document;
 pub mod dry_run;

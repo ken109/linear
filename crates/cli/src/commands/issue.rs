@@ -103,6 +103,18 @@ pub enum IssueCommand {
     Unrelate(super::write::issue::UnrelateCmd),
     /// Put issues of one project in a given order
     Reorder(super::write::issue::ReorderCmd),
+    /// Create and update several issues from a JSON document, all or nothing
+    ///
+    /// `--file` is the document (`-` for standard input); `--schema` prints its JSON Schema.
+    /// Each item is one `issue create` or `issue update` with the same fields, and a body is
+    /// given inline. Every item goes through the ownership rules and the validators first,
+    /// exactly as the command would, and nothing is sent unless all of them pass; any refusal
+    /// is reported with its item's index and sends nothing. `--dry-run` prints what would be
+    /// sent. The mutations are then sent in order, and if one fails the ones before it are
+    /// undone: a created issue is moved to the trash, an updated one gets its old values back.
+    /// A source attached to an existing issue is sent last and is not taken back. At most 50
+    /// items; an issue or a source may appear once. Deleting is not part of a batch.
+    Batch(super::write::batch::BatchCmd),
 }
 
 const STATE_TYPES: [&str; 6] = [
@@ -243,6 +255,7 @@ pub fn run(ctx: &Ctx, cmd: &IssueCommand) -> Result<()> {
         IssueCommand::Relate(args) => write::issue::relate(ctx, args),
         IssueCommand::Unrelate(args) => write::issue::unrelate(ctx, args),
         IssueCommand::Reorder(args) => write::issue::reorder(ctx, args),
+        IssueCommand::Batch(args) => write::batch::run(ctx, args),
     }
 }
 

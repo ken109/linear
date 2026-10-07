@@ -131,6 +131,10 @@ pub fn run(cli: &Cli, out: Output) -> Result<()> {
         Command::Webhook(webhook::WebhookCommand::Verify(args)) => {
             return webhook::verify(out, args)
         }
+        Command::Issue(issue::IssueCommand::Batch(args)) if args.schema => {
+            write::batch::print_schema(out);
+            return Ok(());
+        }
         _ => {}
     }
     crate::http::configure(crate::http::Settings::resolve(cli.timeout)?);
@@ -198,7 +202,8 @@ fn no_dry_run(command: &Command) -> Option<&'static str> {
             | Issue::Unarchive(_)
             | Issue::Relate(_)
             | Issue::Unrelate(_)
-            | Issue::Reorder(_) => None,
+            | Issue::Reorder(_)
+            | Issue::Batch(_) => None,
         },
         Command::Comment(cmd) => match cmd {
             Comment::Usage => Some("comment usage"),
