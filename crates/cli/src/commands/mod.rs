@@ -5,6 +5,7 @@ pub mod audit;
 pub mod brief;
 pub mod cache;
 pub mod cached;
+pub mod comment;
 pub mod completions;
 pub mod cycle;
 pub mod file;
@@ -59,6 +60,7 @@ pub fn run(cli: &Cli, out: Output) -> Result<()> {
         Command::Workspace(cmd) => workspace::run(&ctx, cmd),
         Command::Api(args) => api::run(&ctx, args),
         Command::Issue(cmd) => issue::run(&ctx, cmd),
+        Command::Comment(cmd) => comment::run(&ctx, cmd),
         Command::Project(cmd) => project::run(&ctx, cmd),
         Command::Milestone(cmd) => milestone::run(&ctx, cmd),
         Command::Initiative(cmd) => initiative::run(&ctx, cmd),
