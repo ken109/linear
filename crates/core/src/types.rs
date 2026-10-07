@@ -450,6 +450,78 @@ pub struct Issue {
     pub attachments: AttachmentNodes,
 }
 
+/// An issue as `searchIssues` returns it: the same fields as [`Issue`], selected from the
+/// GraphQL type `IssueSearchResult`. Keep the two in step: the conversion below builds an
+/// `Issue` from every field, so a field added to `Issue` alone does not compile.
+#[derive(cynic::QueryFragment, Debug, Clone, PartialEq, Serialize, JsonSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct IssueSearchResult {
+    #[schemars(with = "String")]
+    pub id: cynic::Id,
+    pub identifier: String,
+    pub title: String,
+    pub description: Option<String>,
+    pub url: String,
+    /// The git branch name Linear suggests for the issue (Linear's `branchName`).
+    /// A branch of this name, or one that holds the identifier, links its pull
+    /// request to the issue through the GitHub integration.
+    pub branch_name: String,
+    pub team: Team,
+    pub state: WorkflowState,
+    pub assignee: Option<User>,
+    pub project: Option<ProjectRef>,
+    pub project_milestone: Option<Milestone>,
+    #[arguments(first: 50)]
+    pub labels: LabelNodes,
+    pub due_date: Option<NaiveDate>,
+    pub estimate: Option<f64>,
+    /// Position in a manual-order view (ascending, top first). `reorder` writes it.
+    pub sort_order: f64,
+    /// Position in a priority-order view, Linear's default (ascending, top first).
+    /// `reorder` writes it together with `sort_order`.
+    pub priority_sort_order: f64,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+    pub started_at: Option<DateTime<Utc>>,
+    pub completed_at: Option<DateTime<Utc>>,
+    pub canceled_at: Option<DateTime<Utc>>,
+    pub parent: Option<IssueRef>,
+    #[arguments(first: 10)]
+    pub attachments: AttachmentNodes,
+}
+
+impl From<IssueSearchResult> for Issue {
+    /// A search hit is an issue with the same fields, so every command that shows an issue
+    /// can show it.
+    fn from(hit: IssueSearchResult) -> Self {
+        Issue {
+            id: hit.id,
+            identifier: hit.identifier,
+            title: hit.title,
+            description: hit.description,
+            url: hit.url,
+            branch_name: hit.branch_name,
+            team: hit.team,
+            state: hit.state,
+            assignee: hit.assignee,
+            project: hit.project,
+            project_milestone: hit.project_milestone,
+            labels: hit.labels,
+            due_date: hit.due_date,
+            estimate: hit.estimate,
+            sort_order: hit.sort_order,
+            priority_sort_order: hit.priority_sort_order,
+            created_at: hit.created_at,
+            updated_at: hit.updated_at,
+            started_at: hit.started_at,
+            completed_at: hit.completed_at,
+            canceled_at: hit.canceled_at,
+            parent: hit.parent,
+            attachments: hit.attachments,
+        }
+    }
+}
+
 impl Issue {
     /// The URL of the first attachment, taken as the issue's origin.
     ///

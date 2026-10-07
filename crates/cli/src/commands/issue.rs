@@ -1,4 +1,4 @@
-//! `linear issue list|view|create|update|comment|link-pr|unlink|relate|unrelate|delete|archive|unarchive|reorder` (the writes live in `write::issue`).
+//! `linear issue list|search|view|create|update|comment|link-pr|unlink|relate|unrelate|delete|archive|unarchive|reorder` (the writes live in `write::issue`).
 
 use super::cached::{self, CachedArgs};
 use super::format::{date_time, fields, indent, opt_date, opt_text, person};
@@ -12,7 +12,8 @@ use linear_core::filters::{closed_since, priority_number, IssueQuery, Pick};
 use linear_core::matching::label_path;
 use linear_core::pull_request::PullRequest;
 use linear_core::read::{
-    self, IssueDetail, IssueList, IssueListVars, IssueView, RelationEnd, ISSUE_LIST_PAGE_SIZE,
+    self, IssueDetail, IssueList, IssueListVars, IssueSearch, IssueSearchVars, IssueView,
+    RelationEnd, ISSUE_LIST_PAGE_SIZE,
 };
 use linear_core::types::Issue;
 use serde::Serialize;
@@ -21,6 +22,12 @@ use serde::Serialize;
 pub enum IssueCommand {
     /// List issues, optionally narrowed by assignee, state, project, label, priority, parent, cycle or origin URL
     List(ListCmd),
+    /// Search issues by their title and description (and comments), best match first
+    ///
+    /// Uses Linear's full-text search, so it finds an issue about the same thing even when
+    /// the words differ a little (what a duplicate check wants). Linear allows 30 searches
+    /// a minute. The result is printed like `issue list`.
+    Search(SearchCmd),
     /// Show one issue with its description and comments
     View(ViewCmd),
     /// Create an issue (same origin URL: returns the existing one instead)
@@ -173,6 +180,33 @@ pub struct ListCmd {
     pub cache: CachedArgs,
 }
 
+#[derive(Debug, Args)]
+pub struct SearchCmd {
+    /// What to look for (several words are searched together, quoted or not)
+    #[arg(required = true, num_args = 1.., value_name = "QUERY")]
+    pub query: Vec<String>,
+    /// Team key
+    #[arg(long, value_name = "KEY")]
+    pub team: Option<String>,
+    /// Project: id, slug id, URL or name
+    #[arg(long, value_name = "PROJECT")]
+    pub project: Option<String>,
+    /// State type (repeatable or comma-separated)
+    #[arg(long, value_name = "TYPE", value_delimiter = ',', value_parser = STATE_TYPES)]
+    pub state_type: Vec<String>,
+    /// State name, ignoring case (repeatable; any of them)
+    #[arg(long, value_name = "NAME")]
+    pub state: Vec<String>,
+    /// Only issues that are not completed or canceled
+    #[arg(long, conflicts_with = "state_type")]
+    pub open: bool,
+    /// Search the comments of the issues as well
+    #[arg(long)]
+    pub comments: bool,
+    #[command(flatten)]
+    pub page: ListArgs,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
 pub enum Order {
     /// The order Linear returns
@@ -192,6 +226,7 @@ pub struct ViewCmd {
 pub fn run(ctx: &Ctx, cmd: &IssueCommand) -> Result<()> {
     match cmd {
         IssueCommand::List(args) => list(ctx, args),
+        IssueCommand::Search(args) => search(ctx, args),
         IssueCommand::View(args) => view(ctx, args),
         IssueCommand::Create(args) => write::issue::create(ctx, args),
         IssueCommand::Update(args) => write::issue::update(ctx, args),
@@ -386,7 +421,13 @@ fn sort_manual(order: Order, items: &mut [Issue]) {
 
 fn list(ctx: &Ctx, args: &ListCmd) -> Result<()> {
     let (workspace, items) = fetch_list(ctx, args)?;
-    let rows: Vec<IssueOut> = items.iter().map(|i| out(&workspace, i)).collect();
+    print_issues(ctx, &workspace, &items);
+    Ok(())
+}
+
+/// Print issues as `issue list` and `issue search` do: a table, `--json` rows, or identifiers.
+fn print_issues(ctx: &Ctx, workspace: &str, items: &[Issue]) {
+    let rows: Vec<IssueOut> = items.iter().map(|i| out(workspace, i)).collect();
     ctx.out.emit(
         &rows,
         || {
@@ -415,6 +456,45 @@ fn list(ctx: &Ctx, args: &ListCmd) -> Result<()> {
                 .join("\n")
         },
     );
+}
+
+fn search(ctx: &Ctx, args: &SearchCmd) -> Result<()> {
+    let term = args.query.join(" ");
+    let term = term.trim();
+    if term.is_empty() {
+        return Err(CliError::usage("the search text is empty"));
+    }
+    let session = ctx.session()?;
+    let project_id = match &args.project {
+        Some(reference) => Some(resolve_project(&session.client, reference)?.id.into_inner()),
+        None => None,
+    };
+    let filter = IssueQuery {
+        state_types: args.state_type.clone(),
+        state_names: args.state.clone(),
+        open: args.open,
+        team_key: args.team.clone(),
+        project_id,
+        ..IssueQuery::default()
+    }
+    .filter();
+
+    let listing = paginate(ISSUE_LIST_PAGE_SIZE, args.page.limit(), |page| {
+        let vars = IssueSearchVars::new(page, term, filter.clone(), args.comments);
+        let data: IssueSearch = session.client.execute(&read::issue_search(vars))?;
+        let mut found = data.search_issues;
+        // Linear answers a search that matches nothing with `hasNextPage: true` and no cursor
+        // (seen with a filter); an empty page with nowhere to continue is the end.
+        if found.nodes.is_empty() && found.page_info.end_cursor.is_none() {
+            found.page_info.has_next_page = false;
+        }
+        Ok(found)
+    })?;
+    if listing.truncated {
+        warn_truncated(listing.items.len());
+    }
+    let items: Vec<Issue> = listing.items.into_iter().map(Issue::from).collect();
+    print_issues(ctx, &session.workspace, &items);
     Ok(())
 }
 

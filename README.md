@@ -296,6 +296,7 @@ linear issue list --project "My Project" --open --order manual --all   # the scr
 linear issue list --team KK --priority urgent,high --updated-after 7d   # by priority, recently touched
 linear issue list --parent KK-12                            # the sub-issues of KK-12 (`--parent none`: top-level only)
 linear issue list --team KK --cycle 42                      # the issues of cycle #42 of team KK (`--cycle none`: in no cycle)
+linear issue search "export fails on large files" --team KK --open   # full-text search, best match first
 linear issue view KK-12
 
 linear project list --open --lead me
@@ -343,6 +344,15 @@ page is fetched first and `--limit` then keeps the first of the sorted list. The
 compare within one project, so use it with `--project`.
 `--json` prints Linear's own shape plus a `workspace` field; `--quiet` prints one key per line
 (issue identifier, project or initiative slug, milestone or template name, team key, user email).
+
+`issue search QUERY...` finds issues by their title and description with Linear's full-text and
+vector search (`searchIssues`), so it also finds an issue about the same thing in other words:
+the check for "is there already an issue like this?" that `--source-url` cannot make. The words
+are searched together, quoted or not, and the best match comes first. `--comments` searches the
+comments as well. `--team`, `--project`, `--state`, `--state-type` and `--open` narrow the hits as
+they do in `issue list`; `--limit`, `--all`, `--json` and `--quiet` work as there, and the output has
+the same shape. It is not an exact match, so it can return issues that only resemble the query.
+Linear allows 30 searches a minute, and an empty query is a usage error (exit 2).
 
 ## Brief
 

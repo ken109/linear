@@ -393,3 +393,34 @@ fn the_new_filters_narrow_together_with_the_old_ones() {
         json!({"type": {"nin": ["completed", "canceled"]}})
     );
 }
+
+#[test]
+fn a_search_sends_the_term_and_the_filter_and_asks_for_comments_only_on_request() {
+    let q = IssueQuery {
+        team_key: Some("EX".into()),
+        ..IssueQuery::default()
+    };
+    let req = build_request(&read::issue_search(read::IssueSearchVars::new(
+        page(),
+        "duplicate check",
+        q.filter(),
+        false,
+    )));
+    assert!(req.query.contains("searchIssues"), "{}", req.query);
+    let v = serde_json::from_str::<Value>(&req.to_json()).unwrap()["variables"].clone();
+    assert_eq!(v["term"], "duplicate check");
+    assert_eq!(
+        v["filter"],
+        json!({"team": {"key": {"eqIgnoreCase": "EX"}}})
+    );
+    assert_eq!(v["includeComments"], Value::Null);
+
+    let req = build_request(&read::issue_search(read::IssueSearchVars::new(
+        page(),
+        "x",
+        None,
+        true,
+    )));
+    assert_eq!(req.variables["includeComments"], true);
+    assert_eq!(req.variables["filter"], Value::Null);
+}

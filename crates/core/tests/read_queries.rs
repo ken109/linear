@@ -1,7 +1,7 @@
 //! The read queries against anonymized responses.
 
 use chrono::{TimeZone, Utc};
-use linear_core::read::{self, IssueList, IssueView};
+use linear_core::read::{self, IssueList, IssueSearch, IssueView};
 use linear_core::wire::{build_request, parse_response, ResponseMeta};
 use serde_json::Value;
 
@@ -69,4 +69,18 @@ fn the_issue_list_request_selects_the_page_and_the_filter() {
     assert_eq!(v["variables"]["first"], 50);
     assert_eq!(v["variables"]["after"], "c1");
     assert_eq!(v["variables"]["filter"], Value::Null);
+}
+
+#[test]
+fn a_search_result_decodes_and_becomes_the_issue_it_is() {
+    let found: IssueSearch = parse("issue_search");
+    let hits = found.search_issues.nodes;
+    assert_eq!(hits.len(), 1);
+    assert!(!found.search_issues.page_info.has_next_page);
+
+    // The same fixed fragment as an issue: the page of `issue_list` converts to the same issues.
+    let listed: IssueList = parse("issue_list");
+    let issue: linear_core::types::Issue = hits[0].clone().into();
+    assert_eq!(issue, listed.issues.nodes[0]);
+    assert_eq!(issue.identifier, "EX-23");
 }

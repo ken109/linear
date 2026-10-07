@@ -54,6 +54,50 @@ pub fn issue_list(vars: IssueListVars) -> Operation<IssueList, IssueListVars> {
     IssueList::build(vars)
 }
 
+// ---------------------------------------------------------------- issue search
+
+#[derive(cynic::QueryVariables, Debug, Clone)]
+pub struct IssueSearchVars {
+    pub first: i32,
+    pub after: Option<String>,
+    pub term: String,
+    pub filter: Option<IssueFilter>,
+    pub include_comments: Option<bool>,
+}
+
+impl IssueSearchVars {
+    pub fn new(
+        page: PageVars,
+        term: impl Into<String>,
+        filter: Option<IssueFilter>,
+        include_comments: bool,
+    ) -> Self {
+        Self {
+            first: page.first,
+            after: page.after,
+            term: term.into(),
+            filter,
+            // Left out (Linear's default: no) unless asked for.
+            include_comments: include_comments.then_some(true),
+        }
+    }
+}
+
+paged_container!(IssueSearchPayload, "IssueSearchPayload", IssueSearchResult);
+
+/// Linear's `searchIssues`: full-text search of titles and descriptions (and comments, when
+/// asked), ranked by relevance. The filter narrows the hits like the one of `issues`.
+#[derive(cynic::QueryFragment, Debug, Clone, PartialEq)]
+#[cynic(graphql_type = "Query", variables = "IssueSearchVars")]
+pub struct IssueSearch {
+    #[arguments(first: $first, after: $after, term: $term, filter: $filter, includeComments: $include_comments)]
+    pub search_issues: IssueSearchPayload,
+}
+
+pub fn issue_search(vars: IssueSearchVars) -> Operation<IssueSearch, IssueSearchVars> {
+    IssueSearch::build(vars)
+}
+
 /// What a `view` shows beyond the issue's fixed fragment.
 #[derive(cynic::QueryFragment, Debug, Clone, PartialEq, Serialize, JsonSchema)]
 #[cynic(graphql_type = "Issue")]

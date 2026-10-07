@@ -12,6 +12,7 @@ Structure, nullability and value formats are exactly Linear's.
 | `assigned_issues.json`      | `queries::assigned_started_issues` |                                               |
 | `projects.json`             | `queries::projects`           | status update, milestone                           |
 | `issue_list.json`           | `read::issue_list`            | `assigned_issues.json`'s page under `issues`       |
+| `issue_search.json`         | `read::issue_search`          | **derived**: `issue_list.json`'s page under `searchIssues` (an `IssueSearchResult` has the fields of an `Issue`); shape verified against the sandbox |
 | `issue_view.json`           | `read::issue_view`            | `issue.json` plus the live shape of the `detail` alias (description, priority, comments, relations) |
 | `project_view.json`         | `read::project_view`          | `projects.json` with a second, newer status update (newest first) and an initiative; `detail` shape verified live |
 | `milestones.json`           | `read::milestones_of_project` | `issue.json`'s milestone plus a second one, out of order |

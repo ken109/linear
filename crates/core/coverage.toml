@@ -130,6 +130,15 @@ fields = [
 [[entry]]
 type = "Query"
 status = "implemented"
+via = ["read::issue_search"]
+commands = ["issue search"]
+fields = [
+  "searchIssues",
+]
+
+[[entry]]
+type = "Query"
+status = "implemented"
 via = [
   "read::project_list", "read::project_refs", "read::project_view", "read::milestones_of_project",
   "read::project_ownership", "project_write::project_order",
@@ -220,10 +229,18 @@ status = "unsupported"
 reason = "A read command is planned (milestone 2: reads); until it exists, use `linear api`."
 fields = [
   "attachment", "attachments", "comments", "issueLabel",
-  "issueRelation", "issueRelations", "issueSearch", "projectMilestones", "projectStatus",
+  "issueRelation", "issueRelations", "projectMilestones", "projectStatus",
   "projectUpdate", "projectUpdates",
-  "searchIssues", "searchProjects", "team", "template", "user",
+  "searchProjects", "team", "template", "user",
   "workflowState", "workflowStates",
+]
+
+[[entry]]
+type = "Query"
+status = "unsupported"
+reason = "Deprecated by Linear in favour of `searchIssues`, which `issue search` uses."
+fields = [
+  "issueSearch",
 ]
 
 [[entry]]
