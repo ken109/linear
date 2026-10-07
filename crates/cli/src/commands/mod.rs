@@ -126,12 +126,19 @@ impl Ctx {
             });
         }
         let store = store::credential_store(config.get(name))?;
-        let loaded = store::load_credential(&self.dirs, self.keyring.as_ref(), name, store)?
-            .ok_or_else(|| {
-                CliError::auth(format!(
-                    "no credentials for workspace {name:?}; run `linear workspace login {name}`"
-                ))
-            })?;
+        let load = if config
+            .get(name)
+            .is_some_and(|w| w.auth == AuthMethod::Oauth)
+        {
+            store::load_stored_credential
+        } else {
+            store::load_credential
+        };
+        let loaded = load(&self.dirs, self.keyring.as_ref(), name, store)?.ok_or_else(|| {
+            CliError::auth(format!(
+                "no credentials for workspace {name:?}; run `linear workspace login {name}`"
+            ))
+        })?;
         self.renewed(name, config.get(name), store, loaded)
     }
 

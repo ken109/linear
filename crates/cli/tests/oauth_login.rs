@@ -61,12 +61,21 @@ fn write_credential(sb: &Sandbox, json: &str) {
     }
 }
 
+/// A port nothing listens on, and that no other test of this file was given.
 fn free_port() -> u16 {
-    std::net::TcpListener::bind("127.0.0.1:0")
-        .unwrap()
-        .local_addr()
-        .unwrap()
-        .port()
+    static GIVEN: std::sync::Mutex<Vec<u16>> = std::sync::Mutex::new(Vec::new());
+    loop {
+        let port = std::net::TcpListener::bind("127.0.0.1:0")
+            .unwrap()
+            .local_addr()
+            .unwrap()
+            .port();
+        let mut given = GIVEN.lock().unwrap();
+        if !given.contains(&port) {
+            given.push(port);
+            return port;
+        }
+    }
 }
 
 fn env_for<'a>(mock: &'a Mock, extra: &[(&'a str, &'a str)]) -> Vec<(&'a str, String)> {
@@ -814,4 +823,18 @@ fn a_refreshed_token_goes_back_to_the_keyring_it_came_from() {
     assert_eq!(v["access_token"], "NEW-ACCESS");
     assert_eq!(v["refresh_token"], "NEW-REFRESH");
     assert!(!credentials_path(&sb).exists());
+}
+
+#[test]
+fn an_api_key_in_the_environment_is_not_the_credential_of_an_oauth_workspace() {
+    let sb = Sandbox::new();
+    add_oauth_workspace(&sb);
+    write_credential(&sb, r#"{"kind":"oauth","access_token":"LONG-LIVED"}"#);
+    let mock = Mock::start(vec![ok(WHOAMI_OK)]);
+    let o = run_whoami(&sb, &mock, &[("LINEAR_API_KEY_EXAMPLE", "lin_api_other")]);
+    assert_eq!(code(&o), 0, "{}", stderr(&o));
+    assert_eq!(
+        mock.requests()[0].authorization.as_deref(),
+        Some("Bearer LONG-LIVED")
+    );
 }

@@ -226,6 +226,11 @@ fn login(ctx: &Ctx, args: &LoginArgs) -> Result<()> {
             "workspace {name:?} authenticates as an app (client_credentials); --oauth logs a person in"
         )));
     }
+    if args.keyring && ws.auth == AuthMethod::ClientCredentials {
+        return Err(CliError::usage(format!(
+            "workspace {name:?} authenticates as an app (client_credentials): nothing is stored, so --keyring has no effect"
+        )));
+    }
     if !oauth && (args.client_id.is_some() || args.port.is_some() || args.no_browser) {
         return Err(CliError::usage(
             "--client-id, --port and --no-browser are for the OAuth login: add --oauth",

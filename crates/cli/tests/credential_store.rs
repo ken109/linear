@@ -235,3 +235,27 @@ fn the_environment_can_choose_the_store_and_a_bad_value_is_refused() {
         stderr(&o)
     );
 }
+
+#[test]
+fn keyring_on_an_app_workspace_is_a_usage_error() {
+    let sb = Sandbox::new();
+    let o = sb.run(
+        &[
+            "workspace",
+            "add",
+            "example",
+            "--url-key",
+            "example",
+            "--auth",
+            "client-credentials",
+            "--client-id",
+            "x",
+        ],
+        None,
+        &[],
+    );
+    assert_eq!(code(&o), 0, "{}", stderr(&o));
+    let o = sb.run(&["workspace", "login", "example", "--keyring"], None, &[]);
+    assert_eq!(code(&o), 2, "{}", stderr(&o));
+    assert!(stderr(&o).contains("--keyring"), "{}", stderr(&o));
+}

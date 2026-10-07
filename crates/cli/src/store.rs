@@ -164,6 +164,17 @@ pub fn load_credential(
         )));
     }
 
+    load_stored_credential(dirs, keyring, workspace, store)
+}
+
+/// The stored credential only (the keyring, then the file), whatever the environment says.
+/// An OAuth workspace uses this: an API key in the environment is not its credential.
+pub fn load_stored_credential(
+    dirs: &Dirs,
+    keyring: &dyn Keyring,
+    workspace: &str,
+    store: CredentialStore,
+) -> Result<Option<(Credential, CredentialSource)>> {
     let mut keyring_unavailable = None;
     if store == CredentialStore::Keyring {
         validate_workspace_name(workspace)?;
