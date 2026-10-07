@@ -44,10 +44,21 @@ fields = [
 [[entry]]
 type = "Query"
 status = "implemented"
-via = ["queries::issue", "queries::issue_comments", "read::issue_write_view"]
-commands = ["issue update", "issue comment", "issue reorder"]
+via = [
+  "queries::issue", "queries::issue_comments", "read::issue_write_view", "read::issue_relations",
+]
+commands = ["issue update", "issue comment", "issue relate", "issue unrelate", "issue reorder"]
 fields = [
   "issue",
+]
+
+[[entry]]
+type = "Query"
+status = "implemented"
+via = ["read::comment"]
+commands = ["comment update", "comment delete"]
+fields = [
+  "comment",
 ]
 
 [[entry]]
@@ -196,7 +207,7 @@ type = "Query"
 status = "unsupported"
 reason = "A read command is planned (milestone 2: reads); until it exists, use `linear api`."
 fields = [
-  "attachment", "attachments", "comment", "comments", "issueLabel",
+  "attachment", "attachments", "comments", "issueLabel",
   "issueRelation", "issueRelations", "issueSearch", "projectMilestones", "projectStatus",
   "projectUpdate", "projectUpdates",
   "searchIssues", "searchProjects", "team", "template", "user",
@@ -271,6 +282,18 @@ commands = [
 fields = [
   "attachmentCreate", "attachmentDelete", "commentCreate", "issueArchive", "issueCreate",
   "issueDelete", "issueUnarchive", "issueUpdate",
+]
+
+[[entry]]
+type = "Mutation"
+status = "implemented"
+via = [
+  "inputs::comment_update", "inputs::comment_delete", "inputs::issue_relation_create",
+  "inputs::issue_relation_delete",
+]
+commands = ["comment update", "comment delete", "issue relate", "issue unrelate"]
+fields = [
+  "commentDelete", "commentUpdate", "issueRelationCreate", "issueRelationDelete",
 ]
 
 [[entry]]
@@ -354,9 +377,9 @@ type = "Mutation"
 status = "unsupported"
 reason = "A write command is planned (milestone 3: writes). Until it exists, only `linear api --mutation` (with `allow_raw_mutation = true`) can send it, and no ownership rule or validator applies."
 fields = [
-  "attachmentLinkURL", "commentUpdate",
+  "attachmentLinkURL",
   "issueAddLabel",
-  "issueBatchUpdate", "issueLabelCreate", "issueRelationCreate",
+  "issueBatchUpdate", "issueLabelCreate",
   "issueRemoveLabel", "projectAddLabel",
   "projectRemoveLabel",
   "projectUpdateUpdate",
@@ -434,7 +457,7 @@ type = "Mutation"
 status = "unsupported"
 reason = "Not part of the planned write surface: the CLI deletes and archives only issues, projects and initiatives (reversibly, and an attachment of an issue with `--yes`), a project's link to an initiative (`initiative remove-project`), a file it uploaded a moment ago when attaching it failed (`fileUploadDangerouslyDelete`), and milestones (refused while they still have issues). `projectArchive` is deprecated by Linear in favour of `projectDelete`."
 fields = [
-  "agentActivityDeleteQueued", "agentSkillDelete", "commentDelete",
+  "agentActivityDeleteQueued", "agentSkillDelete",
   "customViewDelete", "customerDelete", "customerNeedArchive", "customerNeedDelete",
   "customerNeedUnarchive", "customerStatusDelete", "customerTierDelete", "cycleArchive",
   "documentDelete", "documentUnarchive", "emailIntakeAddressDelete", "emailIntakeAddressRotate",
@@ -442,7 +465,7 @@ fields = [
   "initiativeLabelDelete", "initiativeLabelRestore", "initiativeLabelRetire",
   "initiativeRelationDelete",
   "initiativeUpdateArchive", "initiativeUpdateUnarchive",
-  "issueLabelDelete", "issueLabelRestore", "issueLabelRetire", "issueRelationDelete",
+  "issueLabelDelete", "issueLabelRestore", "issueLabelRetire",
   "issueToReleaseDelete", "issueToReleaseDeleteByIssueAndRelease",
   "issueUnshare", "issueUnsubscribe", "notificationArchive", "notificationArchiveAll",
   "notificationSubscriptionDelete", "notificationUnarchive", "oauthApplicationArchive",

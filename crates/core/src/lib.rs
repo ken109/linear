@@ -25,6 +25,7 @@ pub mod pull_request;
 pub mod queries;
 pub mod read;
 pub mod refresh;
+pub mod relation;
 pub mod reorder;
 pub mod retry;
 pub mod rules;

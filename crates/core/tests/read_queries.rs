@@ -47,6 +47,12 @@ fn an_issue_view_selects_the_issue_twice_under_two_names() {
     assert_eq!(view.detail.priority_label, "High");
     assert_eq!(view.detail.comments.len(), 1);
     assert_eq!(view.detail.comments[0].body, "A fixture comment.");
+    // Both ends of the relations, as Linear holds them.
+    assert_eq!(view.detail.relations.len(), 1);
+    assert_eq!(view.detail.relations[0].type_, "blocks");
+    assert_eq!(view.detail.relations[0].related_issue.identifier, "EX-24");
+    assert_eq!(view.detail.inverse_relations.len(), 1);
+    assert_eq!(view.detail.inverse_relations[0].issue.identifier, "EX-22");
 }
 
 #[test]

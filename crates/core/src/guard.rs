@@ -17,7 +17,13 @@
 //! rules for teams that work on each other's issues: an issue may be created
 //! for anyone, in any project, and an issue may be changed by anyone. What
 //! stays refused is the same in both: writing a project the viewer does not
-//! lead, and canceling an issue that is not the viewer's ([`Write::IssueCancel`]).
+//! lead, canceling an issue that is not the viewer's ([`Write::IssueCancel`]) and
+//! deleting somebody else's comment ([`Write::CommentDelete`]).
+//!
+//! A **comment** is its author's: strict, only the author may edit or delete it
+//! ([`Write::CommentUpdate`], [`Write::CommentDelete`]). A lenient workspace lets
+//! anyone edit a comment (as it lets anyone change an issue), but still not delete
+//! one that is not theirs.
 //!
 //! "Me" is the workspace's viewer ([`Viewer`]); the CLI fetches and caches it
 //! per workspace. Everything here is a pure decision over ids; a refusal is a
@@ -101,6 +107,12 @@ pub enum Write<'a> {
         assignee: Option<&'a str>,
         placement: Placement<'a>,
     },
+    /// Edit a comment written by this user (`None`: a comment with no author, such as
+    /// one made by an integration).
+    CommentUpdate { author: Option<&'a str> },
+    /// Delete a comment written by this user. Asked as strictly in a lenient workspace:
+    /// a deletion cannot be taken back.
+    CommentDelete { author: Option<&'a str> },
 }
 
 impl<'a> Write<'a> {
@@ -109,7 +121,11 @@ impl<'a> Write<'a> {
             Self::ProjectCreate { .. } => Operation::ProjectCreate,
             Self::ProjectUpdate { .. } => Operation::ProjectUpdate,
             Self::IssueCreate { .. } => Operation::IssueCreate,
-            Self::IssueUpdate { .. } | Self::IssueCancel { .. } => Operation::IssueUpdate,
+            // A comment is a write to its issue.
+            Self::IssueUpdate { .. }
+            | Self::IssueCancel { .. }
+            | Self::CommentUpdate { .. }
+            | Self::CommentDelete { .. } => Operation::IssueUpdate,
         }
     }
 
@@ -140,6 +156,8 @@ pub enum DenyReason {
     IssueNotOwned,
     /// The project is led by someone else (or nobody).
     ForeignProject,
+    /// The comment was written by someone else (or by nobody).
+    CommentNotOwned,
 }
 
 /// A write refused by the ownership rules. Maps to exit code 4
@@ -184,7 +202,10 @@ pub fn check_with(
 ) -> Result<(), Denied> {
     let op = write.operation();
     if ownership == Ownership::Lenient
-        && matches!(write, Write::IssueCreate { .. } | Write::IssueUpdate { .. })
+        && matches!(
+            write,
+            Write::IssueCreate { .. } | Write::IssueUpdate { .. } | Write::CommentUpdate { .. }
+        )
     {
         return Ok(());
     }
@@ -261,6 +282,22 @@ pub fn check_with(
                 )
             }
         }
+        Write::CommentUpdate { author } | Write::CommentDelete { author } => {
+            if viewer.is(author) {
+                Ok(())
+            } else {
+                let what = if matches!(write, Write::CommentDelete { .. }) {
+                    "delete"
+                } else {
+                    "edit"
+                };
+                deny(
+                    op,
+                    DenyReason::CommentNotOwned,
+                    format!("you can only {what} your own comments (this one was written by {})", writer(author)),
+                )
+            }
+        }
         Write::IssueUpdate {
             assignee,
             placement,
@@ -289,6 +326,13 @@ pub fn check_with(
 
 fn owns_issue(viewer: &Viewer, assignee: Option<&str>, placement: Placement<'_>) -> bool {
     viewer.is(assignee) || matches!(placement, Placement::Project { lead } if viewer.is(lead))
+}
+
+fn writer(author: Option<&str>) -> &'static str {
+    match author {
+        Some(_) => "someone else",
+        None => "nobody (an integration or a deleted user)",
+    }
 }
 
 fn who(lead: Option<&str>) -> &'static str {

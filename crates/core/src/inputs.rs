@@ -350,6 +350,130 @@ pub fn comment_create(
     CommentCreate::build(CommentCreateVars { input })
 }
 
+#[derive(cynic::InputObject, Debug, Clone)]
+#[cynic(graphql_type = "CommentUpdateInput")]
+#[cynic(rename_all = "camelCase")]
+pub struct CommentUpdateInput {
+    pub body: String,
+}
+
+#[derive(cynic::QueryVariables, Debug, Clone)]
+pub struct CommentUpdateVars {
+    pub id: String,
+    pub input: CommentUpdateInput,
+}
+
+#[derive(cynic::QueryFragment, Debug, Clone, PartialEq)]
+#[cynic(graphql_type = "Mutation", variables = "CommentUpdateVars")]
+pub struct CommentUpdate {
+    #[arguments(id: $id, input: $input)]
+    pub comment_update: CommentPayload,
+}
+
+pub fn comment_update(
+    id: impl Into<String>,
+    input: CommentUpdateInput,
+) -> cynic::Operation<CommentUpdate, CommentUpdateVars> {
+    CommentUpdate::build(CommentUpdateVars {
+        id: id.into(),
+        input,
+    })
+}
+
+#[derive(cynic::QueryVariables, Debug, Clone)]
+pub struct CommentDeleteVars {
+    pub id: String,
+}
+
+#[derive(cynic::QueryFragment, Debug, Clone, PartialEq)]
+#[cynic(graphql_type = "Mutation", variables = "CommentDeleteVars")]
+pub struct CommentDelete {
+    #[arguments(id: $id)]
+    pub comment_delete: DeleteResult,
+}
+
+pub fn comment_delete(id: impl Into<String>) -> cynic::Operation<CommentDelete, CommentDeleteVars> {
+    CommentDelete::build(CommentDeleteVars { id: id.into() })
+}
+
+// ---------------------------------------------------------------- issue relation
+
+/// The kinds of relation Linear has. The CLI makes `blocks`, `duplicate` and `related`;
+/// `similar` is Linear's own suggestion, and exists here because cynic needs every variant.
+#[derive(cynic::Enum, Debug, Clone, Copy, PartialEq, Eq)]
+#[cynic(graphql_type = "IssueRelationType", rename_all = "camelCase")]
+pub enum IssueRelationType {
+    Blocks,
+    Duplicate,
+    Related,
+    Similar,
+}
+
+impl IssueRelationType {
+    /// The value Linear reports in a relation's `type`.
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Blocks => "blocks",
+            Self::Duplicate => "duplicate",
+            Self::Related => "related",
+            Self::Similar => "similar",
+        }
+    }
+}
+
+#[derive(cynic::InputObject, Debug, Clone)]
+#[cynic(graphql_type = "IssueRelationCreateInput")]
+#[cynic(rename_all = "camelCase")]
+pub struct IssueRelationCreateInput {
+    /// The issue the relation starts from: `blocks` means this one blocks the other.
+    pub issue_id: String,
+    pub related_issue_id: String,
+    #[cynic(rename = "type")]
+    pub type_: IssueRelationType,
+}
+
+#[derive(cynic::QueryVariables, Debug, Clone)]
+pub struct IssueRelationCreateVars {
+    pub input: IssueRelationCreateInput,
+}
+
+#[derive(cynic::QueryFragment, Debug, Clone, PartialEq)]
+#[cynic(graphql_type = "Mutation", variables = "IssueRelationCreateVars")]
+pub struct IssueRelationCreate {
+    #[arguments(input: $input)]
+    pub issue_relation_create: IssueRelationPayload,
+}
+
+#[derive(cynic::QueryFragment, Debug, Clone, PartialEq)]
+pub struct IssueRelationPayload {
+    pub success: bool,
+    pub issue_relation: crate::read::IssueRelation,
+}
+
+pub fn issue_relation_create(
+    input: IssueRelationCreateInput,
+) -> cynic::Operation<IssueRelationCreate, IssueRelationCreateVars> {
+    IssueRelationCreate::build(IssueRelationCreateVars { input })
+}
+
+#[derive(cynic::QueryVariables, Debug, Clone)]
+pub struct IssueRelationDeleteVars {
+    pub id: String,
+}
+
+#[derive(cynic::QueryFragment, Debug, Clone, PartialEq)]
+#[cynic(graphql_type = "Mutation", variables = "IssueRelationDeleteVars")]
+pub struct IssueRelationDelete {
+    #[arguments(id: $id)]
+    pub issue_relation_delete: DeleteResult,
+}
+
+pub fn issue_relation_delete(
+    id: impl Into<String>,
+) -> cynic::Operation<IssueRelationDelete, IssueRelationDeleteVars> {
+    IssueRelationDelete::build(IssueRelationDeleteVars { id: id.into() })
+}
+
 // ---------------------------------------------------------------- milestone
 
 #[derive(cynic::InputObject, Debug, Clone)]

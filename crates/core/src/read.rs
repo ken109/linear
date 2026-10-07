@@ -63,7 +63,44 @@ pub struct IssueDetail {
     pub priority_label: String,
     #[arguments(first: 50)]
     pub comments: CommentNodes,
+    /// The relations that start from this issue (`blocks`: this issue blocks `relatedIssue`).
+    #[arguments(first: 50)]
+    pub relations: IssueRelationNodes,
+    /// The relations that point at this issue (`blocks`: `issue` blocks this one).
+    #[arguments(first: 50)]
+    pub inverse_relations: IssueRelationNodes,
 }
+
+/// A relation between two issues, as Linear stores it: `issue` `type` `relatedIssue`
+/// (`KK-1 blocks KK-2`, `KK-3 duplicate KK-4` meaning KK-3 duplicates KK-4).
+#[derive(cynic::QueryFragment, Debug, Clone, PartialEq, Serialize, JsonSchema)]
+#[cynic(graphql_type = "IssueRelation")]
+#[serde(rename_all = "camelCase")]
+pub struct IssueRelation {
+    #[schemars(with = "String")]
+    pub id: cynic::Id,
+    /// `blocks`, `duplicate`, `related` (or `similar`, which Linear suggests by itself).
+    #[cynic(rename = "type")]
+    #[serde(rename = "type")]
+    pub type_: String,
+    pub issue: RelationEnd,
+    pub related_issue: RelationEnd,
+}
+
+/// One end of a relation: enough to name the issue and say where it stands.
+#[derive(cynic::QueryFragment, Debug, Clone, PartialEq, Serialize, JsonSchema)]
+#[cynic(graphql_type = "Issue")]
+#[serde(rename_all = "camelCase")]
+pub struct RelationEnd {
+    #[schemars(with = "String")]
+    pub id: cynic::Id,
+    pub identifier: String,
+    pub title: String,
+    pub url: String,
+    pub state: WorkflowState,
+}
+
+nodes_container!(IssueRelationNodes, "IssueRelationConnection", IssueRelation);
 
 #[derive(cynic::QueryFragment, Debug, Clone, PartialEq, Serialize, JsonSchema)]
 #[cynic(graphql_type = "Query", variables = "IdVars")]
@@ -160,6 +197,62 @@ pub struct IssueWriteView {
 /// `id` is an issue id or an identifier such as `KK-1`.
 pub fn issue_write_view(id: impl Into<String>) -> Operation<IssueWriteView, IdVars> {
     IssueWriteView::build(IdVars { id: id.into() })
+}
+
+/// An issue and its relations, to find out whether two issues are already related (and by
+/// which relation). Selects ids and identifiers only; `relate` and `unrelate` read it for
+/// both issues.
+#[derive(cynic::QueryFragment, Debug, Clone, PartialEq, Serialize, JsonSchema)]
+#[cynic(graphql_type = "Issue")]
+pub struct IssueWithRelations {
+    #[schemars(with = "String")]
+    pub id: cynic::Id,
+    pub identifier: String,
+    #[arguments(first: 100)]
+    pub relations: RelationLinkNodes,
+    #[arguments(first: 100)]
+    pub inverse_relations: RelationLinkNodes,
+}
+
+/// A relation reduced to its id, type and the two issues' ids.
+#[derive(cynic::QueryFragment, Debug, Clone, PartialEq, Serialize, JsonSchema)]
+#[cynic(graphql_type = "IssueRelation")]
+#[serde(rename_all = "camelCase")]
+pub struct RelationLink {
+    #[schemars(with = "String")]
+    pub id: cynic::Id,
+    #[cynic(rename = "type")]
+    #[serde(rename = "type")]
+    pub type_: String,
+    pub issue: IssueRef,
+    pub related_issue: IssueRef,
+}
+
+nodes_container!(RelationLinkNodes, "IssueRelationConnection", RelationLink);
+
+#[derive(cynic::QueryFragment, Debug, Clone, PartialEq)]
+#[cynic(graphql_type = "Query", variables = "IdVars")]
+pub struct IssueRelationsQuery {
+    #[arguments(id: $id)]
+    pub issue: IssueWithRelations,
+}
+
+/// `id` is an issue id or an identifier such as `KK-1`.
+pub fn issue_relations(id: impl Into<String>) -> Operation<IssueRelationsQuery, IdVars> {
+    IssueRelationsQuery::build(IdVars { id: id.into() })
+}
+
+/// A comment as a write to it needs it: its author and the issue it is on.
+#[derive(cynic::QueryFragment, Debug, Clone, PartialEq)]
+#[cynic(graphql_type = "Query", variables = "IdVars")]
+pub struct CommentQuery {
+    #[arguments(id: $id)]
+    pub comment: Comment,
+}
+
+/// `id` is a comment id (the `id` that `issue comment --json` and `issue view --json` print).
+pub fn comment(id: impl Into<String>) -> Operation<CommentQuery, IdVars> {
+    CommentQuery::build(IdVars { id: id.into() })
 }
 
 #[derive(cynic::QueryFragment, Debug, Clone, PartialEq)]

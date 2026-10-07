@@ -12,7 +12,7 @@ Structure, nullability and value formats are exactly Linear's.
 | `assigned_issues.json`      | `queries::assigned_started_issues` |                                               |
 | `projects.json`             | `queries::projects`           | status update, milestone                           |
 | `issue_list.json`           | `read::issue_list`            | `assigned_issues.json`'s page under `issues`       |
-| `issue_view.json`           | `read::issue_view`            | `issue.json` plus the live shape of the `detail` alias (description, priority, comments) |
+| `issue_view.json`           | `read::issue_view`            | `issue.json` plus the live shape of the `detail` alias (description, priority, comments, relations) |
 | `project_view.json`         | `read::project_view`          | `projects.json` with a second, newer status update (newest first) and an initiative; `detail` shape verified live |
 | `milestones.json`           | `read::milestones_of_project` | `issue.json`'s milestone plus a second one, out of order |
 | `milestone_view.json`       | `read::milestone_view`        | `detail` alias: the milestone's issues             |
@@ -76,3 +76,7 @@ the PRs read). The values (names, ids, dates) are made up. **Still hand-written:
 `{state: "approved"}`; no real PR had a review) and the closed-without-merge entry (#44; `status` `closed` is a guess, though the reader
 falls back to `closedAt`). The last two entries are not pull requests of the integration: a pull request with no readable state, and a
 plain link (`oauthClient`) to a pull request URL.
+
+The `relations` and `inverseRelations` of the `detail` in `issue_view.json` (KK-276) were added by hand, in the shape the sandbox
+answered on 2026-10-07 (`nodes` of `{id, type, issue, relatedIssue}`, each end `{id, identifier, title, url, state}`): `EX-23`
+blocks `EX-24`, and `EX-22` is related to `EX-23`.

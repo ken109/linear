@@ -867,18 +867,28 @@
         "comments": {
           "$ref": "#/$defs/CommentNodes"
         },
+        "inverseRelations": {
+          "$ref": "#/$defs/IssueRelationNodes",
+          "description": "The relations that point at this issue (`blocks`: `issue` blocks this one)."
+        },
         "priority": {
           "format": "double",
           "type": "number"
         },
         "priorityLabel": {
           "type": "string"
+        },
+        "relations": {
+          "$ref": "#/$defs/IssueRelationNodes",
+          "description": "The relations that start from this issue (`blocks`: this issue blocks `relatedIssue`)."
         }
       },
       "required": [
         "priority",
         "priorityLabel",
-        "comments"
+        "comments",
+        "relations",
+        "inverseRelations"
       ],
       "type": "object"
     },
@@ -899,6 +909,45 @@
         "id",
         "identifier",
         "url"
+      ],
+      "type": "object"
+    },
+    "IssueRelation": {
+      "description": "A relation between two issues, as Linear stores it: `issue` `type` `relatedIssue`\n(`KK-1 blocks KK-2`, `KK-3 duplicate KK-4` meaning KK-3 duplicates KK-4).",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "issue": {
+          "$ref": "#/$defs/RelationEnd"
+        },
+        "relatedIssue": {
+          "$ref": "#/$defs/RelationEnd"
+        },
+        "type": {
+          "description": "`blocks`, `duplicate`, `related` (or `similar`, which Linear suggests by itself).",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "type",
+        "issue",
+        "relatedIssue"
+      ],
+      "type": "object"
+    },
+    "IssueRelationNodes": {
+      "properties": {
+        "nodes": {
+          "items": {
+            "$ref": "#/$defs/IssueRelation"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "nodes"
       ],
       "type": "object"
     },
@@ -1798,6 +1847,34 @@
           "type": "string"
         }
       ]
+    },
+    "RelationEnd": {
+      "description": "One end of a relation: enough to name the issue and say where it stands.",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "identifier": {
+          "type": "string"
+        },
+        "state": {
+          "$ref": "#/$defs/WorkflowState"
+        },
+        "title": {
+          "type": "string"
+        },
+        "url": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "identifier",
+        "title",
+        "url",
+        "state"
+      ],
+      "type": "object"
     },
     "Rule": {
       "description": "A validator rule that can be enabled per workspace.",

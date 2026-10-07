@@ -295,6 +295,39 @@ fn canceling_needs_ownership_in_both_modes() {
     }
 }
 
+#[test]
+fn a_comment_is_its_authors_to_change() {
+    let update = |author| Write::CommentUpdate { author };
+    let delete = |author| Write::CommentDelete { author };
+
+    // Strict: only my own comment, for either write.
+    let strict = |w| check_with(&me(), Ownership::Strict, &w, false);
+    assert_eq!(strict(update(Some(ME))), Ok(()));
+    assert_eq!(strict(delete(Some(ME))), Ok(()));
+    for author in [Some(BOB), None] {
+        for w in [update(author), delete(author)] {
+            let d = strict(w).unwrap_err();
+            assert_eq!(d.reason, DenyReason::CommentNotOwned, "{w:?}");
+            assert_eq!(d.code(), ErrorCode::WriteDenied);
+            assert_eq!(d.operation, Operation::IssueUpdate);
+        }
+    }
+
+    // Lenient: anyone may edit a comment, as anyone may change an issue; deleting stays the author's.
+    let lenient = |w| check_with(&me(), Ownership::Lenient, &w, false);
+    assert_eq!(lenient(update(Some(BOB))), Ok(()));
+    assert_eq!(lenient(update(None)), Ok(()));
+    assert_eq!(lenient(delete(Some(ME))), Ok(()));
+    assert_eq!(
+        lenient(delete(Some(BOB))).unwrap_err().reason,
+        DenyReason::CommentNotOwned
+    );
+    assert!(lenient(delete(None)).is_err());
+
+    // --allow-foreign opens nothing here.
+    assert!(check(&me(), &update(Some(BOB)), true).is_err());
+}
+
 // ------------------------------------------------------------------- errors
 
 #[test]
