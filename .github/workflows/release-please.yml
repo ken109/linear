@@ -15,10 +15,6 @@ name: Release Please
 # Settings > Actions > General. A PR opened with the default GITHUB_TOKEN does not start
 # other workflows, so ci.yml does not run on the release PR; the verify job below only
 # checks that the version files and Cargo.lock agree.
-#
-# ONE-TIME: release-please-config.json sets "release-as": "0.1.0" so that the first
-# release is 0.1.0 and not 0.2.0. Remove that key (in its own commit) once v0.1.0 has
-# been released; left in place it would pin every later release to 0.1.0.
 
 on:
   push:

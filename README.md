@@ -76,9 +76,6 @@ One-time setup:
 
 - Repository setting "Allow GitHub Actions to create and approve pull requests"
   (Settings > Actions > General). Without it release-please cannot open the release PR.
-- `release-please-config.json` sets `"release-as": "0.1.0"` so that the first release is
-  `v0.1.0` instead of `v0.2.0`. **Remove that key right after `v0.1.0` is released**; while it is
-  there every release PR is pinned to 0.1.0.
 
 A PR opened by `GITHUB_TOKEN` does not start other workflows, so `ci.yml` does not run on the
 release PR. The `verify-release-pr` job in `release-please.yml` checks that the versions agree
