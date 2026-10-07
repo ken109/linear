@@ -165,10 +165,10 @@ fn the_binary_gives_the_golden_audit_answers() {
         let want = &case["expected"]["data"];
         assert_eq!(got["findings"], want["findings"], "{name}: findings");
         assert_eq!(
-            got["unresolved_issues"], want["unresolvedIssues"],
+            got["unresolvedIssues"], want["unresolvedIssues"],
             "{name}: unresolved issues"
         );
-        assert_eq!(got["failed_workspaces"], json!([]), "{name}");
+        assert_eq!(got["failedWorkspaces"], json!([]), "{name}");
         ran.push(name);
     }
     assert!(

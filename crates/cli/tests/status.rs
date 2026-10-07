@@ -89,14 +89,14 @@ fn json_has_the_state_the_numbers_and_the_line() {
     let r = &rows[0];
     assert_eq!(r["workspace"], "example");
     assert_eq!(r["state"], "fresh");
-    assert_eq!(r["ttl_secs"], 300);
-    assert_eq!(r["in_progress"], issues);
+    assert_eq!(r["ttlSecs"], 300);
+    assert_eq!(r["inProgress"], issues);
     assert_eq!(r["findings"], findings);
     assert_eq!(r["actionable"], actionable);
-    assert_eq!(r["new_findings"], new);
-    assert_eq!(r["refresh_failed"], false);
-    assert!(r["age_secs"].as_u64().unwrap() < 60);
-    assert!(r["fetched_at"].is_string());
+    assert_eq!(r["newFindings"], new);
+    assert_eq!(r["refreshFailed"], false);
+    assert!(r["ageSecs"].as_u64().unwrap() < 60);
+    assert!(r["fetchedAt"].is_string());
     assert!(r["reason"].is_null());
     assert_eq!(
         r["line"],
@@ -136,13 +136,13 @@ fn a_stale_snapshot_is_unknown_and_shows_no_numbers() {
     let rows = stdout_json(&status(&sb, &["--json"]));
     let r = &rows[0];
     assert_eq!(r["state"], "expired");
-    assert!(r["age_secs"].as_u64().unwrap() >= 7200);
+    assert!(r["ageSecs"].as_u64().unwrap() >= 7200);
     for k in [
-        "in_progress",
+        "inProgress",
         "findings",
         "actionable",
-        "new_findings",
-        "fetched_at",
+        "newFindings",
+        "fetchedAt",
     ] {
         assert!(
             r[k].is_null(),
@@ -171,7 +171,7 @@ fn nothing_cached_is_unknown() {
     assert_eq!(stdout(&o), "example: unknown (nothing cached)\n");
     let r = &stdout_json(&status(&sb, &["--json"]))[0];
     assert_eq!(r["state"], "missing");
-    assert!(r["in_progress"].is_null());
+    assert!(r["inProgress"].is_null());
     assert_eq!(stdout(&status(&sb, &["-q"])), "example missing\n");
 }
 
@@ -191,7 +191,7 @@ fn another_schema_version_or_workspace_or_garbage_is_unusable() {
     edit_entry(&sb, "example", |e| e["workspace"] = json!("other"));
     let r = &stdout_json(&status(&sb, &["--json"]))[0];
     assert_eq!(r["state"], "unusable");
-    assert!(r["in_progress"].is_null());
+    assert!(r["inProgress"].is_null());
 
     let sb = refreshed();
     std::fs::write(entry_file(&sb, "example"), "{ not json").unwrap();
@@ -212,7 +212,7 @@ fn a_failed_refresh_is_visible_while_the_snapshot_is_still_within_the_ttl() {
     );
     let r = &stdout_json(&status(&sb, &["--json"]))[0];
     assert_eq!(r["state"], "fresh");
-    assert_eq!(r["refresh_failed"], true);
+    assert_eq!(r["refreshFailed"], true);
     assert_eq!(r["reason"], "boom");
 }
 

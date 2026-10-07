@@ -170,8 +170,8 @@ fn identifier_of(report: &serde_json::Value, title: &str) -> String {
 fn the_planted_discrepancies_are_found() {
     let (sb, key) = audited();
     let report = json(&sb, &key, &["audit"]);
-    assert_eq!(report["failed_workspaces"], serde_json::json!([]));
-    assert_eq!(report["unresolved_issues"], serde_json::json!([]));
+    assert_eq!(report["failedWorkspaces"], serde_json::json!([]));
+    assert_eq!(report["unresolvedIssues"], serde_json::json!([]));
     let f = found(&report);
     assert!(!f.is_empty());
 
@@ -309,10 +309,7 @@ fn a_narrowed_audit_names_issues_and_reports_what_it_could_not_find() {
         &key,
         &["audit", "--issues", &format!("{canceled_id},NOPE-9999")],
     );
-    assert_eq!(
-        report["unresolved_issues"],
-        serde_json::json!(["NOPE-9999"])
-    );
+    assert_eq!(report["unresolvedIssues"], serde_json::json!(["NOPE-9999"]));
     assert!(
         has(
             &found(&report),
@@ -371,7 +368,7 @@ fn a_workspace_that_cannot_be_audited_is_a_failure_not_a_clean_result() {
     assert_eq!(code(&o), 1, "{}", stdout(&o));
     let out: serde_json::Value = serde_json::from_str(&stdout(&o)).unwrap();
     assert_eq!(out["findings"], serde_json::json!([]));
-    assert_eq!(out["failed_workspaces"][0]["workspace"], "sandbox");
+    assert_eq!(out["failedWorkspaces"][0]["workspace"], "sandbox");
 }
 
 #[test]

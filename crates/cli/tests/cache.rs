@@ -68,7 +68,7 @@ fn a_refresh_stores_the_viewer_the_issues_in_progress_and_the_audit() {
     // Nothing was cached before, so whatever the audit found is new.
     assert_eq!(
         row["findings"],
-        row["new_findings"].as_array().unwrap().len()
+        row["newFindings"].as_array().unwrap().len()
     );
 
     let requests = mock.requests();
@@ -129,7 +129,7 @@ fn show_reads_a_fresh_entry_without_touching_the_network() {
     // No credentials and no mock: showing must not need either.
     let rows = show(&sb, &[]);
     assert_eq!(rows[0]["freshness"]["state"], "fresh");
-    assert_eq!(rows[0]["ttl_secs"], 300);
+    assert_eq!(rows[0]["ttlSecs"], 300);
     assert_eq!(rows[0]["entry"]["data"]["issues"][0]["identifier"], "EX-23");
 
     let o = sb.run(&["cache", "show"], None, &[]);
@@ -252,7 +252,7 @@ fn only_findings_that_are_new_since_the_last_refresh_are_reported() {
         first["workspaces"][0]["findings"],
         second["workspaces"][0]["findings"]
     );
-    assert_eq!(second["workspaces"][0]["new_findings"], json!([]));
+    assert_eq!(second["workspaces"][0]["newFindings"], json!([]));
     assert_eq!(read_entry(&sb)["data"]["newFindings"], json!([]));
 }
 

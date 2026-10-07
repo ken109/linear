@@ -119,6 +119,7 @@ enum RowStatus {
 }
 
 #[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
 struct RefreshRow {
     workspace: String,
     status: RowStatus,
@@ -370,6 +371,7 @@ fn fetch(
 // --------------------------------------------------------------------- show
 
 #[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
 struct ShowRow {
     workspace: String,
     freshness: Freshness,

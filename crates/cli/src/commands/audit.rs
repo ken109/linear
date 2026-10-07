@@ -69,6 +69,7 @@ struct FailedWorkspace {
 }
 
 #[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
 struct CachedFrom {
     workspace: String,
     fetched_at: DateTime<Utc>,
@@ -76,6 +77,7 @@ struct CachedFrom {
 }
 
 #[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
 struct AuditOut {
     findings: Vec<Finding>,
     /// Issues named with --issues that no audited workspace has: they could

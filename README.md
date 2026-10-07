@@ -346,12 +346,12 @@ The exit code is 0 whatever the state, because the line itself says it. `--json`
 per workspace for scripts:
 
 ```json
-[{"workspace": "main", "state": "fresh", "ttl_secs": 300, "fetched_at": "2026-10-07T01:02:03Z",
-  "age_secs": 42, "in_progress": 3, "findings": 4, "actionable": 1, "new_findings": 0,
-  "refresh_failed": false, "reason": null, "line": "main: 3 in progress, 1 actionable"}]
+[{"workspace": "main", "state": "fresh", "ttlSecs": 300, "fetchedAt": "2026-10-07T01:02:03Z",
+  "ageSecs": 42, "inProgress": 3, "findings": 4, "actionable": 1, "newFindings": 0,
+  "refreshFailed": false, "reason": null, "line": "main: 3 in progress, 1 actionable"}]
 ```
 
-`state` is `fresh`, `expired`, `missing` or `unusable`; the counts and `fetched_at` are `null`
+`state` is `fresh`, `expired`, `missing` or `unusable`; the counts and `fetchedAt` are `null`
 unless it is `fresh`, and `reason` says why when it is not (or what the failed refresh said).
 `--quiet` prints `<workspace> <state>` per line. Starting a refresh is the caller's job, for
 example `linear cache refresh >/dev/null 2>&1 &` when the line says `unknown`.
@@ -390,8 +390,8 @@ linear audit --cached                           # the last `linear cache refresh
 A finding is `actionable` when you own its target (you lead the project, or the issue is
 assigned to you) and informational otherwise. `--fail-on actionable` is the only thing that makes
 findings change the exit code (6). An issue named with `--issues` that no audited workspace has is
-listed as `unresolved_issues`, never silently dropped. A workspace that cannot be audited (no
-credentials, Linear unreachable) is listed under `failed_workspaces` and the command exits 1, unless
+listed as `unresolvedIssues`, never silently dropped. A workspace that cannot be audited (no
+credentials, Linear unreachable) is listed under `failedWorkspaces` and the command exits 1, unless
 `--fail-on` already exits with 6. `--cached` fails with exit 1 when an entry is missing or past its
 TTL: unknown is not clean.
 

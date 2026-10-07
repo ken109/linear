@@ -81,8 +81,8 @@ fn it_audits_what_it_fetches_from_the_issue_side() {
     let mock = Mock::start(replies());
     let (status, report, err) = json_run(&sb, &mock, &[]);
     assert_eq!(status, 0, "{err}");
-    assert_eq!(report["failed_workspaces"], json!([]));
-    assert_eq!(report["unresolved_issues"], json!([]));
+    assert_eq!(report["failedWorkspaces"], json!([]));
+    assert_eq!(report["unresolvedIssues"], json!([]));
     assert!(
         has(&report, "status-update-outdated", "aaaaaaaaaaaa"),
         "{report}"
@@ -345,7 +345,7 @@ fn issues_narrows_the_audit_to_them_and_their_projects() {
         has(&narrowed, "status-update-outdated", "aaaaaaaaaaaa"),
         "{narrowed}"
     );
-    assert_eq!(narrowed["unresolved_issues"], json!([]));
+    assert_eq!(narrowed["unresolvedIssues"], json!([]));
     // The issue was in the fetched set, so it was not asked for again.
     assert_eq!(operations(&mock), ["Whoami", "IssueList", "Projects"]);
 }
@@ -362,7 +362,7 @@ fn an_issue_that_does_not_exist_is_unresolved_not_clean() {
     ]);
     let (status, report, err) = json_run(&sb, &mock, &["--issues", "EX-23,EX-999"]);
     assert_eq!(status, 0, "{err}");
-    assert_eq!(report["unresolved_issues"], json!(["EX-999"]));
+    assert_eq!(report["unresolvedIssues"], json!(["EX-999"]));
     // The issue outside the fetched set was asked for by identifier.
     assert_eq!(
         operations(&mock),
@@ -405,7 +405,7 @@ fn a_closed_issue_that_is_named_is_fetched_and_checked() {
         &["--issues", "EX-5", "--since", "2026-01-01T00:00:00Z"],
     );
     assert_eq!(status, 0, "{err}");
-    assert_eq!(report["unresolved_issues"], json!([]));
+    assert_eq!(report["unresolvedIssues"], json!([]));
     assert!(has(&report, "not-updated-since", "EX-5"), "{report}");
 }
 
@@ -477,8 +477,8 @@ fn a_workspace_that_cannot_be_audited_fails_the_command_but_not_the_others() {
         "an unreachable workspace is not a clean result: {err}"
     );
     assert!(has(&report, "status-update-outdated", "aaaaaaaaaaaa"));
-    assert_eq!(report["failed_workspaces"][0]["workspace"], "other");
-    assert!(report["failed_workspaces"][0]["message"]
+    assert_eq!(report["failedWorkspaces"][0]["workspace"], "other");
+    assert!(report["failedWorkspaces"][0]["message"]
         .as_str()
         .unwrap()
         .contains("no credentials"));
@@ -494,7 +494,7 @@ fn a_workspace_that_cannot_be_audited_fails_the_command_but_not_the_others() {
     let mock = Mock::start(replies());
     let (status, report, err) = json_run(&sb, &mock, &["-w", "example"]);
     assert_eq!(status, 0, "{err}");
-    assert_eq!(report["failed_workspaces"], json!([]));
+    assert_eq!(report["failedWorkspaces"], json!([]));
 }
 
 #[test]
@@ -506,7 +506,7 @@ fn a_key_for_another_workspace_is_refused() {
     let (status, report, _) = json_run(&sb, &mock, &[]);
     assert_eq!(status, 1);
     assert_eq!(report["findings"], json!([]));
-    assert!(report["failed_workspaces"][0]["message"]
+    assert!(report["failedWorkspaces"][0]["message"]
         .as_str()
         .unwrap()
         .contains("someone-else"));
@@ -530,7 +530,7 @@ fn cached_reads_the_last_refresh_without_the_network() {
     let cached: Value = serde_json::from_str(&stdout(&o)).unwrap();
     assert!(has(&cached, "status-update-outdated", "aaaaaaaaaaaa"));
     assert_eq!(cached["cached"][0]["workspace"], "example");
-    assert!(cached["cached"][0]["age_secs"].as_u64().unwrap() < 60);
+    assert!(cached["cached"][0]["ageSecs"].as_u64().unwrap() < 60);
 
     // Same findings as asking Linear now.
     let mock = Mock::start(replies());
