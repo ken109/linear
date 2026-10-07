@@ -23,6 +23,7 @@ pub mod label_write;
 pub mod markdown;
 pub mod matching;
 pub mod metadata;
+pub mod oauth;
 pub mod project_write;
 pub mod pull_request;
 pub mod queries;

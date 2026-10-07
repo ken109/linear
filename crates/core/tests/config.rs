@@ -155,16 +155,21 @@ fn client_credentials_is_an_auth_method_with_an_optional_public_client_id() {
 }
 
 #[test]
-fn a_client_id_needs_client_credentials_and_must_not_be_blank() {
+fn a_client_id_needs_an_oauth_method_and_must_not_be_blank() {
     for bad in [
         "[workspaces.a]\nurl_key = \"a\"\nclient_id = \"x\"\n",
-        "[workspaces.a]\nurl_key = \"a\"\nauth = \"oauth\"\nclient_id = \"x\"\n",
+        "[workspaces.a]\nurl_key = \"a\"\nauth = \"api-key\"\nclient_id = \"x\"\n",
+        "[workspaces.a]\nurl_key = \"a\"\nauth = \"oauth\"\nclient_id = \" \"\n",
         "[workspaces.a]\nurl_key = \"a\"\nauth = \"client_credentials\"\nclient_id = \" \"\n",
     ] {
         let err = Config::parse(bad).unwrap_err();
         assert!(matches!(err, Error::Config(_)), "{bad:?} -> {err:?}");
         assert!(err.to_string().contains("client_id"), "{err}");
     }
+    // A PKCE login has a client id too (and no secret).
+    let c = Config::parse("[workspaces.a]\nurl_key = \"a\"\nauth = \"oauth\"\nclient_id = \"x\"\n")
+        .unwrap();
+    assert_eq!(c.get("a").unwrap().client_id.as_deref(), Some("x"));
     // There is no key for the secret, so one cannot be put in the file.
     let err = Config::parse(
         "[workspaces.a]\nurl_key = \"a\"\nauth = \"client_credentials\"\nclient_secret = \"x\"\n",
@@ -433,4 +438,29 @@ fn an_unknown_credential_store_is_a_config_error() {
     let err = Config::parse("[workspaces.a]\nurl_key = \"a\"\ncredential_store = \"vault\"\n")
         .unwrap_err();
     assert!(matches!(err, Error::Config(_)), "{err:?}");
+}
+
+#[test]
+fn the_oauth_callback_port_belongs_to_oauth_and_must_be_a_port() {
+    let c = Config::parse(
+        "[workspaces.a]\nurl_key = \"a\"\nauth = \"oauth\"\nclient_id = \"x\"\noauth_port = 4610\n",
+    )
+    .unwrap();
+    assert_eq!(c.get("a").unwrap().oauth_port, Some(4610));
+    assert_eq!(
+        Config::parse("[workspaces.a]\nurl_key = \"a\"\nauth = \"oauth\"\n")
+            .unwrap()
+            .get("a")
+            .unwrap()
+            .oauth_port,
+        None
+    );
+
+    for bad in [
+        "[workspaces.a]\nurl_key = \"a\"\noauth_port = 4610\n",
+        "[workspaces.a]\nurl_key = \"a\"\nauth = \"oauth\"\noauth_port = 0\n",
+        "[workspaces.a]\nurl_key = \"a\"\nauth = \"oauth\"\noauth_port = 70000\n",
+    ] {
+        assert!(Config::parse(bad).is_err(), "{bad:?}");
+    }
 }

@@ -114,12 +114,19 @@ pub struct WorkspaceConfig {
     pub default_team: Option<String>,
     #[serde(default)]
     pub auth: AuthMethod,
-    /// The OAuth app's client id, for `auth = "client_credentials"`. It is public,
-    /// so it can live here; `LINEAR_CLIENT_ID` (or `LINEAR_CLIENT_ID_<NAME>`)
-    /// overrides it. The client secret is never in this file: it comes from
-    /// `LINEAR_CLIENT_SECRET` (or `LINEAR_CLIENT_SECRET_<NAME>`).
+    /// The OAuth app's client id, for `auth = "client_credentials"` and
+    /// `auth = "oauth"`. It is public, so it can live here; `LINEAR_CLIENT_ID`
+    /// (or `LINEAR_CLIENT_ID_<NAME>`) overrides it. The client secret of an app is
+    /// never in this file: it comes from `LINEAR_CLIENT_SECRET` (or
+    /// `LINEAR_CLIENT_SECRET_<NAME>`); an `oauth` login (PKCE) has none.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub client_id: Option<String>,
+    /// The local port of the `auth = "oauth"` login's callback
+    /// (`http://localhost:<port>/callback`, which the OAuth app has to list as a
+    /// redirect URI). Unset: [`crate::oauth::DEFAULT_PORT`]. `--port` and
+    /// `LINEAR_OAUTH_PORT` override it.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub oauth_port: Option<u16>,
     /// Where `workspace login` keeps the credential: `"file"` (the default) or
     /// `"keyring"` (the OS keyring, with the file as a fallback). Reading the
     /// environment override (`LINEAR_API_KEY_<NAME>`) never depends on it.
@@ -219,15 +226,28 @@ impl WorkspaceConfig {
         Ok(())
     }
 
-    /// `client_id` belongs to the client credentials grant, and must not be blank.
+    /// `client_id` belongs to the OAuth methods, and must not be blank. `oauth_port`
+    /// belongs to `oauth` and must be a port.
     fn validate_client_id(&self, workspace: &str) -> Result<()> {
+        if let Some(port) = self.oauth_port {
+            if self.auth != AuthMethod::Oauth {
+                return Err(Error::Config(format!(
+                    "workspace {workspace:?}: oauth_port needs auth = \"oauth\""
+                )));
+            }
+            if port == 0 {
+                return Err(Error::Config(format!(
+                    "workspace {workspace:?}: oauth_port must be at least 1"
+                )));
+            }
+        }
         match &self.client_id {
             None => Ok(()),
             Some(id) if id.trim().is_empty() => Err(Error::Config(format!(
                 "workspace {workspace:?}: client_id must not be empty"
             ))),
-            Some(_) if self.auth != AuthMethod::ClientCredentials => Err(Error::Config(format!(
-                "workspace {workspace:?}: client_id needs auth = \"client_credentials\""
+            Some(_) if self.auth == AuthMethod::ApiKey => Err(Error::Config(format!(
+                "workspace {workspace:?}: client_id needs auth = \"oauth\" or \"client_credentials\""
             ))),
             Some(_) => Ok(()),
         }

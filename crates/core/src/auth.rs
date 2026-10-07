@@ -93,6 +93,12 @@ impl Credential {
     pub fn is_expired(&self, now: DateTime<Utc>) -> bool {
         matches!(self, Self::Oauth { expires_at: Some(t), .. } if *t <= now)
     }
+
+    /// Whether an OAuth access token has expired or will within a minute, so it
+    /// should be refreshed before it is used. A token without an expiry never needs it.
+    pub fn needs_refresh(&self, now: DateTime<Utc>) -> bool {
+        matches!(self, Self::Oauth { expires_at: Some(t), .. } if *t <= now + EXPIRY_MARGIN)
+    }
 }
 
 /// `NAME` for the environment: upper-cased, with non-alphanumerics as `_`.
@@ -162,7 +168,7 @@ pub fn client_credentials_form(client_id: &str, client_secret: &Secret, scope: &
 }
 
 /// Percent-encode a form value (RFC 3986 unreserved characters stay as they are).
-fn form_encode(value: &str) -> String {
+pub(crate) fn form_encode(value: &str) -> String {
     let mut out = String::with_capacity(value.len());
     for b in value.bytes() {
         match b {
@@ -283,7 +289,7 @@ pub fn parse_token_response(
 }
 
 /// Mask the secret in `text` and keep it short.
-fn redact(text: &str, secret: &Secret) -> String {
+pub(crate) fn redact(text: &str, secret: &Secret) -> String {
     let raw = secret.expose();
     let masked = if raw.is_empty() {
         text.to_owned()
