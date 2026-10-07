@@ -617,3 +617,89 @@ fn download_needs_a_name_and_an_http_url() {
     assert_eq!(code(&o), 2, "{}", stderr(&o));
     assert!(storage.hits().is_empty());
 }
+
+// ------------------------------------------------------------------ --dry-run
+
+#[test]
+fn a_dry_run_of_upload_plans_the_request_and_puts_no_bytes() {
+    let sb = workspace();
+    let storage = Storage::start(vec![("/upload/signed?sig=abc", 200, vec![])]);
+    let mock = Routed::start(routes(&storage, vec![]));
+    let path = write_bytes(&sb, "shot.png", PNG);
+
+    let v = plan(
+        &run(
+            &sb,
+            &mock,
+            &["file", "upload", &path, "--dry-run", "--json"],
+        ),
+        &mock,
+    );
+    assert_eq!(v["command"], "file upload");
+    assert_eq!(planned(&v), ["FileUpload"]);
+    assert_eq!(
+        v["mutations"][0]["variables"],
+        json!({ "contentType": "image/png", "filename": "shot.png", "size": 4 })
+    );
+    assert!(
+        v["notes"][0].as_str().unwrap().contains("PUT"),
+        "the plan says the bytes would follow: {v}"
+    );
+    assert!(storage.hits().is_empty(), "no bytes reached the storage");
+
+    // The limits are the real ones: an empty file is a usage error (exit 2).
+    let empty = write_bytes(&sb, "empty.png", b"");
+    let o = run(&sb, &mock, &["file", "upload", &empty, "--dry-run"]);
+    assert_eq!(code(&o), 2, "{}", stderr(&o));
+    assert!(storage.hits().is_empty());
+}
+
+#[test]
+fn a_dry_run_of_attach_file_plans_the_upload_the_attachment_and_the_undo() {
+    let sb = workspace();
+    let storage = Storage::start(vec![("/upload/signed?sig=abc", 200, vec![])]);
+    let mock = Routed::start(routes(&storage, vec![]));
+    let path = write_bytes(&sb, "shot.png", PNG);
+
+    let v = plan(
+        &run(
+            &sb,
+            &mock,
+            &[
+                "issue",
+                "attach-file",
+                "EX-23",
+                &path,
+                "--title",
+                "Login bug",
+                "--dry-run",
+                "--json",
+            ],
+        ),
+        &mock,
+    );
+    assert_eq!(planned(&v), ["FileUpload", "AttachmentCreate"]);
+    let attach = &v["mutations"][1]["variables"]["input"];
+    assert_eq!(attach["issueId"], "id-EX-23");
+    assert_eq!(attach["title"], "Login bug");
+    assert!(attach["url"].as_str().unwrap().starts_with('<'), "{attach}");
+    assert_eq!(v["rollback"][0]["operation"], "FileUploadDangerouslyDelete");
+    assert!(storage.hits().is_empty());
+
+    // Somebody else's issue: refused before anything (exit 4).
+    let theirs = view("EX-23")
+        .assigned_to(Some(BOT))
+        .in_project(PROJECT, Some(BOT));
+    let mock = Routed::start(routes(
+        &storage,
+        vec![("IssueWriteView", vec![theirs.reply()])],
+    ));
+    let o = run(
+        &sb,
+        &mock,
+        &["issue", "attach-file", "EX-23", &path, "--dry-run"],
+    );
+    assert_eq!(code(&o), 4, "{}", stderr(&o));
+    mock.assert_read_only();
+    assert!(storage.hits().is_empty());
+}

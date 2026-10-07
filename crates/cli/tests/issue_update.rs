@@ -946,3 +946,137 @@ fn nothing_to_change_names_the_new_flags() {
     }
     assert!(mock.ops().is_empty());
 }
+
+// ------------------------------------------------------------------ --dry-run
+
+#[test]
+fn a_dry_run_prints_the_two_steps_the_update_would_send_and_sends_neither() {
+    let sb = workspace_with_rules(&[]);
+    let body = write_file(&sb, "body.md", "A new body.\n");
+    let mock = Routed::start(routes(mine(), vec![]));
+
+    let o = run(
+        &sb,
+        &mock,
+        &update(&[
+            "--body-file",
+            &body,
+            "--state",
+            "done",
+            "--source",
+            NEW_SOURCE,
+            "--dry-run",
+            "--json",
+        ]),
+    );
+    let v = plan(&o, &mock);
+    assert_eq!(v["command"], "issue update");
+    assert_eq!(v["workspace"], "example");
+    assert_eq!(
+        v["target"],
+        json!({ "kind": "issue", "name": "EX-23", "id": "id-EX-23", "new": false })
+    );
+    assert_eq!(v["changed"], json!(["description", "state", "source"]));
+    assert_eq!(planned(&v), ["IssueUpdate", "AttachmentCreate"]);
+    assert_eq!(
+        v["mutations"][0]["variables"],
+        json!({
+            "id": "id-EX-23",
+            "input": {
+                "description": "A new body.",
+                "stateId": "00000000-0000-4000-8000-000000000022",
+            },
+        })
+    );
+    assert_eq!(
+        v["mutations"][1]["variables"]["input"],
+        json!({ "issueId": "id-EX-23", "url": NEW_SOURCE, "title": "Source" })
+    );
+    // What a failed attachment would put back: the old values of the fields.
+    assert_eq!(
+        planned(&json!({ "mutations": v["rollback"] })),
+        ["IssueUpdate"]
+    );
+    assert_eq!(
+        v["rollback"][0]["variables"]["input"],
+        json!({
+            "description": CURRENT_BODY,
+            "stateId": "00000000-0000-4000-8000-000000000005",
+        })
+    );
+    assert_eq!(v["reason"], Value::Null);
+    // The same ops the real run asked for before the first write: reads only.
+    assert!(mock.of("IssueUpdate").is_empty() && mock.of("AttachmentCreate").is_empty());
+}
+
+#[test]
+fn a_dry_run_of_an_update_that_changes_nothing_says_why() {
+    let sb = workspace_with_rules(&[]);
+    let mock = Routed::start(routes(mine(), vec![]));
+    let o = run(
+        &sb,
+        &mock,
+        &update(&["--due", "2026-11-01", "--dry-run", "--json"]),
+    );
+    let v = plan(&o, &mock);
+    assert_eq!(v["mutations"], json!([]));
+    assert_eq!(v["changed"], json!([]));
+    assert_eq!(v["reason"], "every field is already as asked");
+}
+
+#[test]
+fn a_dry_run_is_refused_where_the_real_run_is() {
+    let sb = workspace_with_rules(&["template-sections"]);
+    let body = write_file(&sb, "body.md", "A new body.\n");
+    // Ownership: somebody else's issue in a strict workspace (exit 4).
+    let theirs = view("EX-23")
+        .assigned_to(Some(BOT))
+        .in_project(PROJECT, Some(BOT));
+    let mock = Routed::start(routes(theirs, vec![]));
+    let o = run(&sb, &mock, &update(&["--state", "Done", "--dry-run"]));
+    assert_eq!(code(&o), 4, "{}", stderr(&o));
+    assert_eq!(stdout(&o), "");
+    mock.assert_read_only();
+
+    // Validators: a body without a template while the rule is on (exit 5).
+    let mock = Routed::start(routes(mine(), vec![]));
+    let o = run(&sb, &mock, &update(&["--body-file", &body, "--dry-run"]));
+    assert_eq!(code(&o), 5, "{}", stderr(&o));
+    mock.assert_read_only();
+
+    // Usage: nothing to change (exit 2), and an unknown state.
+    let mock = Routed::start(routes(mine(), vec![]));
+    let o = run(&sb, &mock, &update(&["--dry-run"]));
+    assert_eq!(code(&o), 2, "{}", stderr(&o));
+    let o = run(
+        &sb,
+        &mock,
+        &update(&["--state", "No such state", "--dry-run"]),
+    );
+    assert_eq!(code(&o), 2, "{}", stderr(&o));
+    mock.assert_read_only();
+}
+
+#[test]
+fn a_dry_run_prints_text_and_quiet_prints_the_operations() {
+    let sb = workspace_with_rules(&[]);
+    let mock = Routed::start(routes(mine(), vec![]));
+    let o = run(&sb, &mock, &update(&["--state", "done", "--dry-run"]));
+    assert_eq!(code(&o), 0, "{}", stderr(&o));
+    let text = stdout(&o);
+    assert!(
+        text.starts_with("dry run, nothing was sent: issue update"),
+        "{text}"
+    );
+    assert!(text.contains("would change: state"), "{text}");
+    assert!(text.contains("1. IssueUpdate"), "{text}");
+    assert!(text.contains("\"stateId\""), "{text}");
+
+    let o = run(
+        &sb,
+        &mock,
+        &update(&["--state", "done", "--dry-run", "--quiet"]),
+    );
+    assert_eq!(stdout(&o).trim(), "IssueUpdate");
+    mock.assert_read_only();
+}

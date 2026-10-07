@@ -499,3 +499,120 @@ fn unrelate_needs_no_confirmation_but_follows_ownership() {
     assert_eq!(code(&o), 0, "{}", stderr(&o));
     assert_eq!(mock.of("IssueRelationDelete").len(), 1);
 }
+
+// ------------------------------------------------------------------ --dry-run
+
+#[test]
+fn a_dry_run_of_relate_plans_the_relation_and_unrelate_the_removals() {
+    let sb = workspace_with_rules(&[]);
+    let mock = Routed::start(routes(mine(), none(), "blocks"));
+    let v = plan(
+        &run(
+            &sb,
+            &mock,
+            &[
+                "issue",
+                "relate",
+                "EX-23",
+                "--blocks",
+                "EX-24",
+                "--dry-run",
+                "--json",
+            ],
+        ),
+        &mock,
+    );
+    assert_eq!(v["command"], "issue relate");
+    assert_eq!(planned(&v), ["IssueRelationCreate"]);
+    assert_eq!(
+        v["mutations"][0]["variables"],
+        json!({ "input": { "issueId": "id-EX-23", "relatedIssueId": "id-EX-24", "type": "blocks" } })
+    );
+
+    // Already there: nothing to send.
+    let mock = Routed::start(routes(
+        mine(),
+        (vec![link("rel-1", "blocks", 23, 24)], vec![]),
+        "blocks",
+    ));
+    let v = plan(
+        &run(
+            &sb,
+            &mock,
+            &[
+                "issue",
+                "relate",
+                "EX-23",
+                "--blocks",
+                "EX-24",
+                "--dry-run",
+                "--json",
+            ],
+        ),
+        &mock,
+    );
+    assert_eq!(v["mutations"], json!([]));
+
+    // unrelate removes each matching relation.
+    let mock = Routed::start(routes(
+        mine(),
+        (
+            vec![
+                link("rel-b", "blocks", 23, 24),
+                link("rel-r", "related", 23, 24),
+            ],
+            vec![],
+        ),
+        "blocks",
+    ));
+    let v = plan(
+        &run(
+            &sb,
+            &mock,
+            &[
+                "issue",
+                "unrelate",
+                "EX-23",
+                "--blocks",
+                "EX-24",
+                "--dry-run",
+                "--json",
+            ],
+        ),
+        &mock,
+    );
+    assert_eq!(v["command"], "issue unrelate");
+    assert_eq!(planned(&v), ["IssueRelationDelete"]);
+    assert_eq!(v["mutations"][0]["variables"], json!({ "id": "rel-b" }));
+}
+
+#[test]
+fn a_dry_run_of_relate_follows_ownership_and_the_duplicate_rule() {
+    let sb = workspace_with_rules(&[]);
+    let mock = Routed::start(routes(theirs(), none(), "blocks"));
+    let o = run(
+        &sb,
+        &mock,
+        &["issue", "relate", "EX-23", "--blocks", "EX-24", "--dry-run"],
+    );
+    assert_eq!(code(&o), 4, "{}", stderr(&o));
+    mock.assert_read_only();
+
+    // A lenient workspace still refuses the duplicate that closes somebody else's issue.
+    let lenient = lenient_workspace_with_rules(&[]);
+    let mock = Routed::start(routes(theirs(), none(), "duplicate"));
+    let o = run(
+        &lenient,
+        &mock,
+        &[
+            "issue",
+            "relate",
+            "EX-23",
+            "--duplicate",
+            "EX-24",
+            "--dry-run",
+        ],
+    );
+    assert_eq!(code(&o), 4, "{}", stderr(&o));
+    mock.assert_read_only();
+}

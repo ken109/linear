@@ -4,6 +4,7 @@
 //! the issue it is on ([`Write::CommentUpdate`], [`Write::CommentDelete`]). Neither write
 //! changes the issue itself, so no validator applies.
 
+use super::dry_run::{Plan, Target};
 use super::{read_text, ForceArg, WriteSession};
 use crate::commands::Ctx;
 use crate::error::{CliError, Result};
@@ -80,6 +81,15 @@ fn author(comment: &Comment) -> Option<&str> {
     comment.user.as_ref().map(|u| u.id.inner())
 }
 
+/// The comment a write is aimed at, named by the issue it is on.
+fn comment_target(comment: &Comment) -> Target {
+    Target::existing(
+        "comment",
+        format!("on {}", issue_of(comment)),
+        comment.id.inner(),
+    )
+}
+
 fn issue_of(comment: &Comment) -> &str {
     comment.issue.as_ref().map_or("", |i| i.identifier.as_str())
 }
@@ -102,6 +112,19 @@ pub fn update(ctx: &Ctx, cmd: &UpdateCmd) -> Result<()> {
     )?;
 
     let changed = comment.body.trim() != body;
+    if ws.dry_run {
+        if changed {
+            let input = CommentUpdateInput {
+                body: body.to_owned(),
+            };
+            ws.record(&inputs::comment_update(comment.id.inner(), input));
+        }
+        return ws.finish_dry_run(
+            Plan::new("comment update", comment_target(&comment))
+                .changed(if changed { vec!["body"] } else { Vec::new() })
+                .reason("the comment already has this text"),
+        );
+    }
     let comment = if changed {
         let input = CommentUpdateInput {
             body: body.to_owned(),
@@ -159,9 +182,12 @@ pub fn delete(ctx: &Ctx, cmd: &DeleteCmd) -> Result<()> {
         false,
     )?;
 
-    let data: CommentDelete = ws
-        .client
-        .execute(&inputs::comment_delete(comment.id.inner()))?;
+    let op = inputs::comment_delete(comment.id.inner());
+    if ws.dry_run {
+        ws.record(&op);
+        return ws.finish_dry_run(Plan::new("comment delete", comment_target(&comment)));
+    }
+    let data: CommentDelete = ws.client.execute(&op)?;
     if !data.comment_delete.success {
         return Err(CliError::general("Linear could not delete the comment"));
     }

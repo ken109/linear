@@ -18,7 +18,8 @@
 //!   and its URL is named in the error. A file that could not be deleted is
 //!   named as well.
 
-use super::issue::{fetch_issue, placement_of};
+use super::dry_run::{Plan, Target};
+use super::issue::{fetch_issue, issue_target, placement_of};
 use super::{retry, ForceArg, WriteSession, ATTACH_WAITS};
 use crate::commands::Ctx;
 use crate::error::{CliError, Result};
@@ -110,6 +111,23 @@ fn read_local(path: &Path, name: Option<&str>, content_type: Option<&str>) -> Re
     })
 }
 
+/// Stands for the URL of the stored file, which Linear only tells once the upload is asked for.
+const ASSET_URL: &str = "<assetUrl returned by the first mutation>";
+
+/// A dry run of the upload: the `fileUpload` request, and a note about the bytes that would
+/// go to the signed URL it returns. Nothing is stored.
+fn record_upload(ws: &WriteSession, file: &Local) -> Result<()> {
+    let size = i32::try_from(file.bytes.len())
+        .map_err(|_| CliError::usage("the file is too large to upload"))?;
+    ws.record(&files::file_upload(&file.name, &file.content_type, size));
+    ws.plan_note(format!(
+        "the {} bytes of the file would then be sent with PUT to the signed URL that fileUpload \
+         returns (not recorded: it does not exist yet)",
+        file.bytes.len()
+    ));
+    Ok(())
+}
+
 /// Ask Linear for a place to put the file and send it there.
 fn store(ws: &WriteSession, file: &Local) -> Result<UploadTarget> {
     let size = i32::try_from(file.bytes.len())
@@ -176,6 +194,10 @@ struct Uploaded<'a> {
 pub fn upload(ctx: &Ctx, cmd: &UploadCmd) -> Result<()> {
     let file = read_local(&cmd.path, cmd.name.as_deref(), cmd.content_type.as_deref())?;
     let ws = ctx.write_session()?;
+    if ws.dry_run {
+        record_upload(&ws, &file)?;
+        return ws.finish_dry_run(Plan::new("file upload", Target::new("file", &file.name)));
+    }
     let target = store(&ws, &file)?;
     let markdown = embed_markdown(&file.name, &file.content_type, &target.asset_url);
     let value = Uploaded {
@@ -240,6 +262,22 @@ pub fn attach_file(ctx: &Ctx, cmd: &AttachFileCmd) -> Result<()> {
     ws.validate(&Draft::new(Operation::IssueUpdate))?;
     let identifier = view.issue.identifier.as_str();
 
+    if ws.dry_run {
+        record_upload(&ws, &file)?;
+        ws.record(&inputs::attachment_create(AttachmentCreateInput {
+            issue_id: view.issue.id.inner().to_owned(),
+            url: ASSET_URL.to_owned(),
+            title,
+            subtitle: Some(format!(
+                "{}, {}",
+                file.content_type,
+                human_size(file.bytes.len() as u64)
+            )),
+            metadata: None,
+        }));
+        ws.record_undo(&files::file_upload_delete(ASSET_URL));
+        return ws.finish_dry_run(Plan::new("issue attach-file", issue_target(&view)));
+    }
     let target = store(&ws, &file)?;
     let input = AttachmentCreateInput {
         issue_id: view.issue.id.inner().to_owned(),

@@ -277,3 +277,80 @@ fn a_comment_of_a_workspace_the_key_does_not_belong_to_never_writes() {
     no_mutation(&mock);
     assert!(!mock.ops().contains(&"CommentQuery".to_owned()));
 }
+
+// ------------------------------------------------------------------ --dry-run
+
+#[test]
+fn a_dry_run_of_update_and_delete_plans_the_mutation() {
+    let sb = workspace_with_rules(&[]);
+    let file = write_file(&sb, "text.md", "new text\n");
+    let mock = Routed::start(routes(mine("old text")));
+    let v = plan(
+        &run(
+            &sb,
+            &mock,
+            &[
+                "comment",
+                "update",
+                COMMENT,
+                "--body-file",
+                &file,
+                "--dry-run",
+                "--json",
+            ],
+        ),
+        &mock,
+    );
+    assert_eq!(v["command"], "comment update");
+    assert_eq!(v["changed"], json!(["body"]));
+    assert_eq!(planned(&v), ["CommentUpdate"]);
+    assert_eq!(
+        v["mutations"][0]["variables"],
+        json!({ "id": COMMENT, "input": { "body": "new text" } })
+    );
+
+    // The same text: nothing to send.
+    let mock = Routed::start(routes(mine("new text")));
+    let v = plan(
+        &run(
+            &sb,
+            &mock,
+            &[
+                "comment",
+                "update",
+                COMMENT,
+                "--body-file",
+                &file,
+                "--dry-run",
+                "--json",
+            ],
+        ),
+        &mock,
+    );
+    assert_eq!(v["mutations"], json!([]));
+
+    let mock = Routed::start(routes(mine("old text")));
+    let v = plan(
+        &run(
+            &sb,
+            &mock,
+            &["comment", "delete", COMMENT, "--yes", "--dry-run", "--json"],
+        ),
+        &mock,
+    );
+    assert_eq!(planned(&v), ["CommentDelete"]);
+    assert_eq!(v["mutations"][0]["variables"], json!({ "id": COMMENT }));
+
+    // --yes is still needed (exit 2), and the author rule still holds in a lenient workspace (exit 4).
+    let o = run(&sb, &mock, &["comment", "delete", COMMENT, "--dry-run"]);
+    assert_eq!(code(&o), 2, "{}", stderr(&o));
+    let lenient = lenient_workspace_with_rules(&[]);
+    let mock = Routed::start(routes(comment_reply(Some(BOT), Some("EX-23"), "old text")));
+    let o = run(
+        &lenient,
+        &mock,
+        &["comment", "delete", COMMENT, "--yes", "--dry-run"],
+    );
+    assert_eq!(code(&o), 4, "{}", stderr(&o));
+    mock.assert_read_only();
+}

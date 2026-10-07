@@ -1030,3 +1030,197 @@ fn reorder_of_a_single_issue_is_a_usage_error_before_any_request() {
     assert_eq!(code(&o), 2, "{}", stderr(&o));
     assert!(mock.ops().is_empty());
 }
+
+// ------------------------------------------------------------------ --dry-run
+
+#[test]
+fn a_dry_run_of_create_plans_the_issue_the_source_and_the_undo() {
+    let sb = workspace_with_rules(&ALL_RULES);
+    let body = write_file(&sb, "body.md", GOOD_BODY);
+    let mock = Routed::start(create_routes(vec![]));
+
+    let mut args = create_args(
+        &body,
+        &["--source-title", "life: a decision", "--label", "api"],
+    );
+    args.extend(["--dry-run", "--json"]);
+    let v = plan(&run(&sb, &mock, &args), &mock);
+
+    assert_eq!(v["command"], "issue create");
+    assert_eq!(
+        v["target"],
+        json!({ "kind": "issue", "name": "Write the thing", "id": null, "new": true })
+    );
+    assert_eq!(planned(&v), ["IssueCreate", "AttachmentCreate"]);
+    // The input is the one the real run sends.
+    assert_eq!(
+        v["mutations"][0]["variables"]["input"],
+        json!({
+            "teamId": "00000000-0000-4000-8000-000000000004",
+            "title": "Write the thing",
+            "description": GOOD_BODY.trim_end(),
+            "assigneeId": ALICE,
+            "projectId": PROJECT,
+            "labelIds": ["00000000-0000-4000-8000-000000000008"],
+        })
+    );
+    // What only exists once the issue does is a placeholder.
+    let attach = &v["mutations"][1]["variables"]["input"];
+    assert_eq!(attach["url"], SOURCE);
+    assert_eq!(attach["title"], "life: a decision");
+    assert!(
+        attach["issueId"].as_str().unwrap().starts_with('<'),
+        "{attach}"
+    );
+    assert_eq!(v["rollback"][0]["operation"], "IssueDelete");
+    assert_eq!(v["rollback"][0]["variables"]["id"], attach["issueId"]);
+}
+
+#[test]
+fn a_dry_run_of_create_returns_the_issue_that_has_the_source_and_sends_nothing() {
+    let sb = workspace_with_rules(&ALL_RULES);
+    let body = write_file(&sb, "body.md", GOOD_BODY);
+    let mock = Routed::start(create_routes(vec![(
+        "AttachmentsForUrlQuery",
+        vec![issue_with_source()],
+    )]));
+
+    let args = create_args(&body, &["--dry-run", "--json"]);
+    let v = plan(&run(&sb, &mock, &args), &mock);
+    assert_eq!(v["target"]["name"], "EX-23");
+    assert_eq!(v["target"]["new"], false);
+    assert_eq!(v["mutations"], json!([]));
+    assert!(
+        v["reason"].as_str().unwrap().contains("already exists"),
+        "{v}"
+    );
+}
+
+#[test]
+fn a_dry_run_of_create_fails_like_the_real_run() {
+    let sb = workspace_with_rules(&ALL_RULES);
+    let body = write_file(&sb, "body.md", GOOD_BODY);
+
+    // Exit 5: the body does not fill the template's sections.
+    let thin = write_file(&sb, "thin.md", "## Background\n\nOnly this.\n");
+    let mock = Routed::start(create_routes(vec![]));
+    let o = run(&sb, &mock, &create_args(&thin, &["--dry-run"]));
+    assert_eq!(code(&o), 5, "{}", stderr(&o));
+    assert_eq!(stdout(&o), "");
+    mock.assert_read_only();
+
+    // Exit 4: a project somebody else leads (and --allow-foreign is not given).
+    let mock = Routed::start(create_routes(vec![(
+        "ProjectOwnershipQuery",
+        vec![ownership(PROJECT, Some(BOT))],
+    )]));
+    let o = run(&sb, &mock, &create_args(&body, &["--dry-run"]));
+    assert_eq!(code(&o), 4, "{}", stderr(&o));
+    mock.assert_read_only();
+
+    // Exit 2: a name that matches nothing.
+    let mock = Routed::start(create_routes(vec![]));
+    let mut args = create_args(&body, &["--dry-run"]);
+    let at = args.iter().position(|a| *a == "Fixture Project").unwrap();
+    args[at] = "No such project";
+    let o = run(&sb, &mock, &args);
+    assert_eq!(code(&o), 2, "{}", stderr(&o));
+    mock.assert_read_only();
+}
+
+#[test]
+fn a_dry_run_of_comment_plans_the_comment() {
+    let sb = workspace_with_rules(&ALL_RULES);
+    let file = write_file(&sb, "comment.md", "\nDone in #12.\n\n");
+    let mock = Routed::start(comment_routes(mine()));
+    let v = plan(
+        &run(
+            &sb,
+            &mock,
+            &[
+                "issue",
+                "comment",
+                "EX-23",
+                "--body-file",
+                &file,
+                "--dry-run",
+                "--json",
+            ],
+        ),
+        &mock,
+    );
+    assert_eq!(v["command"], "issue comment");
+    assert_eq!(planned(&v), ["CommentCreate"]);
+    assert_eq!(
+        v["mutations"][0]["variables"],
+        json!({ "input": { "issueId": "id-EX-23", "body": "Done in #12." } })
+    );
+
+    // Ownership applies: somebody else's issue is refused with exit 4.
+    let theirs = view("EX-23")
+        .assigned_to(Some(BOT))
+        .in_project(PROJECT, Some(BOT));
+    let mock = Routed::start(comment_routes(theirs));
+    let o = run(
+        &sb,
+        &mock,
+        &[
+            "issue",
+            "comment",
+            "EX-23",
+            "--body-file",
+            &file,
+            "--dry-run",
+        ],
+    );
+    assert_eq!(code(&o), 4, "{}", stderr(&o));
+    mock.assert_read_only();
+}
+
+#[test]
+fn a_dry_run_of_reorder_plans_each_write_and_its_undo() {
+    let sb = workspace_with_rules(&ALL_RULES);
+    let mock = Routed::start(reorder_routes(three_views(), vec![]));
+    let v = plan(
+        &run(
+            &sb,
+            &mock,
+            &[
+                "issue",
+                "reorder",
+                "EX-3",
+                "EX-1,EX-2",
+                "--dry-run",
+                "--json",
+            ],
+        ),
+        &mock,
+    );
+    assert_eq!(v["command"], "issue reorder");
+    assert_eq!(planned(&v), ["IssueUpdate", "IssueUpdate", "IssueUpdate"]);
+    assert_eq!(
+        v["mutations"][0]["variables"],
+        json!({ "id": "id-EX-3", "input": { "sortOrder": 1.0, "prioritySortOrder": 10.0 } })
+    );
+    assert_eq!(v["rollback"].as_array().unwrap().len(), 3);
+
+    // Already in order: nothing to send.
+    let held = |id: &str, n: f64| mine_in(id).order(n, n * 10.0).reply();
+    let mock = Routed::start(reorder_routes(
+        vec![held("EX-1", 1.0), held("EX-2", 2.0)],
+        vec![],
+    ));
+    let v = plan(
+        &run(
+            &sb,
+            &mock,
+            &["issue", "reorder", "EX-1", "EX-2", "--dry-run", "--json"],
+        ),
+        &mock,
+    );
+    assert_eq!(v["mutations"], json!([]));
+
+    // A single issue is still a usage error.
+    let o = run(&sb, &mock, &["issue", "reorder", "EX-1", "--dry-run"]);
+    assert_eq!(code(&o), 2, "{}", stderr(&o));
+}

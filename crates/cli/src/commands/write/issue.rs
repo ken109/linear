@@ -5,6 +5,7 @@
 //! differs from now, and puts the issue's fields back if the attachment, the
 //! last step, cannot be made.
 
+use super::dry_run::{Plan, Target, NEW_ISSUE_ID};
 use super::{read_text, resolve, retry, ForceArg, Rollback, WriteSession, ATTACH_WAITS};
 use crate::commands::cycle;
 use crate::commands::format::person;
@@ -250,6 +251,20 @@ pub fn create(ctx: &Ctx, cmd: &CreateCmd) -> Result<()> {
             Some(wanted) => put_in_cycle(&ws, existing.id.inner(), wanted)?,
             None => (None, Vec::new()),
         };
+        if ws.dry_run {
+            let mut written = changed.clone();
+            if metadata_updated {
+                written.push("sourceMetadata");
+            }
+            return ws.finish_dry_run(
+                Plan::new(
+                    "issue create",
+                    Target::existing("issue", &existing.identifier, existing.id.inner()),
+                )
+                .changed(written)
+                .reason("an issue with this source already exists, so none is created"),
+            );
+        }
         emit_created(
             &ws,
             Made {
@@ -281,6 +296,20 @@ pub fn create(ctx: &Ctx, cmd: &CreateCmd) -> Result<()> {
         estimate: cmd.estimate,
         parent_id: parent.as_ref().map(|p| p.id.inner().to_owned()),
     };
+    if ws.dry_run {
+        ws.record(&inputs::issue_create(input));
+        if let Some(source) = source {
+            ws.record(&inputs::attachment_create(source_input(
+                &ws,
+                cmd,
+                NEW_ISSUE_ID,
+                source,
+                &metadata,
+            )));
+            ws.record_undo(&inputs::issue_delete(NEW_ISSUE_ID));
+        }
+        return ws.finish_dry_run(Plan::new("issue create", Target::new("issue", &cmd.title)));
+    }
     let data: IssueCreate = ws.client.execute(&inputs::issue_create(input))?;
     let issue = match data.issue_create {
         p if p.success => p
@@ -300,16 +329,7 @@ pub fn create(ctx: &Ctx, cmd: &CreateCmd) -> Result<()> {
             }
         });
         let attached = retry(ws.out, "attaching the source", &ATTACH_WAITS, || {
-            let input = AttachmentCreateInput {
-                issue_id: issue.id.inner().to_owned(),
-                url: source.to_owned(),
-                title: cmd
-                    .source_title
-                    .clone()
-                    .unwrap_or_else(|| ws.source_title.clone()),
-                subtitle: None,
-                metadata: metadata.clone(),
-            };
+            let input = source_input(&ws, cmd, issue.id.inner(), source, &metadata);
             let r: AttachmentCreate = ws.client.execute(&inputs::attachment_create(input))?;
             if r.attachment_create.success {
                 Ok(())
@@ -336,6 +356,26 @@ pub fn create(ctx: &Ctx, cmd: &CreateCmd) -> Result<()> {
         source,
     );
     Ok(())
+}
+
+/// The attachment that makes `issue_id` carry the source of `issue create`.
+fn source_input(
+    ws: &WriteSession,
+    cmd: &CreateCmd,
+    issue_id: &str,
+    source: &str,
+    metadata: &Option<AttachmentMetadata>,
+) -> AttachmentCreateInput {
+    AttachmentCreateInput {
+        issue_id: issue_id.to_owned(),
+        url: source.to_owned(),
+        title: cmd
+            .source_title
+            .clone()
+            .unwrap_or_else(|| ws.source_title.clone()),
+        subtitle: None,
+        metadata: metadata.clone(),
+    }
 }
 
 /// Put an issue that already exists in `wanted`, but only if it is in no cycle: a cycle
@@ -375,9 +415,12 @@ fn put_in_cycle(
         cycle_id: Patch::Set(wanted.id.inner().to_owned()),
         ..Default::default()
     };
-    let data: IssueUpdate = ws
-        .client
-        .execute(&inputs::issue_update(view.issue.id.inner(), input))?;
+    let op = inputs::issue_update(view.issue.id.inner(), input);
+    if ws.dry_run {
+        ws.record(&op);
+        return Ok((Some(wanted.clone()), vec!["cycle"]));
+    }
+    let data: IssueUpdate = ws.client.execute(&op)?;
     changed_issue(data.issue_update, &view.issue.identifier)?;
     Ok((Some(wanted.clone()), vec!["cycle"]))
 }
@@ -420,7 +463,12 @@ fn refresh_source_metadata(
         subtitle: stored.subtitle,
         metadata: Some(wanted.clone()),
     };
-    let r: AttachmentCreate = ws.client.execute(&inputs::attachment_create(input))?;
+    let op = inputs::attachment_create(input);
+    if ws.dry_run {
+        ws.record(&op);
+        return Ok(true);
+    }
+    let r: AttachmentCreate = ws.client.execute(&op)?;
     if r.attachment_create.success {
         Ok(true)
     } else {
@@ -900,6 +948,28 @@ pub fn update(ctx: &Ctx, cmd: &UpdateCmd) -> Result<()> {
         changed.push("source");
     }
 
+    if ws.dry_run {
+        // The same two steps, recorded: the fields, then the source. The fields are put back
+        // only when the source (the later step) fails.
+        if !input.is_empty() {
+            ws.record(&inputs::issue_update(issue.id.inner(), input));
+            if attachment.is_some() {
+                ws.record_undo(&inputs::issue_update(issue.id.inner(), restore));
+            }
+        }
+        if let Some(input) = attachment {
+            ws.record(&inputs::attachment_create(input));
+        }
+        return ws.finish_dry_run(
+            Plan::new(
+                "issue update",
+                Target::existing("issue", &issue.identifier, issue.id.inner()),
+            )
+            .changed(changed)
+            .reason("every field is already as asked"),
+        );
+    }
+
     // Mutate. A source that cannot be attached puts the other fields back.
     let mut rollback = Rollback::new();
     let mut updated = None;
@@ -1087,7 +1157,12 @@ pub fn comment(ctx: &Ctx, cmd: &CommentCmd) -> Result<()> {
         issue_id: view.issue.id.inner().to_owned(),
         body: body.trim().to_owned(),
     };
-    let data: CommentCreate = ws.client.execute(&inputs::comment_create(input))?;
+    let op = inputs::comment_create(input);
+    if ws.dry_run {
+        ws.record(&op);
+        return ws.finish_dry_run(Plan::new("issue comment", issue_target(&view)));
+    }
+    let data: CommentCreate = ws.client.execute(&op)?;
     if !data.comment_create.success {
         return Err(CliError::general("Linear could not write the comment"));
     }
@@ -1159,6 +1234,12 @@ pub fn link_pr(ctx: &Ctx, cmd: &LinkPrCmd) -> Result<()> {
         .iter()
         .find(|a| a.pull_request().is_some_and(|p| p.url == url));
     if let Some(attachment) = linked {
+        if ws.dry_run {
+            return ws.finish_dry_run(
+                Plan::new("issue link-pr", issue_target(&view))
+                    .reason("the issue already carries this pull request"),
+            );
+        }
         return emit_linked(&ws, identifier, &url, number, true, attachment);
     }
 
@@ -1176,9 +1257,12 @@ pub fn link_pr(ctx: &Ctx, cmd: &LinkPrCmd) -> Result<()> {
         }
     }
 
-    let data: inputs::AttachmentLinkGitHubPr = ws.client.execute(
-        &inputs::attachment_link_github_pr(view.issue.id.inner(), &url),
-    )?;
+    let op = inputs::attachment_link_github_pr(view.issue.id.inner(), &url);
+    if ws.dry_run {
+        ws.record(&op);
+        return ws.finish_dry_run(Plan::new("issue link-pr", issue_target(&view)));
+    }
+    let data: inputs::AttachmentLinkGitHubPr = ws.client.execute(&op)?;
     let payload = data.attachment_link_git_hub_pr;
     if !payload.success {
         return Err(CliError::general(format!(
@@ -1283,6 +1367,12 @@ pub fn unlink(ctx: &Ctx, cmd: &UnlinkCmd) -> Result<()> {
         .iter()
         .find(|a| a.url == url && a.issue.id == view.issue.id);
     let Some(target) = target else {
+        if ws.dry_run {
+            return ws.finish_dry_run(
+                Plan::new("issue unlink", issue_target(&view))
+                    .reason("the issue has no attachment with this URL"),
+            );
+        }
         let value = Unlinked {
             workspace: &ws.workspace,
             issue: identifier,
@@ -1305,9 +1395,12 @@ pub fn unlink(ctx: &Ctx, cmd: &UnlinkCmd) -> Result<()> {
             target.title
         )));
     }
-    let data: inputs::AttachmentDelete = ws
-        .client
-        .execute(&inputs::attachment_delete(target.id.inner()))?;
+    let op = inputs::attachment_delete(target.id.inner());
+    if ws.dry_run {
+        ws.record(&op);
+        return ws.finish_dry_run(Plan::new("issue unlink", issue_target(&view)));
+    }
+    let data: inputs::AttachmentDelete = ws.client.execute(&op)?;
     if !data.attachment_delete.success {
         return Err(CliError::general(format!(
             "Linear could not delete the attachment {url} from {identifier}"
@@ -1352,23 +1445,26 @@ struct Archived<'a> {
 
 /// Trash an issue. Linear keeps it for a while and `unarchive` brings it back.
 pub fn delete(ctx: &Ctx, cmd: &IssueTargetCmd) -> Result<()> {
-    change_archive(ctx, cmd, "deleted", |client, id| {
-        let r: IssueDelete = client.execute(&inputs::issue_delete(id))?;
-        Ok(r.issue_delete.success)
+    change_archive(ctx, cmd, "issue delete", "deleted", |ws, id| {
+        ws.send_checked(&inputs::issue_delete(id), |r: IssueDelete| {
+            r.issue_delete.success
+        })
     })
 }
 
 pub fn archive(ctx: &Ctx, cmd: &IssueTargetCmd) -> Result<()> {
-    change_archive(ctx, cmd, "archived", |client, id| {
-        let r: inputs::IssueArchive = client.execute(&inputs::issue_archive(id))?;
-        Ok(r.issue_archive.success)
+    change_archive(ctx, cmd, "issue archive", "archived", |ws, id| {
+        ws.send_checked(&inputs::issue_archive(id), |r: inputs::IssueArchive| {
+            r.issue_archive.success
+        })
     })
 }
 
 pub fn unarchive(ctx: &Ctx, cmd: &IssueTargetCmd) -> Result<()> {
-    change_archive(ctx, cmd, "unarchived", |client, id| {
-        let r: inputs::IssueUnarchive = client.execute(&inputs::issue_unarchive(id))?;
-        Ok(r.issue_unarchive.success)
+    change_archive(ctx, cmd, "issue unarchive", "unarchived", |ws, id| {
+        ws.send_checked(&inputs::issue_unarchive(id), |r: inputs::IssueUnarchive| {
+            r.issue_unarchive.success
+        })
     })
 }
 
@@ -1377,8 +1473,9 @@ pub fn unarchive(ctx: &Ctx, cmd: &IssueTargetCmd) -> Result<()> {
 fn change_archive(
     ctx: &Ctx,
     cmd: &IssueTargetCmd,
+    command: &'static str,
     action: &'static str,
-    mutate: impl FnOnce(&crate::http::Client, &str) -> Result<bool>,
+    mutate: impl FnOnce(&WriteSession, &str) -> Result<bool>,
 ) -> Result<()> {
     let ws = ctx.write_session_with(cmd.force)?;
     let view = fetch_issue(&ws, &cmd.issue)?;
@@ -1388,11 +1485,14 @@ fn change_archive(
         false,
     )?;
     let issue = &view.issue;
-    if !mutate(&ws.client, issue.id.inner())? {
+    if !mutate(&ws, issue.id.inner())? {
         return Err(CliError::general(format!(
             "Linear could not change {} ({action})",
             issue.identifier
         )));
+    }
+    if ws.dry_run {
+        return ws.finish_dry_run(Plan::new(command, issue_target(&view)));
     }
     let value = Archived {
         workspace: &ws.workspace,
@@ -1568,15 +1668,33 @@ pub fn relate(ctx: &Ctx, cmd: &RelateCmd) -> Result<()> {
 
     let existing = relation::matching(&issue.issue, other.issue.id.inner(), kind);
     let (id, already) = match existing.first() {
-        Some(found) => (found.id.inner().to_owned(), true),
+        Some(found) => {
+            if ws.dry_run {
+                return ws.finish_dry_run(
+                    Plan::new(
+                        "issue relate",
+                        Target::existing("issue", a, issue.issue.id.inner()),
+                    )
+                    .reason("the relation is already there"),
+                );
+            }
+            (found.id.inner().to_owned(), true)
+        }
         None => {
             let input = IssueRelationCreateInput {
                 issue_id: issue.issue.id.inner().to_owned(),
                 related_issue_id: other.issue.id.inner().to_owned(),
                 type_: kind,
             };
-            let data: IssueRelationCreate =
-                ws.client.execute(&inputs::issue_relation_create(input))?;
+            let op = inputs::issue_relation_create(input);
+            if ws.dry_run {
+                ws.record(&op);
+                return ws.finish_dry_run(Plan::new(
+                    "issue relate",
+                    Target::existing("issue", a, issue.issue.id.inner()),
+                ));
+            }
+            let data: IssueRelationCreate = ws.client.execute(&op)?;
             if !data.issue_relation_create.success {
                 return Err(CliError::general(format!(
                     "Linear could not relate {a} to {b}"
@@ -1629,16 +1747,26 @@ pub fn unrelate(ctx: &Ctx, cmd: &UnrelateCmd) -> Result<()> {
 
     let found = relation::matching(&issue.issue, other.issue.id.inner(), kind);
     for relation in &found {
-        let data: IssueRelationDelete = ws
-            .client
-            .execute(&inputs::issue_relation_delete(relation.id.inner()))?;
-        if !data.issue_relation_delete.success {
+        let sent = ws.send_checked(
+            &inputs::issue_relation_delete(relation.id.inner()),
+            |r: IssueRelationDelete| r.issue_relation_delete.success,
+        )?;
+        if !sent {
             return Err(CliError::general(format!(
                 "Linear could not remove the relation of {a} and {b}"
             )));
         }
     }
 
+    if ws.dry_run {
+        return ws.finish_dry_run(
+            Plan::new(
+                "issue unrelate",
+                Target::existing("issue", a, issue.issue.id.inner()),
+            )
+            .reason("there is no such relation"),
+        );
+    }
     let removed: Vec<&str> = found.iter().map(|r| r.id.inner()).collect();
     let value = Unrelated {
         workspace: &ws.workspace,
@@ -1744,6 +1872,28 @@ pub fn reorder(ctx: &Ctx, cmd: &ReorderCmd) -> Result<()> {
             .iter()
             .find(|v| v.issue.identifier == change.identifier)
             .expect("the plan only names the issues given");
+        if ws.dry_run {
+            let issue = &view.issue;
+            ws.record(&inputs::issue_update(
+                issue.id.inner(),
+                IssueUpdateInput {
+                    sort_order: change.sort_order,
+                    priority_sort_order: change.priority_sort_order,
+                    ..Default::default()
+                },
+            ));
+            ws.record_undo(&inputs::issue_update(
+                issue.id.inner(),
+                IssueUpdateInput {
+                    sort_order: change.sort_order.map(|_| issue.sort_order),
+                    priority_sort_order: change
+                        .priority_sort_order
+                        .map(|_| issue.priority_sort_order),
+                    ..Default::default()
+                },
+            ));
+            continue;
+        }
         let input = IssueUpdateInput {
             sort_order: change.sort_order,
             priority_sort_order: change.priority_sort_order,
@@ -1771,6 +1921,12 @@ pub fn reorder(ctx: &Ctx, cmd: &ReorderCmd) -> Result<()> {
         });
     }
 
+    if ws.dry_run {
+        return ws.finish_dry_run(
+            Plan::new("issue reorder", Target::several("issue", &wanted))
+                .reason("the issues already sit in that order"),
+        );
+    }
     let value = Reordered {
         workspace: &ws.workspace,
         updated: plan.iter().map(|c| c.identifier.as_str()).collect(),
@@ -1800,6 +1956,11 @@ pub fn reorder(ctx: &Ctx, cmd: &ReorderCmd) -> Result<()> {
 /// The issue as a write needs to see it: its fields, its team's states and its project's lead.
 pub(super) fn fetch_issue(ws: &WriteSession, reference: &str) -> Result<IssueWriteView> {
     ws.client.execute(&read::issue_write_view(reference.trim()))
+}
+
+/// The issue a write is aimed at, as a dry run names it.
+pub(super) fn issue_target(view: &IssueWriteView) -> Target {
+    Target::existing("issue", &view.issue.identifier, view.issue.id.inner())
 }
 
 pub(super) fn placement_of(view: &IssueWriteView) -> Placement<'_> {

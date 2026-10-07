@@ -184,3 +184,59 @@ fn a_refusal_from_linear_is_an_error() {
     assert_eq!(code(&o), 1, "{}", stderr(&o));
     assert!(stderr(&o).contains("could not delete"), "{}", stderr(&o));
 }
+
+#[test]
+fn a_dry_run_names_the_attachment_it_would_delete() {
+    let sb = workspace();
+    let mock = Routed::start(routes(mine(), linked()));
+    let v = plan(
+        &run(
+            &sb,
+            &mock,
+            &[
+                "issue",
+                "unlink",
+                "EX-23",
+                URL,
+                "--yes",
+                "--dry-run",
+                "--json",
+            ],
+        ),
+        &mock,
+    );
+    assert_eq!(v["command"], "issue unlink");
+    assert_eq!(planned(&v), ["AttachmentDelete"]);
+    assert_eq!(v["mutations"][0]["variables"], json!({ "id": ATTACHMENT }));
+
+    // Without --yes the real run exits 2; so does the dry run.
+    let mock = Routed::start(routes(mine(), linked()));
+    let o = run(&sb, &mock, &["issue", "unlink", "EX-23", URL, "--dry-run"]);
+    assert_eq!(code(&o), 2, "{}", stderr(&o));
+    mock.assert_read_only();
+
+    // An issue without that attachment: nothing to send.
+    let mock = Routed::start(routes(mine(), attachment_targets(&[])));
+    let v = plan(
+        &run(
+            &sb,
+            &mock,
+            &["issue", "unlink", "EX-23", URL, "--dry-run", "--json"],
+        ),
+        &mock,
+    );
+    assert_eq!(v["mutations"], json!([]));
+
+    // Ownership (exit 4).
+    let theirs = view("EX-23")
+        .assigned_to(Some(BOT))
+        .in_project(PROJECT, Some(BOT));
+    let mock = Routed::start(routes(theirs, linked()));
+    let o = run(
+        &sb,
+        &mock,
+        &["issue", "unlink", "EX-23", URL, "--yes", "--dry-run"],
+    );
+    assert_eq!(code(&o), 4, "{}", stderr(&o));
+    mock.assert_read_only();
+}

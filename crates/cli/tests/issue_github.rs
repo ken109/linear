@@ -308,3 +308,47 @@ fn view_text_shows_the_branch_and_lists_the_pull_requests() {
         "{text}"
     );
 }
+
+#[test]
+fn a_dry_run_of_link_pr_plans_the_link_and_still_asks_for_the_integration() {
+    let sb = workspace_with_rules(&[]);
+    let mock = Routed::start(routes(mine(), vec![]));
+    let v = plan(
+        &run(
+            &sb,
+            &mock,
+            &["issue", "link-pr", "EX-23", PR, "--dry-run", "--json"],
+        ),
+        &mock,
+    );
+    assert_eq!(v["command"], "issue link-pr");
+    assert_eq!(planned(&v), ["AttachmentLinkGitHubPr"]);
+    assert_eq!(
+        v["mutations"][0]["variables"],
+        json!({ "issueId": "id-EX-23", "url": PR })
+    );
+
+    // No GitHub integration: the same error as the real run (exit 1), nothing planned.
+    let mock = Routed::start(routes(
+        mine(),
+        vec![("Integrations", vec![integrations_of(&["slack"])])],
+    ));
+    let o = run(&sb, &mock, &["issue", "link-pr", "EX-23", PR, "--dry-run"]);
+    assert_eq!(code(&o), 1, "{}", stderr(&o));
+    mock.assert_read_only();
+
+    // Already linked: nothing to send.
+    let mock = Routed::start(routes(
+        with_attachments(mine(), vec![github_attachment(0), github_attachment(1)]),
+        vec![],
+    ));
+    let v = plan(
+        &run(
+            &sb,
+            &mock,
+            &["issue", "link-pr", "EX-23", PR, "--dry-run", "--json"],
+        ),
+        &mock,
+    );
+    assert_eq!(v["mutations"], json!([]));
+}

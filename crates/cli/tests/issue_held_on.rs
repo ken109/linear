@@ -277,3 +277,32 @@ fn a_failed_cycle_update_on_an_existing_issue_is_an_error() {
     assert!(stderr(&o).contains("cycle refused"), "{}", stderr(&o));
     assert_eq!(stdout(&o), "");
 }
+
+#[test]
+fn a_dry_run_plans_the_cycle_alignment_of_an_existing_issue() {
+    let sb = workspace_with_rules(&["source-attachment"]);
+    let mock = Routed::start(existing_routes(mine().in_cycle(None)));
+    let v = plan(
+        &run(&sb, &mock, &args(MEETING, &["--dry-run", "--json"])),
+        &mock,
+    );
+    assert_eq!(v["target"]["name"], "EX-23");
+    assert_eq!(v["changed"], json!(["cycle"]));
+    assert_eq!(planned(&v), ["IssueUpdate"]);
+    assert_eq!(
+        v["mutations"][0]["variables"],
+        json!({ "id": "id-EX-23", "input": { "cycleId": CYCLE_41 } })
+    );
+}
+
+#[test]
+fn a_dry_run_puts_the_new_issue_in_the_cycle() {
+    let sb = workspace_with_rules(&[]);
+    let mock = Routed::start(create_with_cycle(vec![]));
+    let v = plan(
+        &run(&sb, &mock, &args(MEETING, &["--dry-run", "--json"])),
+        &mock,
+    );
+    assert_eq!(planned(&v), ["IssueCreate", "AttachmentCreate"]);
+    assert_eq!(v["mutations"][0]["variables"]["input"]["cycleId"], CYCLE_41);
+}

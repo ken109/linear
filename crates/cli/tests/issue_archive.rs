@@ -138,3 +138,32 @@ fn a_refusal_from_linear_is_an_error() {
         stderr(&o)
     );
 }
+
+#[test]
+fn a_dry_run_of_each_command_plans_its_one_mutation() {
+    let sb = workspace();
+    for (command, mutation, _) in CASES {
+        let mock = Routed::start(routes(mine()));
+        let v = plan(
+            &run(
+                &sb,
+                &mock,
+                &["issue", command, "EX-23", "--dry-run", "--json"],
+            ),
+            &mock,
+        );
+        assert_eq!(v["command"], format!("issue {command}"));
+        assert_eq!(planned(&v), [mutation], "{command}");
+        assert_eq!(v["mutations"][0]["variables"], json!({ "id": "id-EX-23" }));
+        assert_eq!(v["target"]["id"], "id-EX-23");
+    }
+
+    // Somebody else's issue is refused in a strict workspace.
+    let theirs = view("EX-23")
+        .assigned_to(Some(BOT))
+        .in_project(PROJECT, Some(BOT));
+    let mock = Routed::start(routes(theirs));
+    let o = run(&sb, &mock, &["issue", "delete", "EX-23", "--dry-run"]);
+    assert_eq!(code(&o), 4, "{}", stderr(&o));
+    mock.assert_read_only();
+}
