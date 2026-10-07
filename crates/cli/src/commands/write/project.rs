@@ -1,4 +1,4 @@
-//! `linear project create|update|reorder|status-update`.
+//! `linear project create|update|reorder|status-update|delete|unarchive`.
 
 use super::{read_text, resolve, retry, Rollback, WriteSession, ATTACH_WAITS};
 use crate::commands::format::{health, person};
@@ -11,14 +11,15 @@ use clap::Args;
 use linear_core::config::Rule;
 use linear_core::guard::Write;
 use linear_core::inputs::Patch;
-use linear_core::matching::match_initiative;
+use linear_core::matching::{match_initiative, match_project};
 use linear_core::project_write::{
     self as pw, ProjectCreate, ProjectCreateInput, ProjectDelete, ProjectOrderQuery,
     ProjectStatuses, ProjectUpdate, ProjectUpdateCreate, ProjectUpdateInput,
     StatusUpdateCreateInput, UnfinishedNamed,
 };
 use linear_core::read::{
-    self, InitiativeList, InitiativeListVars, ProjectView, INITIATIVE_LIST_PAGE_SIZE,
+    self, InitiativeList, InitiativeListVars, ProjectRefsWithArchived, ProjectView,
+    INITIATIVE_LIST_PAGE_SIZE, PROJECT_REFS_PAGE_SIZE,
 };
 use linear_core::reorder::{self, OrderRow};
 use linear_core::rules::{Draft, Operation};
@@ -633,6 +634,96 @@ pub fn reorder(ctx: &Ctx, cmd: &ReorderCmd) -> Result<()> {
                 .collect::<Vec<_>>()
                 .join("\n")
         },
+    );
+    Ok(())
+}
+
+// ---------------------------------------------------------------- delete, unarchive
+
+#[derive(Debug, Args)]
+pub struct ProjectTargetCmd {
+    /// Project id, slug id, URL or name
+    pub project: String,
+}
+
+/// What `delete` and `unarchive` print.
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct Restored<'a> {
+    workspace: &'a str,
+    id: &'a str,
+    slug_id: &'a str,
+    name: &'a str,
+    url: &'a str,
+    /// What was done: `deleted` (trashed) or `unarchived`.
+    action: &'static str,
+}
+
+/// Trash a project. Linear keeps it for a while and `unarchive` brings it back.
+pub fn delete(ctx: &Ctx, cmd: &ProjectTargetCmd) -> Result<()> {
+    change_trash(ctx, cmd, "deleted", false, |ws, id| {
+        let r: ProjectDelete = ws.client.execute(&pw::project_delete(id))?;
+        Ok(r.project_delete.success)
+    })
+}
+
+/// Bring back a deleted (trashed) or archived project.
+pub fn unarchive(ctx: &Ctx, cmd: &ProjectTargetCmd) -> Result<()> {
+    change_trash(ctx, cmd, "unarchived", true, |ws, id| {
+        let r: pw::ProjectUnarchive = ws.client.execute(&pw::project_unarchive(id))?;
+        Ok(r.project_unarchive.success)
+    })
+}
+
+/// The shared path of the two: find the project (a deleted one too, when
+/// `include_archived`), ask the ownership rules (the same as for updating it:
+/// you must lead it), send `mutate`, print one line.
+fn change_trash(
+    ctx: &Ctx,
+    cmd: &ProjectTargetCmd,
+    action: &'static str,
+    include_archived: bool,
+    mutate: impl FnOnce(&WriteSession, &str) -> Result<bool>,
+) -> Result<()> {
+    let ws = ctx.write_session()?;
+    let found = if include_archived {
+        let rows = paginate(PROJECT_REFS_PAGE_SIZE, None, |vars| {
+            let data: ProjectRefsWithArchived =
+                ws.client.execute(&read::project_refs_with_archived(vars))?;
+            Ok(data.projects)
+        })?
+        .items;
+        match_project(&rows, &cmd.project)?.clone()
+    } else {
+        resolve_project(&ws.client, &cmd.project)?
+    };
+    let owned: read::ProjectOwnershipQuery = ws
+        .client
+        .execute(&read::project_ownership(found.id.inner()))?;
+    ws.guard(
+        &Write::ProjectUpdate {
+            lead: owned.project.lead.as_ref().map(|u| u.id.inner()),
+        },
+        false,
+    )?;
+    if !mutate(&ws, found.id.inner())? {
+        return Err(CliError::general(format!(
+            "Linear could not change the project {} ({action})",
+            found.name
+        )));
+    }
+    let value = Restored {
+        workspace: &ws.workspace,
+        id: found.id.inner(),
+        slug_id: &found.slug_id,
+        name: &found.name,
+        url: &found.url,
+        action,
+    };
+    ctx.out.emit(
+        &value,
+        || format!("{}  {}  ({action})", found.slug_id, found.name),
+        || found.slug_id.clone(),
     );
     Ok(())
 }

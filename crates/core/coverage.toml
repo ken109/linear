@@ -295,12 +295,15 @@ status = "implemented"
 via = [
   "project_write::project_create", "project_write::project_update",
   "project_write::project_delete", "project_write::project_update_create",
-  "project_write::initiative_to_project_create",
+  "project_write::initiative_to_project_create", "project_write::project_unarchive",
 ]
-commands = ["project create", "project update", "project reorder", "project status-update"]
+commands = [
+  "project create", "project update", "project reorder", "project status-update",
+  "project delete", "project unarchive",
+]
 fields = [
-  "initiativeToProjectCreate", "projectCreate", "projectDelete", "projectUpdate",
-  "projectUpdateCreate",
+  "initiativeToProjectCreate", "projectCreate", "projectDelete", "projectUnarchive",
+  "projectUpdate", "projectUpdateCreate",
 ]
 
 [[entry]]
@@ -406,7 +409,7 @@ fields = [
   "organizationCancelDelete", "organizationDelete", "organizationDeleteChallenge",
   "organizationDomainDelete", "organizationInviteDelete", "projectArchive",
   "projectLabelDelete", "projectLabelRestore", "projectLabelRetire",
-  "projectRelationDelete", "projectStatusArchive", "projectStatusUnarchive", "projectUnarchive",
+  "projectRelationDelete", "projectStatusArchive", "projectStatusUnarchive",
   "projectUpdateArchive", "projectUpdateDelete", "projectUpdateUnarchive",
   "pushSubscriptionDelete", "reactionDelete", "releaseArchive", "releaseDelete",
   "releaseNoteDelete", "releasePipelineArchive", "releasePipelineDelete",

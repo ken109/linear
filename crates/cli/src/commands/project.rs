@@ -1,4 +1,4 @@
-//! `linear project list|view|create|update|reorder|status-update` (the writes live in `write::project`).
+//! `linear project list|view|create|update|reorder|status-update|delete|unarchive` (the writes live in `write::project`).
 
 use super::cached::{self, CachedArgs};
 use super::format::{
@@ -33,6 +33,16 @@ pub enum ProjectCommand {
     Reorder(write::project::ReorderCmd),
     /// Write a status update (health and body) on a project
     StatusUpdate(write::project::StatusUpdateCmd),
+    /// Move a project to the trash (restore it with `project unarchive`)
+    ///
+    /// Linear keeps a deleted project for a while before removing it for good. Only a project
+    /// you lead (the ownership rule of `project update`). There is no `project archive`: Linear
+    /// has deprecated its archive mutation in favour of this one.
+    Delete(write::project::ProjectTargetCmd),
+    /// Bring back a deleted (trashed) or archived project
+    ///
+    /// Finds the project among the deleted ones too. Only a project you lead.
+    Unarchive(write::project::ProjectTargetCmd),
 }
 
 const STATUS_TYPES: [&str; 6] = [
@@ -83,6 +93,8 @@ pub fn run(ctx: &Ctx, cmd: &ProjectCommand) -> Result<()> {
         ProjectCommand::Update(args) => write::project::update(ctx, args),
         ProjectCommand::Reorder(args) => write::project::reorder(ctx, args),
         ProjectCommand::StatusUpdate(args) => write::project::status_update(ctx, args),
+        ProjectCommand::Delete(args) => write::project::delete(ctx, args),
+        ProjectCommand::Unarchive(args) => write::project::unarchive(ctx, args),
     }
 }
 

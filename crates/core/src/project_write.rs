@@ -150,6 +150,18 @@ pub fn project_delete(id: impl Into<String>) -> Operation<ProjectDelete, Project
     ProjectDelete::build(ProjectDeleteVars { id: id.into() })
 }
 
+/// Restores a trashed or archived project (`projectUnarchive`).
+#[derive(cynic::QueryFragment, Debug, Clone, PartialEq)]
+#[cynic(graphql_type = "Mutation", variables = "ProjectDeleteVars")]
+pub struct ProjectUnarchive {
+    #[arguments(id: $id)]
+    pub project_unarchive: ProjectArchivePayload,
+}
+
+pub fn project_unarchive(id: impl Into<String>) -> Operation<ProjectUnarchive, ProjectDeleteVars> {
+    ProjectUnarchive::build(ProjectDeleteVars { id: id.into() })
+}
+
 // ---------------------------------------------------------------- status update
 
 #[derive(cynic::InputObject, Debug, Clone)]

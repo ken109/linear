@@ -322,6 +322,18 @@ pub fn project_refs(vars: PageVars) -> Operation<ProjectRefs, PageVars> {
     ProjectRefs::build(vars)
 }
 
+/// [`ProjectRefs`] including archived and trashed projects (to find one to restore).
+#[derive(cynic::QueryFragment, Debug, Clone, PartialEq)]
+#[cynic(graphql_type = "Query", variables = "PageVars")]
+pub struct ProjectRefsWithArchived {
+    #[arguments(first: $first, after: $after, includeArchived: true)]
+    pub projects: ProjectRefConnection,
+}
+
+pub fn project_refs_with_archived(vars: PageVars) -> Operation<ProjectRefsWithArchived, PageVars> {
+    ProjectRefsWithArchived::build(vars)
+}
+
 nodes_container!(StatusUpdateNodes, "ProjectUpdateConnection", StatusUpdate);
 
 /// How many status updates a project `view` shows.
