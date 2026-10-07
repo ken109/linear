@@ -36,3 +36,38 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
       - run: cargo test --workspace
+
+  # The scripts are generated from the command definition at run time, so they cannot
+  # drift from the commands; this checks that what is generated still works: it parses in
+  # its shell, and bash really completes a command and a subcommand. (That every
+  # subcommand is named in every script is a unit test in crates/cli.)
+  completions:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - run: sudo apt-get update && sudo apt-get install -y zsh fish
+      - run: cargo build --locked -p linear
+      - name: Generate and parse the scripts
+        run: |
+          bin=$PWD/target/debug/linear
+          dir=$RUNNER_TEMP/completions
+          mkdir -p "$dir"
+          for shell in bash zsh fish elvish powershell; do
+            "$bin" completions "$shell" > "$dir/linear.$shell"
+            [ -s "$dir/linear.$shell" ] || { echo "empty script for $shell" >&2; exit 1; }
+          done
+          bash -n "$dir/linear.bash"
+          zsh -n "$dir/linear.zsh"
+          fish --no-execute "$dir/linear.fish"
+      - name: Bash completes a command and a subcommand
+        run: |
+          # shellcheck source=/dev/null
+          . <("$PWD/target/debug/linear" completions bash)
+          COMP_WORDS=(linear iss) COMP_CWORD=1
+          _linear linear iss linear
+          [ "${COMPREPLY[*]}" = issue ] || { echo "got: ${COMPREPLY[*]}" >&2; exit 1; }
+          COMP_WORDS=(linear issue vi) COMP_CWORD=2
+          _linear linear vi issue
+          [ "${COMPREPLY[*]}" = view ] || { echo "got: ${COMPREPLY[*]}" >&2; exit 1; }
