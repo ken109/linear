@@ -21,6 +21,16 @@ pub enum ErrorCode {
 }
 
 impl ErrorCode {
+    /// Every code, in exit-code order.
+    pub const ALL: [ErrorCode; 6] = [
+        Self::General,
+        Self::Usage,
+        Self::Auth,
+        Self::WriteDenied,
+        Self::Validation,
+        Self::AuditFindings,
+    ];
+
     pub fn exit_code(self) -> u8 {
         match self {
             Self::General => 1,
@@ -110,5 +120,18 @@ impl Error {
             Self::Usage(_) => ErrorCode::Usage,
             _ => ErrorCode::General,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// `ALL` is what `linear usage` lists; the exit codes are consecutive from 1, so a new
+    /// code that is left out of it shows up as a gap.
+    #[test]
+    fn all_lists_every_code_once_in_exit_code_order() {
+        let codes: Vec<u8> = ErrorCode::ALL.iter().map(|c| c.exit_code()).collect();
+        assert_eq!(codes, (1..=ErrorCode::ALL.len() as u8).collect::<Vec<_>>());
     }
 }
