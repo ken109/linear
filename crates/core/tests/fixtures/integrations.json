@@ -1,0 +1,11 @@
+{
+  "data": {
+    "integrations": {
+      "nodes": [
+        { "service": "githubPersonal", "archivedAt": null },
+        { "service": "slack", "archivedAt": null },
+        { "service": "github", "archivedAt": null }
+      ]
+    }
+  }
+}

@@ -3,7 +3,7 @@
   "expected": {
     "error": {
       "code": "usage",
-      "message": "invalid config: unknown field `staleDay`, expected one of `staleDays`, `statusUpdateDays`, `validators`, `sourceKinds` at line 1 column 11"
+      "message": "invalid config: unknown field `staleDay`, expected one of `staleDays`, `statusUpdateDays`, `prOpenDays`, `validators`, `sourceKinds` at line 1 column 11"
     },
     "ok": false
   },
@@ -27,6 +27,7 @@
           "attachments": {
             "nodes": []
           },
+          "branchName": "branch-kk-6",
           "canceledAt": null,
           "completedAt": null,
           "createdAt": "2026-09-01T00:00:00Z",

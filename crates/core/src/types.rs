@@ -389,6 +389,10 @@ pub struct Issue {
     pub title: String,
     pub description: Option<String>,
     pub url: String,
+    /// The git branch name Linear suggests for the issue (Linear's `branchName`).
+    /// A branch of this name, or one that holds the identifier, links its pull
+    /// request to the issue through the GitHub integration.
+    pub branch_name: String,
     pub team: Team,
     pub state: WorkflowState,
     pub assignee: Option<User>,

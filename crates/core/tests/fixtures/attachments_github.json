@@ -1,0 +1,98 @@
+{
+  "nodes": [
+    {
+      "id": "00000000-0000-4000-8000-0000000000a1",
+      "title": "Example synced issue",
+      "subtitle": null,
+      "url": "https://github.com/example/app/issues/194",
+      "sourceType": "github",
+      "metadata": {
+        "id": 5382002642,
+        "title": "Example synced issue"
+      },
+      "createdAt": "2026-10-01T09:00:00.000Z"
+    },
+    {
+      "id": "00000000-0000-4000-8000-0000000000a2",
+      "title": "Add the widget",
+      "subtitle": null,
+      "url": "https://github.com/example/app/pull/41",
+      "sourceType": "github",
+      "metadata": {
+        "number": 41,
+        "title": "Add the widget",
+        "status": "open",
+        "draft": false,
+        "createdAt": "2026-10-02T09:00:00.000Z",
+        "mergedAt": null,
+        "closedAt": null,
+        "reviews": [{ "state": "approved" }]
+      },
+      "createdAt": "2026-10-02T09:05:00.000Z"
+    },
+    {
+      "id": "00000000-0000-4000-8000-0000000000a3",
+      "title": "Rework the widget",
+      "subtitle": null,
+      "url": "https://github.com/example/app/pull/42",
+      "sourceType": "github",
+      "metadata": {
+        "number": 42,
+        "title": "Rework the widget",
+        "status": "open",
+        "draft": true,
+        "createdAt": "2026-09-01T09:00:00.000Z"
+      },
+      "createdAt": "2026-09-01T09:05:00.000Z"
+    },
+    {
+      "id": "00000000-0000-4000-8000-0000000000a4",
+      "title": "Fix the widget",
+      "subtitle": null,
+      "url": "https://github.com/example/app/pull/43",
+      "sourceType": "github",
+      "metadata": {
+        "number": 43,
+        "title": "Fix the widget",
+        "status": "merged",
+        "draft": false,
+        "createdAt": "2026-10-03T09:00:00.000Z",
+        "mergedAt": "2026-10-05T09:00:00.000Z",
+        "closedAt": "2026-10-05T09:00:00.000Z"
+      },
+      "createdAt": "2026-10-03T09:05:00.000Z"
+    },
+    {
+      "id": "00000000-0000-4000-8000-0000000000a5",
+      "title": "Abandon the widget",
+      "subtitle": null,
+      "url": "https://github.com/example/app/pull/44",
+      "sourceType": "github",
+      "metadata": {
+        "number": 44,
+        "status": "closed",
+        "createdAt": "2026-10-03T09:00:00.000Z",
+        "closedAt": "2026-10-04T09:00:00.000Z"
+      },
+      "createdAt": "2026-10-03T09:05:00.000Z"
+    },
+    {
+      "id": "00000000-0000-4000-8000-0000000000a6",
+      "title": "A pull request whose metadata says nothing",
+      "subtitle": null,
+      "url": "https://github.com/example/app/pull/45/files",
+      "sourceType": "github",
+      "metadata": {},
+      "createdAt": "2026-10-03T09:05:00.000Z"
+    },
+    {
+      "id": "00000000-0000-4000-8000-0000000000a7",
+      "title": "Source",
+      "subtitle": null,
+      "url": "https://github.com/example/app/pull/46",
+      "sourceType": "oauthClient",
+      "metadata": {},
+      "createdAt": "2026-10-03T09:05:00.000Z"
+    }
+  ]
+}

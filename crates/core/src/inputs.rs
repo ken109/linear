@@ -239,6 +239,36 @@ pub fn attachment_create(
     AttachmentCreate::build(AttachmentCreateVars { input })
 }
 
+// ---------------------------------------------------------------- GitHub pull request
+
+#[derive(cynic::QueryVariables, Debug, Clone)]
+pub struct AttachmentLinkGitHubPrVars {
+    pub issue_id: String,
+    pub url: String,
+}
+
+/// Links a GitHub pull request to an issue through the workspace's GitHub
+/// integration (`attachmentLinkGitHubPR`), which makes the attachment the
+/// integration keeps in sync with GitHub. Linear refuses it when the workspace
+/// has no such integration.
+#[derive(cynic::QueryFragment, Debug, Clone, PartialEq)]
+#[cynic(graphql_type = "Mutation", variables = "AttachmentLinkGitHubPrVars")]
+pub struct AttachmentLinkGitHubPr {
+    #[arguments(issueId: $issue_id, url: $url)]
+    #[cynic(rename = "attachmentLinkGitHubPR")]
+    pub attachment_link_git_hub_pr: AttachmentPayload,
+}
+
+pub fn attachment_link_github_pr(
+    issue_id: impl Into<String>,
+    url: impl Into<String>,
+) -> cynic::Operation<AttachmentLinkGitHubPr, AttachmentLinkGitHubPrVars> {
+    AttachmentLinkGitHubPr::build(AttachmentLinkGitHubPrVars {
+        issue_id: issue_id.into(),
+        url: url.into(),
+    })
+}
+
 // ---------------------------------------------------------------- comment
 
 #[derive(cynic::InputObject, Debug, Clone)]

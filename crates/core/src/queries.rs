@@ -138,3 +138,41 @@ pub const INITIATIVES_PAGE_SIZE: i32 = 50;
 pub fn initiatives(vars: PageVars) -> Operation<Initiatives, PageVars> {
     Initiatives::build(vars)
 }
+
+// ---------------------------------------------------------------- integrations
+
+/// The workspace's integrations, to tell whether GitHub is connected.
+#[derive(cynic::QueryFragment, Debug, Clone, PartialEq, Serialize, JsonSchema)]
+#[cynic(graphql_type = "Query")]
+#[serde(rename_all = "camelCase")]
+pub struct Integrations {
+    #[arguments(first: 100)]
+    pub integrations: IntegrationNodes,
+}
+
+#[derive(cynic::QueryFragment, Debug, Clone, PartialEq, Serialize, JsonSchema)]
+#[cynic(graphql_type = "Integration")]
+#[serde(rename_all = "camelCase")]
+pub struct Integration {
+    /// What it connects to: `github`, `slack`, `githubPersonal`, ...
+    pub service: String,
+    pub archived_at: Option<chrono::DateTime<chrono::Utc>>,
+}
+
+nodes_container!(IntegrationNodes, "IntegrationConnection", Integration);
+
+impl Integrations {
+    /// Is the GitHub integration installed and not archived? That is what
+    /// `attachmentLinkGitHubPR` needs (a personal GitHub connection does not
+    /// count).
+    pub fn has_github(&self) -> bool {
+        self.integrations.iter().any(|i| {
+            i.archived_at.is_none()
+                && matches!(i.service.as_str(), "github" | "githubEnterpriseServer")
+        })
+    }
+}
+
+pub fn integrations() -> Operation<Integrations, ()> {
+    Integrations::build(())
+}

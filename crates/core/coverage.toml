@@ -53,6 +53,15 @@ fields = [
 [[entry]]
 type = "Query"
 status = "implemented"
+via = ["queries::integrations"]
+commands = ["issue link-pr"]
+fields = [
+  "integrations",
+]
+
+[[entry]]
+type = "Query"
+status = "implemented"
 via = ["read::attachments_for_url"]
 commands = ["issue create"]
 fields = [
@@ -218,7 +227,7 @@ fields = [
   "initiativeLabels", "initiativeLeadTeamChangeImpact", "initiativeRelation",
   "initiativeRelations", "initiativeToProject", "initiativeToProjects", "initiativeUpdate",
   "initiativeUpdates", "integration", "integrationHasScopes", "integrationJiraProjectStatuses",
-  "integrationTemplate", "integrationTemplates", "integrations", "issueFigmaFileKeySearch",
+  "integrationTemplate", "integrationTemplates", "issueFigmaFileKeySearch",
   "issueFilterSuggestion", "issueImportCheckCSV", "issueImportCheckSync", "issueImportJqlCheck",
   "issuePriorityValues", "issueRepositorySuggestions", "issueTitleSuggestionFromCustomerRequest",
   "issueToRelease", "issueToReleases", "issueVcsBranchSearch", "latestReleaseByAccessKey",
@@ -248,6 +257,15 @@ via = [
 commands = ["issue create", "issue update", "issue comment", "issue reorder"]
 fields = [
   "attachmentCreate", "commentCreate", "issueCreate", "issueDelete", "issueUpdate",
+]
+
+[[entry]]
+type = "Mutation"
+status = "implemented"
+via = ["inputs::attachment_link_github_pr"]
+commands = ["issue link-pr"]
+fields = [
+  "attachmentLinkGitHubPR",
 ]
 
 [[entry]]
@@ -320,7 +338,7 @@ status = "unsupported"
 reason = "Integration setup or sync; outside the CLI's scope."
 fields = [
   "airbyteIntegrationConnect", "attachmentLinkDiscord", "attachmentLinkFront",
-  "attachmentLinkGitHubIssue", "attachmentLinkGitHubPR", "attachmentLinkGitLabMR",
+  "attachmentLinkGitHubIssue", "attachmentLinkGitLabMR",
   "attachmentLinkIntercom", "attachmentLinkJiraIssue", "attachmentLinkSalesforce",
   "attachmentLinkSlack", "attachmentLinkZendesk", "attachmentSyncToSlack", "customerUnsync",
   "gitAutomationStateCreate", "gitAutomationStateDelete", "gitAutomationStateUpdate",
@@ -476,8 +494,8 @@ type = "Issue"
 status = "implemented"
 via = ["types::Issue"]
 fields = [
-  "assignee", "attachments", "canceledAt", "completedAt", "createdAt", "description", "dueDate",
-  "estimate", "id", "identifier", "labels", "parent", "prioritySortOrder", "project",
+  "assignee", "attachments", "branchName", "canceledAt", "completedAt", "createdAt",
+  "description", "dueDate", "estimate", "id", "identifier", "labels", "parent", "prioritySortOrder", "project",
   "projectMilestone", "sortOrder", "startedAt", "state", "team", "title", "updatedAt", "url",
 ]
 
@@ -542,7 +560,7 @@ type = "Issue"
 status = "unsupported"
 reason = "Not selected in the fixed fragment; use `linear api` if it is needed."
 fields = [
-  "branchName", "customerTicketCount", "number", "priority", "trashed",
+  "customerTicketCount", "number", "priority", "trashed",
 ]
 
 [[entry]]

@@ -55,6 +55,7 @@ pub fn issue(identifier: &str) -> IssueB {
         "title": format!("Title of {identifier}"),
         "description": null,
         "url": format!("https://linear.app/x/issue/{identifier}"),
+        "branchName": format!("branch-{}", identifier.to_lowercase()),
         "team": { "id": "t-1", "key": "KK", "name": "Team" },
         "state": state("unstarted"),
         "assignee": null,
@@ -119,6 +120,10 @@ impl IssueB {
                 "sourceType": null, "metadata": {}, "createdAt": "2026-09-01T00:00:00Z",
             }] }),
         )
+    }
+    /// These attachments (JSON as Linear returns them) and no others.
+    pub fn attachments(self, nodes: Vec<Value>) -> Self {
+        self.set("attachments", json!({ "nodes": nodes }))
     }
     /// Labels as `(name, group)`, the group being a single-select label group.
     pub fn labels(self, labels: &[(&str, &str)]) -> Self {
