@@ -19,8 +19,15 @@ jobs:
           components: rustfmt
       - run: cargo fmt --all --check
 
+  # clippy and the tests run on Windows too, which is a release target: they catch what
+  # only the Windows build compiles (the cfg(not(unix)) code) and what only it runs
+  # (paths, config and cache directories).
   clippy:
-    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
@@ -30,7 +37,11 @@ jobs:
       - run: cargo clippy --workspace --all-targets
 
   test:
-    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
