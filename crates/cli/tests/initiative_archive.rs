@@ -142,3 +142,28 @@ fn a_refusal_from_linear_is_an_error() {
     let o = run(&sb, &mock, &["initiative", "delete", "Beta"]);
     assert_eq!(code(&o), 1, "{}", stderr(&o));
 }
+
+#[test]
+fn a_dry_run_of_each_command_plans_its_one_mutation() {
+    let sb = workspace();
+    for (command, mutation, _, list) in CASES {
+        let mock = Routed::start(routes());
+        let v = plan(
+            &run(
+                &sb,
+                &mock,
+                &["initiative", command, "Beta", "--dry-run", "--json"],
+            ),
+            &mock,
+        );
+        assert_eq!(v["command"], format!("initiative {command}"));
+        assert_eq!(planned(&v), [mutation], "{command}");
+        assert_eq!(v["mutations"][0]["variables"], json!({ "id": SECOND }));
+        assert!(mock.ops().contains(&list.to_owned()), "{command}");
+    }
+    // An unknown initiative is a usage error and nothing is planned.
+    let mock = Routed::start(routes());
+    let o = run(&sb, &mock, &["initiative", "delete", "Nope", "--dry-run"]);
+    assert_eq!(code(&o), 2, "{}", stderr(&o));
+    mock.assert_read_only();
+}

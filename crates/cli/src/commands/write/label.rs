@@ -15,6 +15,7 @@
 //! two labels of that group. A label that is created is on no issue, so a
 //! creation has nothing to hold against the rule.
 
+use super::dry_run::{Plan, Target};
 use super::{resolve, WriteSession};
 use crate::commands::listing::{paginate, Listing};
 use crate::commands::Ctx;
@@ -136,6 +137,15 @@ pub fn create(ctx: &Ctx, cmd: &CreateCmd) -> Result<()> {
             && taken.parent.as_ref().map(|p| p.id.inner()) == group.map(|g| g.id.inner())
             && taken.is_group == cmd.is_group;
         if same_place {
+            if ws.dry_run {
+                return ws.finish_dry_run(
+                    Plan::new(
+                        "label create",
+                        Target::existing("label", taken.path(), taken.id.inner()),
+                    )
+                    .reason("the label already exists here, so none is created"),
+                );
+            }
             emit_created(ctx, &ws, taken, true);
             return Ok(());
         }
@@ -147,7 +157,8 @@ pub fn create(ctx: &Ctx, cmd: &CreateCmd) -> Result<()> {
         )));
     }
 
-    let data: LabelCreate = ws.client.execute(&label_create(LabelCreateInput {
+    let label_name = name.clone();
+    let op = label_create(LabelCreateInput {
         name,
         color,
         description,
@@ -155,7 +166,18 @@ pub fn create(ctx: &Ctx, cmd: &CreateCmd) -> Result<()> {
         parent_id: group.map(|g| g.id.inner().to_owned()),
         is_group: cmd.is_group.then_some(true),
         group_type: cmd.group_type.map(GroupTypeArg::to_linear),
-    }))?;
+    });
+    if ws.dry_run {
+        ws.record(&op);
+        return ws.finish_dry_run(Plan::new(
+            "label create",
+            Target::new(
+                if cmd.is_group { "label group" } else { "label" },
+                label_name,
+            ),
+        ));
+    }
+    let data: LabelCreate = ws.client.execute(&op)?;
     let payload = data.issue_label_create;
     if !payload.success {
         return Err(CliError::general("Linear could not create the label"));
@@ -286,9 +308,34 @@ pub fn update(ctx: &Ctx, cmd: &UpdateCmd) -> Result<()> {
         .filter(|t| current.group_type.as_ref() != Some(t));
 
     if input.is_empty() {
+        if ws.dry_run {
+            return ws.finish_dry_run(
+                Plan::new(
+                    "label update",
+                    Target::existing("label", current.path(), current.id.inner()),
+                )
+                .reason("the label already has these values"),
+            );
+        }
         ws.note("nothing to change: the label already has these values");
         emit_updated(ctx, &ws, current, false);
         return Ok(());
+    }
+    let mut changed: Vec<&'static str> = Vec::new();
+    if input.name.is_some() {
+        changed.push("name");
+    }
+    if input.color.is_some() {
+        changed.push("color");
+    }
+    if input.description.is_some() {
+        changed.push("description");
+    }
+    if !matches!(input.parent_id, Patch::Keep) {
+        changed.push("group");
+    }
+    if input.group_type.is_some() {
+        changed.push("groupType");
     }
 
     // The label-groups-exclusive rule, asked about the labels that are already on issues.
@@ -332,9 +379,18 @@ pub fn update(ctx: &Ctx, cmd: &UpdateCmd) -> Result<()> {
         }
     }
 
-    let data: LabelUpdate = ws
-        .client
-        .execute(&label_update(current.id.inner(), input))?;
+    let op = label_update(current.id.inner(), input);
+    if ws.dry_run {
+        ws.record(&op);
+        return ws.finish_dry_run(
+            Plan::new(
+                "label update",
+                Target::existing("label", current.path(), current.id.inner()),
+            )
+            .changed(changed),
+        );
+    }
+    let data: LabelUpdate = ws.client.execute(&op)?;
     let payload = data.issue_label_update;
     if !payload.success {
         return Err(CliError::general("Linear could not update the label"));

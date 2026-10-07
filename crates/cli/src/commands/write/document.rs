@@ -13,6 +13,7 @@
 //! title, a title is not given twice under one parent (a second `create` returns
 //! the first), and a body file is not empty.
 
+use super::dry_run::{Plan, Target};
 use super::{read_text, resolve, ForceArg, WriteSession};
 use crate::commands::document::{find_initiative, key_of};
 use crate::commands::format::date_time;
@@ -89,6 +90,15 @@ pub fn create(ctx: &Ctx, cmd: &CreateCmd) -> Result<()> {
     })?
     .items;
     if let Some(existing) = same.iter().find(|d| d.title == title) {
+        if ws.dry_run {
+            return ws.finish_dry_run(
+                Plan::new(
+                    "document create",
+                    Target::existing("document", &existing.title, existing.id.inner()),
+                )
+                .reason("the parent already has a document with this title, so none is created"),
+            );
+        }
         emit_created(&ws, existing, true);
         return Ok(());
     }
@@ -100,12 +110,21 @@ pub fn create(ctx: &Ctx, cmd: &CreateCmd) -> Result<()> {
         Some(body.as_deref().unwrap_or("")),
     )?;
 
-    let data: DocCreate = ws.client.execute(&docs::doc_create(DocCreateInput {
+    let new_title = title.clone();
+    let op = docs::doc_create(DocCreateInput {
         title,
         content: body,
         project_id,
         initiative_id,
-    }))?;
+    });
+    if ws.dry_run {
+        ws.record(&op);
+        return ws.finish_dry_run(Plan::new(
+            "document create",
+            Target::new("document", new_title),
+        ));
+    }
+    let data: DocCreate = ws.client.execute(&op)?;
     let payload = data.document_create;
     if !payload.success {
         return Err(CliError::general("Linear could not create the document"));
@@ -239,6 +258,26 @@ pub fn update(ctx: &Ctx, cmd: &UpdateCmd) -> Result<()> {
         title: new_title.filter(|t| *t != current.title),
         content: new_body.filter(|b| current_body != Some(b.as_str())),
     };
+    if ws.dry_run {
+        let mut changed = Vec::new();
+        if input.title.is_some() {
+            changed.push("title");
+        }
+        if input.content.is_some() {
+            changed.push("body");
+        }
+        if !input.is_empty() {
+            ws.record(&docs::doc_update(current.id.inner(), input));
+        }
+        return ws.finish_dry_run(
+            Plan::new(
+                "document update",
+                Target::existing("document", &current.title, current.id.inner()),
+            )
+            .changed(changed)
+            .reason("the document already has these values"),
+        );
+    }
     if input.is_empty() {
         ws.note("nothing to change: the document already has these values");
         emit_updated(&ws, current, false);

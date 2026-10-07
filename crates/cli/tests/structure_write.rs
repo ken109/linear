@@ -905,3 +905,194 @@ fn a_project_template_body_without_a_heading_is_refused() {
     assert!(stderr(&o).contains("no sections"), "{}", stderr(&o));
     assert!(mock.ops().is_empty());
 }
+
+// ------------------------------------------------------------------ --dry-run
+
+#[test]
+fn a_dry_run_of_the_milestone_writes_plans_each_mutation() {
+    let sb = workspace();
+    let mock = Routed::start(project_routes(Some(ALICE)));
+    let mut args = create_args();
+    args.push("--dry-run");
+    let v = plan(&run(&sb, &mock, &args), &mock);
+    assert_eq!(v["command"], "milestone create");
+    assert_eq!(planned(&v), ["MilestoneCreate"]);
+    assert_eq!(
+        v["mutations"][0]["variables"]["input"],
+        json!({ "projectId": PROJECT, "name": "Ship it", "targetDate": "2026-12-01" })
+    );
+
+    let v = plan(
+        &run(
+            &sb,
+            &mock,
+            &[
+                "milestone",
+                "update",
+                "milestone 1",
+                "--project",
+                "Fixture Project",
+                "--new-name",
+                "Milestone one",
+                "--target-date",
+                "2026-11-15",
+                "--dry-run",
+                "--json",
+            ],
+        ),
+        &mock,
+    );
+    assert_eq!(v["changed"], json!(["name"]));
+    assert_eq!(
+        v["mutations"][0]["variables"],
+        json!({ "id": MILESTONE_ID, "input": { "name": "Milestone one" } })
+    );
+
+    let mock = Routed::start(with(
+        project_routes(Some(ALICE)),
+        vec![("MilestoneView", vec![milestone_view(false)])],
+    ));
+    let mut args = DELETE.to_vec();
+    args.extend(["--dry-run", "--json"]);
+    let v = plan(&run(&sb, &mock, &args), &mock);
+    assert_eq!(planned(&v), ["MilestoneDelete"]);
+    assert_eq!(
+        v["mutations"][0]["variables"],
+        json!({ "id": MILESTONE_ID })
+    );
+}
+
+#[test]
+fn a_dry_run_of_a_milestone_write_is_refused_like_the_real_one() {
+    let sb = workspace();
+    // Somebody else leads the project: exit 4, for create, update and delete.
+    let mock = Routed::start(with(
+        project_routes(Some(BOT)),
+        vec![("MilestoneView", vec![milestone_view(false)])],
+    ));
+    let mut create = create_args();
+    create.push("--dry-run");
+    let mut delete = DELETE.to_vec();
+    delete.push("--dry-run");
+    for args in [
+        create,
+        delete,
+        vec![
+            "milestone",
+            "update",
+            "milestone 1",
+            "--project",
+            "Fixture Project",
+            "--new-name",
+            "x",
+            "--dry-run",
+        ],
+    ] {
+        let o = run(&sb, &mock, &args);
+        assert_eq!(code(&o), 4, "{args:?}: {}", stderr(&o));
+    }
+    // A milestone that still has issues: the same refusal as the real delete.
+    let mock = Routed::start(with(
+        project_routes(Some(ALICE)),
+        vec![("MilestoneView", vec![milestone_view(true)])],
+    ));
+    let mut delete = DELETE.to_vec();
+    delete.push("--dry-run");
+    let o = run(&sb, &mock, &delete);
+    assert_eq!(code(&o), 1, "{}", stderr(&o));
+    mock.assert_read_only();
+}
+
+#[test]
+fn a_dry_run_of_initiative_and_template_create_plans_the_mutation() {
+    let sb = workspace();
+    let mock = Routed::start(vec![
+        ("Whoami", vec![whoami()]),
+        ("InitiativeList", vec![initiatives(&["Other"])]),
+    ]);
+    let v = plan(
+        &run(
+            &sb,
+            &mock,
+            &[
+                "initiative",
+                "create",
+                "--name",
+                " human-sim ",
+                "--dry-run",
+                "--json",
+            ],
+        ),
+        &mock,
+    );
+    assert_eq!(v["command"], "initiative create");
+    assert_eq!(planned(&v), ["InitiativeCreate"]);
+    assert_eq!(
+        v["mutations"][0]["variables"]["input"],
+        json!({ "name": "human-sim" })
+    );
+    // The same name: nothing is created.
+    let v = plan(
+        &run(
+            &sb,
+            &mock,
+            &[
+                "initiative",
+                "create",
+                "--name",
+                "Other",
+                "--dry-run",
+                "--json",
+            ],
+        ),
+        &mock,
+    );
+    assert_eq!(v["mutations"], json!([]));
+
+    let body = write_file(&sb, "tpl.md", TEMPLATE_BODY);
+    let mock = Routed::start(vec![
+        ("Whoami", vec![whoami()]),
+        ("Teams", vec![teams()]),
+        ("Templates", vec![templates()]),
+    ]);
+    let v = plan(
+        &run(
+            &sb,
+            &mock,
+            &[
+                "template",
+                "create",
+                "--name",
+                "Survey",
+                "--body-file",
+                &body,
+                "--dry-run",
+                "--json",
+            ],
+        ),
+        &mock,
+    );
+    assert_eq!(v["command"], "template create");
+    assert_eq!(planned(&v), ["TemplateCreate"]);
+    let input = &v["mutations"][0]["variables"]["input"];
+    assert_eq!(input["type"], "issue");
+    assert_eq!(input["teamId"], "00000000-0000-4000-8000-000000000004");
+
+    // A body without a heading is still a usage error.
+    let plain = write_file(&sb, "plain.md", "no heading\n");
+    let o = run(
+        &sb,
+        &mock,
+        &[
+            "template",
+            "create",
+            "--name",
+            "Survey",
+            "--body-file",
+            &plain,
+            "--dry-run",
+        ],
+    );
+    assert_eq!(code(&o), 2, "{}", stderr(&o));
+    mock.assert_read_only();
+}

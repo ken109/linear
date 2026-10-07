@@ -907,3 +907,123 @@ fn template_sections_holds_a_replaced_body_but_not_a_rename() {
     assert_eq!(code(&o), 0, "{}", stderr(&o));
     assert_eq!(mock.of("DocUpdate").len(), 1);
 }
+
+// ------------------------------------------------------------------ --dry-run
+
+#[test]
+fn a_dry_run_of_create_plans_the_document() {
+    let sb = workspace();
+    let body = write_file(&sb, "body.md", "## Goal\n\nWrite it.\n\n");
+    let mock = Routed::start(with(
+        project_routes(Some(ALICE)),
+        vec![("DocList", vec![no_documents()])],
+    ));
+    let v = plan(
+        &run(
+            &sb,
+            &mock,
+            &[
+                "document",
+                "create",
+                "--title",
+                " Plan ",
+                "--project",
+                "Fixture Project",
+                "--body-file",
+                &body,
+                "--dry-run",
+                "--json",
+            ],
+        ),
+        &mock,
+    );
+    assert_eq!(v["command"], "document create");
+    assert_eq!(planned(&v), ["DocCreate"]);
+    assert_eq!(
+        v["mutations"][0]["variables"]["input"],
+        json!({"title": "Plan", "content": "## Goal\n\nWrite it.", "projectId": PROJECT})
+    );
+
+    // Somebody else's project: exit 4. The template rule: exit 5.
+    let mock = Routed::start(with(
+        project_routes(Some(BOT)),
+        vec![("DocList", vec![no_documents()])],
+    ));
+    let o = run(
+        &sb,
+        &mock,
+        &[
+            "document",
+            "create",
+            "--title",
+            "Plan",
+            "--project",
+            "Fixture Project",
+            "--dry-run",
+        ],
+    );
+    assert_eq!(code(&o), 4, "{}", stderr(&o));
+    mock.assert_read_only();
+
+    let ruled = workspace_with_rules(&["template-sections"]);
+    let mock = Routed::start(rule_routes(vec![]));
+    let o = run(
+        &ruled,
+        &mock,
+        &[
+            "document",
+            "create",
+            "--title",
+            "Plan",
+            "--project",
+            "Fixture Project",
+            "--dry-run",
+        ],
+    );
+    assert_eq!(code(&o), 5, "{}", stderr(&o));
+    mock.assert_read_only();
+}
+
+#[test]
+fn a_dry_run_of_update_lists_what_differs() {
+    let sb = workspace();
+    let mock = Routed::start(update_routes("project", Some(ALICE)));
+    let v = plan(
+        &run(
+            &sb,
+            &mock,
+            &[
+                "document",
+                "update",
+                DOC_SLUG,
+                "--title",
+                "Renamed",
+                "--dry-run",
+                "--json",
+            ],
+        ),
+        &mock,
+    );
+    assert_eq!(v["command"], "document update");
+    assert_eq!(v["changed"], json!(["title"]));
+    assert_eq!(
+        v["mutations"][0]["variables"],
+        json!({ "id": "00000000-0000-4000-8000-000000000401", "input": { "title": "Renamed" } })
+    );
+
+    let mock = Routed::start(update_routes("project", Some(BOT)));
+    let o = run(
+        &sb,
+        &mock,
+        &[
+            "document",
+            "update",
+            DOC_SLUG,
+            "--title",
+            "Renamed",
+            "--dry-run",
+        ],
+    );
+    assert_eq!(code(&o), 4, "{}", stderr(&o));
+    mock.assert_read_only();
+}

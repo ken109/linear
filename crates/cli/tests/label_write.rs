@@ -753,3 +753,116 @@ fn a_creation_has_no_issue_to_hold_against_the_rule() {
     assert_eq!(code(&o), 0, "{}", stderr(&o));
     assert!(!mock.ops().contains(&"IssueList".to_owned()));
 }
+
+// ------------------------------------------------------------------ --dry-run
+
+#[test]
+fn a_dry_run_of_create_and_update_plans_the_mutation() {
+    let sb = workspace();
+    let mock = Routed::start(routes(vec![]));
+    let v = plan(
+        &run(
+            &sb,
+            &mock,
+            &[
+                "label",
+                "create",
+                "--name",
+                "ship",
+                "--color",
+                "#112233",
+                "--team",
+                "EX",
+                "--dry-run",
+                "--json",
+            ],
+        ),
+        &mock,
+    );
+    assert_eq!(v["command"], "label create");
+    assert_eq!(planned(&v), ["LabelCreate"]);
+    assert_eq!(
+        v["mutations"][0]["variables"]["input"],
+        json!({"name": "ship", "color": "#112233", "teamId": TEAM_EX})
+    );
+
+    // A label that is already there: nothing to send.
+    let v = plan(
+        &run(
+            &sb,
+            &mock,
+            &["label", "create", "--name", "Bug", "--dry-run", "--json"],
+        ),
+        &mock,
+    );
+    assert_eq!(v["mutations"], json!([]));
+
+    let v = plan(
+        &run(
+            &sb,
+            &mock,
+            &[
+                "label",
+                "update",
+                "bug",
+                "--new-name",
+                "Defect",
+                "--dry-run",
+                "--json",
+            ],
+        ),
+        &mock,
+    );
+    assert_eq!(v["changed"], json!(["name"]));
+    assert_eq!(planned(&v), ["LabelUpdate"]);
+    assert_eq!(
+        v["mutations"][0]["variables"],
+        json!({ "id": BUG, "input": { "name": "Defect" } })
+    );
+}
+
+#[test]
+fn a_dry_run_of_a_label_write_is_refused_like_the_real_one() {
+    let sb = workspace();
+    let mock = Routed::start(routes(vec![]));
+    // Bad color, unknown label, a name somebody else has: exit 2 each.
+    for args in [
+        vec![
+            "label",
+            "create",
+            "--name",
+            "x",
+            "--color",
+            "red",
+            "--dry-run",
+        ],
+        vec![
+            "label",
+            "update",
+            "no such label",
+            "--new-name",
+            "x",
+            "--dry-run",
+        ],
+        vec!["label", "update", "bug", "--new-name", "api", "--dry-run"],
+    ] {
+        let o = run(&sb, &mock, &args);
+        assert_eq!(code(&o), 2, "{args:?}: {}", stderr(&o));
+    }
+    mock.assert_read_only();
+}
+
+#[test]
+fn a_dry_run_of_a_regrouping_is_held_to_label_groups_exclusive() {
+    // The same refusal as the real run (exit 5): moving `Bug` into `area` puts two of the
+    // group on an issue.
+    let sb = workspace_with_rules(&["label-groups-exclusive"]);
+    let mock = Routed::start(moved_bug());
+    let o = run(
+        &sb,
+        &mock,
+        &["label", "update", "Bug", "--group", "area", "--dry-run"],
+    );
+    assert_eq!(code(&o), 5, "{}", stderr(&o));
+    mock.assert_read_only();
+}

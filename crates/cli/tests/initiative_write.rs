@@ -563,3 +563,170 @@ fn status_updates_says_when_there_are_none() {
     assert_eq!(code(&o), 0, "{}", stderr(&o));
     assert_eq!(stdout(&o).trim(), "No status updates.");
 }
+
+// ------------------------------------------------------------------ --dry-run
+
+#[test]
+fn a_dry_run_of_update_lists_what_differs_and_sends_nothing() {
+    let sb = workspace();
+    let mock = Routed::start(routes(vec![]));
+    let v = plan(
+        &run(
+            &sb,
+            &mock,
+            &[
+                "initiative",
+                "update",
+                "Beta",
+                "--name",
+                "Gamma",
+                "--status",
+                "completed",
+                "--description-file",
+                &write_file(&sb, "d.md", "Old text\n"),
+                "--dry-run",
+                "--json",
+            ],
+        ),
+        &mock,
+    );
+    assert_eq!(v["command"], "initiative update");
+    assert_eq!(v["changed"], json!(["name", "status"]));
+    assert_eq!(planned(&v), ["InitiativeUpdate"]);
+    assert_eq!(
+        v["mutations"][0]["variables"],
+        json!({ "id": SECOND, "input": { "name": "Gamma", "status": "Completed" } })
+    );
+
+    let v = plan(
+        &run(
+            &sb,
+            &mock,
+            &[
+                "initiative",
+                "update",
+                "Beta",
+                "--status",
+                "active",
+                "--dry-run",
+                "--json",
+            ],
+        ),
+        &mock,
+    );
+    assert_eq!(v["mutations"], json!([]));
+    // A refusal is the same as the real run's (exit 2).
+    let o = run(&sb, &mock, &["initiative", "update", "Beta", "--dry-run"]);
+    assert_eq!(code(&o), 2, "{}", stderr(&o));
+    mock.assert_read_only();
+}
+
+#[test]
+fn a_dry_run_of_add_and_remove_project_plans_the_link_change() {
+    let sb = workspace();
+    let mock = Routed::start(routes(vec![]));
+    let v = plan(
+        &run(
+            &sb,
+            &mock,
+            &[
+                "initiative",
+                "add-project",
+                "Beta",
+                "Fixture Project",
+                "--dry-run",
+                "--json",
+            ],
+        ),
+        &mock,
+    );
+    assert_eq!(v["command"], "initiative add-project");
+    assert_eq!(
+        v["mutations"][0]["variables"],
+        json!({ "input": { "initiativeId": SECOND, "projectId": PROJECT } })
+    );
+
+    let mock = Routed::start(routes(vec![("ProjectLinksQuery", vec![links(&[SECOND])])]));
+    let v = plan(
+        &run(
+            &sb,
+            &mock,
+            &[
+                "initiative",
+                "add-project",
+                "Beta",
+                "Fixture Project",
+                "--dry-run",
+                "--json",
+            ],
+        ),
+        &mock,
+    );
+    assert_eq!(v["mutations"], json!([]));
+    let v = plan(
+        &run(
+            &sb,
+            &mock,
+            &[
+                "initiative",
+                "remove-project",
+                "Beta",
+                "Fixture Project",
+                "--dry-run",
+                "--json",
+            ],
+        ),
+        &mock,
+    );
+    assert_eq!(planned(&v), ["InitiativeToProjectDelete"]);
+    assert_eq!(v["mutations"][0]["variables"], json!({ "id": LINK }));
+
+    // The project's ownership still applies (exit 4).
+    let mock = Routed::start(routes(vec![(
+        "ProjectOwnershipQuery",
+        vec![ownership(PROJECT, Some(BOT))],
+    )]));
+    let o = run(
+        &sb,
+        &mock,
+        &[
+            "initiative",
+            "add-project",
+            "Beta",
+            "Fixture Project",
+            "--dry-run",
+        ],
+    );
+    assert_eq!(code(&o), 4, "{}", stderr(&o));
+    mock.assert_read_only();
+}
+
+#[test]
+fn a_dry_run_of_status_update_plans_the_update() {
+    let sb = workspace();
+    let body = write_file(&sb, "update.md", "- Stage: 2\n");
+    let mock = Routed::start(routes(vec![]));
+    let v = plan(
+        &run(
+            &sb,
+            &mock,
+            &[
+                "initiative",
+                "status-update",
+                "Beta",
+                "--health",
+                "atRisk",
+                "--body-file",
+                &body,
+                "--dry-run",
+                "--json",
+            ],
+        ),
+        &mock,
+    );
+    assert_eq!(planned(&v), ["InitiativeUpdateCreate"]);
+    assert_eq!(
+        v["mutations"][0]["variables"]["input"],
+        json!({ "initiativeId": SECOND, "health": "atRisk", "body": "- Stage: 2" })
+    );
+}

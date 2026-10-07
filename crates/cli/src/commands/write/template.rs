@@ -11,6 +11,7 @@
 //! No ownership rule applies (templates are not owned by a project) and no
 //! validator does either.
 
+use super::dry_run::{Plan, Target};
 use super::{read_text, resolve, WriteSession};
 use crate::commands::Ctx;
 use crate::error::{CliError, Result};
@@ -119,27 +120,39 @@ pub fn create(ctx: &Ctx, cmd: &CreateCmd) -> Result<()> {
         let existing_sections = linear_core::template::description_doc(existing)
             .map(|d| headings_of(&d))
             .unwrap_or_default();
+        if ws.dry_run {
+            return ws.finish_dry_run(
+                Plan::new(
+                    "template create",
+                    Target::existing("template", &existing.name, existing.id.inner()),
+                )
+                .reason("a template of this type and name already exists, so none is created"),
+            );
+        }
         emit(ctx, &ws, existing, true, existing_sections);
         return Ok(());
     }
 
-    let data: TemplateCreate =
-        ws.client
-            .execute(&inputs::template_create(TemplateCreateInput {
-                kind: cmd.kind.as_str().to_owned(),
-                name: name.to_owned(),
-                team_id: team.map(|t| t.id.inner().to_owned()),
-                description: cmd
-                    .description
-                    .as_deref()
-                    .map(str::trim)
-                    .filter(|d| !d.is_empty())
-                    .map(str::to_owned),
-                template_data: match cmd.kind {
-                    TemplateKind::Issue => json!({ "title": "", "descriptionData": doc }),
-                    TemplateKind::Project => json!({ "descriptionData": doc }),
-                },
-            }))?;
+    let op = inputs::template_create(TemplateCreateInput {
+        kind: cmd.kind.as_str().to_owned(),
+        name: name.to_owned(),
+        team_id: team.map(|t| t.id.inner().to_owned()),
+        description: cmd
+            .description
+            .as_deref()
+            .map(str::trim)
+            .filter(|d| !d.is_empty())
+            .map(str::to_owned),
+        template_data: match cmd.kind {
+            TemplateKind::Issue => json!({ "title": "", "descriptionData": doc }),
+            TemplateKind::Project => json!({ "descriptionData": doc }),
+        },
+    });
+    if ws.dry_run {
+        ws.record(&op);
+        return ws.finish_dry_run(Plan::new("template create", Target::new("template", name)));
+    }
+    let data: TemplateCreate = ws.client.execute(&op)?;
     let payload = data.template_create;
     if !payload.success {
         return Err(CliError::general("Linear could not create the template"));

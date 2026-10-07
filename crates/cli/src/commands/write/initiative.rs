@@ -11,6 +11,7 @@
 //! ask the ownership rules about the project, as `project update --initiative`
 //! does.
 
+use super::dry_run::{Plan, Target};
 use super::{read_text, resolve, ForceArg, WriteSession};
 use crate::commands::format::initiative_status;
 use crate::commands::listing::paginate;
@@ -82,16 +83,31 @@ pub fn create(ctx: &Ctx, cmd: &CreateCmd) -> Result<()> {
     })?
     .items;
     if let Some(existing) = all.iter().find(|i| i.name == name) {
+        if ws.dry_run {
+            return ws.finish_dry_run(
+                Plan::new(
+                    "initiative create",
+                    Target::existing("initiative", &existing.name, existing.id.inner()),
+                )
+                .reason("an initiative with this name already exists, so none is created"),
+            );
+        }
         emit(ctx, &ws, existing, true);
         return Ok(());
     }
 
-    let data: InitiativeCreate =
-        ws.client
-            .execute(&inputs::initiative_create(InitiativeCreateInput {
-                name: name.to_owned(),
-                description,
-            }))?;
+    let op = inputs::initiative_create(InitiativeCreateInput {
+        name: name.to_owned(),
+        description,
+    });
+    if ws.dry_run {
+        ws.record(&op);
+        return ws.finish_dry_run(Plan::new(
+            "initiative create",
+            Target::new("initiative", name),
+        ));
+    }
+    let data: InitiativeCreate = ws.client.execute(&op)?;
     let payload = data.initiative_create;
     if !payload.success {
         return Err(CliError::general("Linear could not create the initiative"));
@@ -147,26 +163,45 @@ struct Changed<'a> {
 }
 
 pub fn archive(ctx: &Ctx, cmd: &InitiativeTargetCmd) -> Result<()> {
-    change(ctx, cmd, "archived", false, |ws, id| {
-        let r: inputs::InitiativeArchive = ws.client.execute(&inputs::initiative_archive(id))?;
-        Ok(r.initiative_archive.success)
-    })
+    change(
+        ctx,
+        cmd,
+        "initiative archive",
+        "archived",
+        false,
+        |ws, id| {
+            ws.send_checked(
+                &inputs::initiative_archive(id),
+                |r: inputs::InitiativeArchive| r.initiative_archive.success,
+            )
+        },
+    )
 }
 
 /// Restore an archived initiative.
 pub fn unarchive(ctx: &Ctx, cmd: &InitiativeTargetCmd) -> Result<()> {
-    change(ctx, cmd, "unarchived", true, |ws, id| {
-        let r: inputs::InitiativeUnarchive =
-            ws.client.execute(&inputs::initiative_unarchive(id))?;
-        Ok(r.initiative_unarchive.success)
-    })
+    change(
+        ctx,
+        cmd,
+        "initiative unarchive",
+        "unarchived",
+        true,
+        |ws, id| {
+            ws.send_checked(
+                &inputs::initiative_unarchive(id),
+                |r: inputs::InitiativeUnarchive| r.initiative_unarchive.success,
+            )
+        },
+    )
 }
 
 /// Trash an initiative. Linear keeps it for a while.
 pub fn delete(ctx: &Ctx, cmd: &InitiativeTargetCmd) -> Result<()> {
-    change(ctx, cmd, "deleted", false, |ws, id| {
-        let r: inputs::InitiativeDelete = ws.client.execute(&inputs::initiative_delete(id))?;
-        Ok(r.initiative_delete.success)
+    change(ctx, cmd, "initiative delete", "deleted", false, |ws, id| {
+        ws.send_checked(
+            &inputs::initiative_delete(id),
+            |r: inputs::InitiativeDelete| r.initiative_delete.success,
+        )
     })
 }
 
@@ -176,6 +211,7 @@ pub fn delete(ctx: &Ctx, cmd: &InitiativeTargetCmd) -> Result<()> {
 fn change(
     ctx: &Ctx,
     cmd: &InitiativeTargetCmd,
+    command: &'static str,
     action: &'static str,
     include_archived: bool,
     mutate: impl FnOnce(&WriteSession, &str) -> Result<bool>,
@@ -203,6 +239,12 @@ fn change(
             "Linear could not change the initiative {} ({action})",
             found.name
         )));
+    }
+    if ws.dry_run {
+        return ws.finish_dry_run(Plan::new(
+            command,
+            Target::existing("initiative", &found.name, found.id.inner()),
+        ));
     }
     let value = Changed {
         workspace: &ws.workspace,
@@ -334,6 +376,19 @@ pub fn update(ctx: &Ctx, cmd: &UpdateCmd) -> Result<()> {
         changed.push("owner");
     }
 
+    if ws.dry_run {
+        if !input.is_empty() {
+            ws.record(&iw::initiative_update(found.id.inner(), input));
+        }
+        return ws.finish_dry_run(
+            Plan::new(
+                "initiative update",
+                Target::existing("initiative", &found.name, found.id.inner()),
+            )
+            .changed(changed)
+            .reason("every field is already as asked"),
+        );
+    }
     let now = if input.is_empty() {
         found.clone()
     } else {
@@ -457,10 +512,11 @@ fn link_change(ctx: &Ctx, cmd: &ProjectLinkCmd, add: bool) -> Result<()> {
         match link {
             Some(_) => ("added", true),
             None => {
-                let r: pw::InitiativeToProjectCreate = ws.client.execute(
+                let sent = ws.send_checked(
                     &pw::initiative_to_project_create(initiative.id.inner(), project.id.inner()),
+                    |r: pw::InitiativeToProjectCreate| r.initiative_to_project_create.success,
                 )?;
-                if !r.initiative_to_project_create.success {
+                if !sent {
                     return Err(CliError::general(format!(
                         "Linear could not put {} under {}",
                         project.name, initiative.name
@@ -473,10 +529,11 @@ fn link_change(ctx: &Ctx, cmd: &ProjectLinkCmd, add: bool) -> Result<()> {
         match link {
             None => ("removed", true),
             Some(link) => {
-                let r: InitiativeToProjectDelete = ws
-                    .client
-                    .execute(&iw::initiative_to_project_delete(link.id.inner()))?;
-                if !r.initiative_to_project_delete.success {
+                let sent = ws.send_checked(
+                    &iw::initiative_to_project_delete(link.id.inner()),
+                    |r: InitiativeToProjectDelete| r.initiative_to_project_delete.success,
+                )?;
+                if !sent {
                     return Err(CliError::general(format!(
                         "Linear could not take {} out of {}",
                         project.name, initiative.name
@@ -487,6 +544,23 @@ fn link_change(ctx: &Ctx, cmd: &ProjectLinkCmd, add: bool) -> Result<()> {
         }
     };
 
+    if ws.dry_run {
+        return ws.finish_dry_run(
+            Plan::new(
+                if add {
+                    "initiative add-project"
+                } else {
+                    "initiative remove-project"
+                },
+                Target::existing("initiative", &initiative.name, initiative.id.inner()),
+            )
+            .reason(if add {
+                "the project is already under the initiative"
+            } else {
+                "the project is not under the initiative"
+            }),
+        );
+    }
     let value = Linked {
         workspace: &ws.workspace,
         initiative: LinkedInitiative {
@@ -575,7 +649,15 @@ pub fn status_update(ctx: &Ctx, cmd: &StatusUpdateCmd) -> Result<()> {
         health,
         body: body.trim().to_owned(),
     };
-    let data: InitiativeUpdateCreate = ws.client.execute(&iw::initiative_update_create(input))?;
+    let op = iw::initiative_update_create(input);
+    if ws.dry_run {
+        ws.record(&op);
+        return ws.finish_dry_run(Plan::new(
+            "initiative status-update",
+            Target::existing("initiative", &initiative.name, initiative.id.inner()),
+        ));
+    }
+    let data: InitiativeUpdateCreate = ws.client.execute(&op)?;
     if !data.initiative_update_create.success {
         return Err(CliError::general(
             "Linear could not write the status update",

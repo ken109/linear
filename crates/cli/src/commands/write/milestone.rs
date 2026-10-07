@@ -7,6 +7,7 @@
 //! milestone needs a name and a target date (without one it does not show on
 //! the timeline), and a project never gets two milestones with the same name.
 
+use super::dry_run::{Plan, Target};
 use super::{read_text, resolve, ForceArg, WriteSession};
 use crate::commands::format::{milestone_status, opt_date};
 use crate::commands::Ctx;
@@ -66,18 +67,33 @@ pub fn create(ctx: &Ctx, cmd: &CreateCmd) -> Result<()> {
     ws.guard(&target(&project), &led_by(&project), false)?;
 
     if let Some(existing) = project.project_milestones.iter().find(|m| m.name == name) {
+        if ws.dry_run {
+            return ws.finish_dry_run(
+                Plan::new(
+                    "milestone create",
+                    Target::existing("milestone", &existing.name, existing.id.inner()),
+                )
+                .reason("the project already has a milestone with this name, so none is created"),
+            );
+        }
         emit_created(&ws, existing, true);
         return Ok(());
     }
 
-    let data: inputs::MilestoneCreate =
-        ws.client
-            .execute(&inputs::milestone_create(MilestoneCreateInput {
-                project_id: project.id.inner().to_owned(),
-                name,
-                target_date: cmd.target_date,
-                description,
-            }))?;
+    let op = inputs::milestone_create(MilestoneCreateInput {
+        project_id: project.id.inner().to_owned(),
+        name: name.clone(),
+        target_date: cmd.target_date,
+        description,
+    });
+    if ws.dry_run {
+        ws.record(&op);
+        return ws.finish_dry_run(Plan::new(
+            "milestone create",
+            Target::new("milestone", name),
+        ));
+    }
+    let data: inputs::MilestoneCreate = ws.client.execute(&op)?;
     let payload = data.project_milestone_create;
     if !payload.success {
         return Err(CliError::general("Linear could not create the milestone"));
@@ -187,6 +203,29 @@ pub fn update(ctx: &Ctx, cmd: &UpdateCmd) -> Result<()> {
     input.description = new_description
         .filter(|d| current.description.as_deref().map(str::trim_end) != Some(d.as_str()));
 
+    if ws.dry_run {
+        let mut changed = Vec::new();
+        if input.name.is_some() {
+            changed.push("name");
+        }
+        if input.target_date.is_some() {
+            changed.push("targetDate");
+        }
+        if input.description.is_some() {
+            changed.push("description");
+        }
+        if !input.is_empty() {
+            ws.record(&inputs::milestone_update(current.id.inner(), input));
+        }
+        return ws.finish_dry_run(
+            Plan::new(
+                "milestone update",
+                Target::existing("milestone", &current.name, current.id.inner()),
+            )
+            .changed(changed)
+            .reason("the milestone already has these values"),
+        );
+    }
     if input.is_empty() {
         ws.note("nothing to change: the milestone already has these values");
         emit_updated(&ws, current, false);
@@ -275,9 +314,15 @@ pub fn delete(ctx: &Ctx, cmd: &DeleteCmd) -> Result<()> {
         )));
     }
 
-    let data: MilestoneDelete = ws
-        .client
-        .execute(&inputs::milestone_delete(found.id.inner()))?;
+    let op = inputs::milestone_delete(found.id.inner());
+    if ws.dry_run {
+        ws.record(&op);
+        return ws.finish_dry_run(Plan::new(
+            "milestone delete",
+            Target::existing("milestone", &found.name, found.id.inner()),
+        ));
+    }
+    let data: MilestoneDelete = ws.client.execute(&op)?;
     if !data.project_milestone_delete.success {
         return Err(CliError::general("Linear could not delete the milestone"));
     }
