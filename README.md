@@ -44,29 +44,51 @@ inherited by `crates/cli`), so it equals the release tag without the leading `v`
 
 ### Releasing
 
-1. Set the same new version in `Cargo.toml` (`[workspace.package] version`) and in
-   `packages/linear-wasm/package.json`, refresh `Cargo.lock` (`cargo check`), and merge to `main`.
-2. Tag that commit and push the tag:
+Releases are cut by [release-please](https://github.com/googleapis/release-please). Nothing is
+tagged or bumped by hand.
 
-   ```sh
-   git tag vX.Y.Z
-   git push origin vX.Y.Z
-   ```
+1. Commit to `main` with [Conventional Commits](https://www.conventionalcommits.org/)
+   (`feat:`, `fix:`, `perf:`, `refactor:`, `docs:`, and `!` or a `BREAKING CHANGE:` footer for
+   breaking changes). release-please derives the next version and `CHANGELOG.md` from these
+   messages, so a message that does not follow the format is left out of the release. While the
+   version is below 1.0.0 a `feat:` bumps the minor version and a `fix:` the patch version;
+   `chore:`, `test:`, `ci:` and `build:` commits do not appear in the changelog.
+2. The `Release Please` workflow (`.github/workflows/release-please.yml`) keeps one release PR
+   open against `main`. It sets the new version in `Cargo.toml` (`[workspace.package] version`),
+   `Cargo.lock`, `packages/linear-wasm/package.json` and its `package-lock.json`, and adds the
+   changelog entry. Review it and merge it.
+3. Merging the PR makes release-please tag the commit `vX.Y.Z` and create the GitHub Release with
+   the changelog as its notes. The same workflow then calls the `Release` workflow
+   (`.github/workflows/release.yml`) with that tag. It fails unless the tag equals both versions;
+   it never bumps anything. It builds the three binaries, builds the wasm npm tarball
+   (`ken109-linear-wasm-<version>.tgz`), attaches everything with checksums to the Release, and
+   commits a regenerated `Formula/linear.rb` to `ken109/homebrew-tap`. A version with a
+   pre-release suffix (`1.0.0-rc.1`) is marked as a pre-release and leaves the tap alone.
 
-3. The `Release` workflow (`.github/workflows/release.yml`) fails unless the tag equals both
-   versions; it never bumps anything. It then builds the three binaries, builds the wasm npm
-   tarball (`ken109-linear-wasm-<version>.tgz`), attaches everything with checksums to a GitHub
-   Release, and commits a regenerated `Formula/linear.rb` to `ken109/homebrew-tap`. A tag with a
-   pre-release suffix (`v1.0.0-rc.1`) makes a pre-release and leaves the tap alone.
+The `Release` workflow is called from `release-please.yml` rather than started by the tag,
+because a tag or Release created with the default `GITHUB_TOKEN` does not start other workflows.
+A failed release can be re-run from the Actions tab (re-run failed jobs); the upload replaces the
+assets.
 
-The tap step needs the repository secret `TAP_GITHUB_TOKEN`: a token that can push to
-`ken109/homebrew-tap` (for a fine-grained token, `Contents: read and write` on that repository).
+One-time setup:
 
-To rehearse, run the workflow by hand with `dry_run` on (the default) from the Actions tab or
-`gh workflow run release.yml -f dry_run=true`. It builds and packages everything and uploads the
-archives, the wasm tarball and the generated formula to the run, without creating a Release or
-touching the tap. The formula is rendered from `packaging/linear.rb.in` by
-`scripts/release/formula.sh`.
+- Repository secret `TAP_GITHUB_TOKEN`: a fine-grained personal access token with
+  `Contents: read and write` on `ken109/homebrew-tap`. The tap job needs it.
+- Repository setting "Allow GitHub Actions to create and approve pull requests"
+  (Settings > Actions > General). Without it release-please cannot open the release PR.
+- `release-please-config.json` sets `"release-as": "0.1.0"` so that the first release is
+  `v0.1.0` instead of `v0.2.0`. **Remove that key right after `v0.1.0` is released**; while it is
+  there every release PR is pinned to 0.1.0.
+
+A PR opened by `GITHUB_TOKEN` does not start other workflows, so `ci.yml` does not run on the
+release PR. The `verify-release-pr` job in `release-please.yml` checks that the versions agree
+and that `Cargo.lock` is current.
+
+To rehearse the build, run the `Release` workflow by hand with `dry_run` on (the default) from the
+Actions tab or `gh workflow run release.yml -f dry_run=true`. It builds and packages everything
+from the branch you pick and uploads the archives, the wasm tarball and the generated formula to
+the run, without creating a Release or touching the tap. The formula is rendered from
+`packaging/linear.rb.in` by `scripts/release/formula.sh`.
 
 ## Build
 
