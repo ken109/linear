@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.2.0](https://github.com/ken109/linear/compare/v0.1.0...v0.2.0) (2026-10-07)
+
+
+### Features
+
+* **template:** create project templates ([f66449f](https://github.com/ken109/linear/commit/f66449f86abfd570bd917aefb3d2920026921178))
+
+
+### Documentation
+
+* note how template-sections reaches project bodies and that off-calendar dates are refused ([ff13610](https://github.com/ken109/linear/commit/ff136107b55d0f02ac21710ddcf1db95c7d327ad))
+* stop pointing at the retired tool in README and comments ([2d0d66e](https://github.com/ken109/linear/commit/2d0d66e3f9d3c25704304b572d4c52c72de00490))
+* **template:** document project templates and the --type flag ([c3beb03](https://github.com/ken109/linear/commit/c3beb03660fc375d8fb196fd400a7a7bebd807e5))
+
 ## [0.1.0](https://github.com/ken109/linear/compare/v0.1.0...v0.1.0) (2026-10-07)
 
 
