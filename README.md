@@ -30,9 +30,9 @@ brew install ken109/tap/linear
 cargo install --git https://github.com/ken109/linear linear
 ```
 
-Release archives for macOS (arm64, x86_64) and Linux (x86_64, static musl build) are attached
-to each [GitHub Release](https://github.com/ken109/linear/releases) as
-`linear-<version>-<target>.tar.gz` with a `.sha256` file beside each.
+Release archives for macOS (arm64, x86_64), Linux (x86_64, static musl build) and Windows
+(x86_64) are attached to each [GitHub Release](https://github.com/ken109/linear/releases) as
+`linear-<version>-<target>.tar.gz` (Windows: `.zip`) with a `.sha256` file beside each.
 
 The Homebrew tap ([ken109/homebrew-tap](https://github.com/ken109/homebrew-tap)) picks up new
 releases automatically: its bump workflow reads the latest GitHub Release of this repository,
@@ -41,6 +41,53 @@ right away, run `gh workflow run bump.yml --repo ken109/homebrew-tap`.
 
 `linear --version` prints the workspace version in `Cargo.toml` (`[workspace.package] version`,
 inherited by `crates/cli`), so it equals the release tag without the leading `v`.
+
+### Shell completions
+
+```sh
+linear completions <bash|zsh|fish|elvish|powershell>
+```
+
+prints a completion script for the shell. It is generated from the command definition, so it
+always matches the commands of the binary you run, and it needs no configuration or
+credentials. It completes commands, subcommands and flags; issue ids and project names are not
+completed.
+
+```sh
+# bash: load it from ~/.bashrc
+source <(linear completions bash)
+# zsh: a file called _linear in a directory of $fpath (then restart the shell)
+linear completions zsh > "${fpath[1]}/_linear"
+# fish
+linear completions fish > ~/.config/fish/completions/linear.fish
+# powershell: add this line to $PROFILE
+linear completions powershell | Out-String | Invoke-Expression
+```
+
+With Homebrew the formula installs the bash, zsh and fish scripts itself (it runs
+`linear completions <shell>` when the formula is installed).
+
+### Windows
+
+Download `linear-<version>-x86_64-pc-windows-msvc.zip` from the
+[latest release](https://github.com/ken109/linear/releases/latest), check it against the
+`.sha256` file beside it, and put `linear.exe` in a directory on your `PATH`:
+
+```powershell
+$v = "<version>"
+$zip = "linear-$v-x86_64-pc-windows-msvc.zip"
+Invoke-WebRequest "https://github.com/ken109/linear/releases/download/v$v/$zip" -OutFile $zip
+(Get-FileHash $zip -Algorithm SHA256).Hash   # compare with the .sha256 file
+Expand-Archive $zip -DestinationPath .
+```
+
+The binary has no runtime to install (the C runtime is linked in). On Windows the configuration
+is `%APPDATA%\linear` (`workspaces.toml`, `credentials\<workspace>.json`) and the cache is
+`%LOCALAPPDATA%\linear`, unless `LINEAR_CONFIG_DIR` / `LINEAR_CACHE_DIR` (or `XDG_CONFIG_HOME` /
+`XDG_CACHE_HOME`) say otherwise. There is no file mode to set there: the credentials file is
+protected by the permissions of your profile folder, which only you and administrators can read
+by default, and `linear` does not check it the way it checks the mode (0600) on macOS and Linux.
+CI builds, lints and tests the workspace on `windows-latest` as well as on Linux.
 
 ### Releasing
 
