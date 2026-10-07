@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.4.0](https://github.com/ken109/linear/compare/v0.3.0...v0.4.0) (2026-10-07)
+
+
+### ⚠ BREAKING CHANGES
+
+* **core:** read GitHub pull requests off attachments and select branchName
+
+### Features
+
+* **cli:** issue link-pr, and branchName and pullRequests in issue view ([9d58eba](https://github.com/ken109/linear/commit/9d58eba663941b9f66e19879fe51c9ff53984883))
+* **core:** audit rules for merged and long-open GitHub pull requests ([aac7125](https://github.com/ken109/linear/commit/aac71254076931fb885c670f3cd100573d053509))
+* **core:** read GitHub pull requests off attachments and select branchName ([e769904](https://github.com/ken109/linear/commit/e769904c89f9c76d5ae099e4d0669cc32334f8f4))
+
 ## [0.3.0](https://github.com/ken109/linear/compare/v0.2.0...v0.3.0) (2026-10-07)
 
 
