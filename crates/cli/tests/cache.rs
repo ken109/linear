@@ -22,8 +22,7 @@ fn replies() -> Vec<Reply> {
 }
 
 fn cache_dir(sb: &Sandbox) -> PathBuf {
-    // The sandbox sets HOME to its root and no XDG_CACHE_HOME.
-    sb.root.path().join(".cache").join("linear")
+    sb.cache_dir()
 }
 
 fn entry_file(sb: &Sandbox) -> PathBuf {
@@ -438,11 +437,38 @@ fn the_cache_location_follows_xdg_cache_home() {
         Some(&mock),
         &[
             ("LINEAR_API_KEY_EXAMPLE", KEY),
+            // The sandbox sets LINEAR_CACHE_DIR, which would win; empty means unset.
+            ("LINEAR_CACHE_DIR", ""),
             ("XDG_CACHE_HOME", xdg.to_str().unwrap()),
         ],
     );
     assert_eq!(code(&o), 0, "{}", stderr(&o));
     assert!(xdg.join("linear").join("example.json").exists());
+    assert!(!cache_dir(&sb).exists());
+}
+
+#[test]
+fn the_cache_location_defaults_to_the_users_cache_folder() {
+    let sb = workspace();
+    let mock = Mock::start(replies());
+    let base = sb.root.path().join("profile");
+    // macOS and Linux keep it under $HOME/.cache, Windows under %LOCALAPPDATA%.
+    let (var, dir) = if cfg!(windows) {
+        ("LOCALAPPDATA", base.clone())
+    } else {
+        ("HOME", base.join(".cache"))
+    };
+    let o = sb.run(
+        &["cache", "refresh"],
+        Some(&mock),
+        &[
+            ("LINEAR_API_KEY_EXAMPLE", KEY),
+            ("LINEAR_CACHE_DIR", ""),
+            (var, base.to_str().unwrap()),
+        ],
+    );
+    assert_eq!(code(&o), 0, "{}", stderr(&o));
+    assert!(dir.join("linear").join("example.json").exists());
     assert!(!cache_dir(&sb).exists());
 }
 

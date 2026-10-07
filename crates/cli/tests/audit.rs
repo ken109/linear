@@ -547,7 +547,7 @@ fn cached_refuses_an_entry_past_its_ttl() {
     let sb = workspace();
     let mock = Mock::start(replies());
     assert_eq!(code(&linear(&sb, &mock, &["cache", "refresh"])), 0);
-    let file = sb.root.path().join(".cache/linear/example.json");
+    let file = sb.cache_dir().join("example.json");
     let mut entry: Value = serde_json::from_str(&std::fs::read_to_string(&file).unwrap()).unwrap();
     entry["fetchedAt"] = json!((chrono::Utc::now() - chrono::Duration::hours(1)).to_rfc3339());
     std::fs::write(&file, entry.to_string()).unwrap();

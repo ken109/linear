@@ -91,6 +91,13 @@ impl Sandbox {
         self.root.path().join("config")
     }
 
+    /// Where `linear` keeps its cache in this sandbox. Every run is pointed here with
+    /// `LINEAR_CACHE_DIR`: the default depends on the platform (`$HOME/.cache/linear`,
+    /// `%LOCALAPPDATA%\linear`), and the child has neither after `env_clear`.
+    pub fn cache_dir(&self) -> PathBuf {
+        self.root.path().join(".cache").join("linear")
+    }
+
     pub fn cwd(&self) -> PathBuf {
         let d = self.root.path().join("work");
         std::fs::create_dir_all(&d).unwrap();
@@ -115,6 +122,7 @@ impl Sandbox {
             .env("PATH", std::env::var_os("PATH").unwrap_or_default())
             .env("HOME", self.root.path())
             .env("LINEAR_CONFIG_DIR", self.config_dir())
+            .env("LINEAR_CACHE_DIR", self.cache_dir())
             .current_dir(self.cwd());
         // After `env_clear`, a Windows process still needs its system root to
         // start networking (names are case-insensitive there).
@@ -124,6 +132,8 @@ impl Sandbox {
         if let Some(m) = mock {
             cmd.env("LINEAR_API_URL", &m.url);
         }
+        // `extra_env` wins, and an empty value is the same as unset (a test of the
+        // default location passes `("LINEAR_CACHE_DIR", "")`).
         for (k, v) in extra_env {
             cmd.env(k, v);
         }

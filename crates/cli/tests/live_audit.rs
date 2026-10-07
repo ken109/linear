@@ -55,7 +55,7 @@ fn json(sb: &Sandbox, key: &str, args: &[&str]) -> serde_json::Value {
 }
 
 fn entry(sb: &Sandbox) -> serde_json::Value {
-    let path = sb.root.path().join(".cache/linear/sandbox.json");
+    let path = sb.cache_dir().join("sandbox.json");
     serde_json::from_str(&std::fs::read_to_string(path).expect("the cache entry")).unwrap()
 }
 

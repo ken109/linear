@@ -22,11 +22,7 @@ fn replies() -> Vec<Reply> {
 }
 
 fn entry_file(sb: &Sandbox, workspace: &str) -> PathBuf {
-    sb.root
-        .path()
-        .join(".cache")
-        .join("linear")
-        .join(format!("{workspace}.json"))
+    sb.cache_dir().join(format!("{workspace}.json"))
 }
 
 /// A sandbox whose `example` workspace has been refreshed from the fixtures.
