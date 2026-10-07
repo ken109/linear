@@ -16,7 +16,7 @@ The package is attached to each GitHub Release as a tarball. A Worker's repo dep
 ```json
 {
   "dependencies": {
-    "@ken109/linear-wasm": "https://github.com/ken109/linear/releases/download/v0.1.0/ken109-linear-wasm-0.1.0.tgz",
+    "@ken109/linear-wasm": "https://github.com/ken109/linear/releases/download/v0.1.0/linear-wasm-0.1.0.tgz",
     "zod": "^4"
   }
 }
@@ -102,7 +102,7 @@ Needs the `wasm32-unknown-unknown` target and a `wasm-bindgen-cli` of the versio
 npm ci
 npm run build   # schema.json -> types.ts, schemas.ts -> wasm -> dist/
 npm test        # the wasm through the typed wrapper, and the golden files
-npm run pack    # out/ken109-linear-wasm-<version>.tgz
+npm run pack    # out/linear-wasm-<version>.tgz
 ```
 
 `schema.json` is committed (it is the reviewable description of the boundary; CI fails if it is

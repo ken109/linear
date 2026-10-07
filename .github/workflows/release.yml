@@ -178,7 +178,7 @@ jobs:
           VERSION: ${{ needs.version.outputs.version }}
         run: |
           ls out
-          [ -f "out/ken109-linear-wasm-$VERSION.tgz" ] || { echo "expected out/ken109-linear-wasm-$VERSION.tgz" >&2; exit 1; }
+          [ -f "out/linear-wasm-$VERSION.tgz" ] || { echo "expected out/linear-wasm-$VERSION.tgz" >&2; exit 1; }
       - name: Checksum
         working-directory: packages/linear-wasm/out
         run: sha256sum *.tgz > "$(ls *.tgz).sha256"

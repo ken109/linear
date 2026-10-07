@@ -61,7 +61,7 @@ tagged or bumped by hand.
    the changelog as its notes. The same workflow then calls the `Release` workflow
    (`.github/workflows/release.yml`) with that tag. It fails unless the tag equals both versions;
    it never bumps anything. It builds the three binaries, builds the wasm npm tarball
-   (`ken109-linear-wasm-<version>.tgz`) and attaches everything with checksums to the Release. A
+   (`linear-wasm-<version>.tgz`) and attaches everything with checksums to the Release. A
    version with a pre-release suffix (`1.0.0-rc.1`) is marked as a pre-release.
 4. Nothing is pushed to the Homebrew tap from this repository. The tap's bump workflow finds the
    new Release by itself (every 6 hours, or on demand with
