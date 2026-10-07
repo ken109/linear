@@ -29,6 +29,11 @@
 //! per workspace. Everything here is a pure decision over ids; a refusal is a
 //! [`Denied`], which maps to exit code 4 ([`ErrorCode::WriteDenied`]), and it
 //! happens before anything is sent.
+//!
+//! A workspace that sets `allow_force` lets a caller override a refusal with
+//! `--force` ([`check_forced`]). The override is never silent: the decision says
+//! it was made ([`Verdict::Forced`]) and carries the refusal it overrode, so the
+//! CLI can report it.
 
 use crate::config::Ownership;
 use crate::error::ErrorCode;
@@ -166,6 +171,38 @@ pub enum DenyReason {
     InitiativeNotOwned,
 }
 
+/// What a [`Holder`] is to the thing being written.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum Role {
+    /// The lead of a project.
+    Lead,
+    /// The owner of an initiative.
+    Owner,
+    /// The assignee of an issue.
+    Assignee,
+    /// The author of a comment.
+    Author,
+}
+
+/// Somebody the refused write would have needed to be the viewer: who holds the
+/// role now (`None`: nobody does).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct Holder {
+    pub role: Role,
+    /// The Linear user id.
+    pub user: Option<String>,
+}
+
+impl Holder {
+    fn new(role: Role, user: Option<&str>) -> Self {
+        Self {
+            role,
+            user: user.map(str::to_owned),
+        }
+    }
+}
+
 /// A write refused by the ownership rules. Maps to exit code 4
 /// ([`ErrorCode::WriteDenied`]).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, thiserror::Error)]
@@ -174,6 +211,8 @@ pub struct Denied {
     pub operation: Operation,
     pub reason: DenyReason,
     pub message: String,
+    /// The roles that would have had to be the viewer, and who holds them.
+    pub held: Vec<Holder>,
 }
 
 impl Denied {
@@ -182,12 +221,27 @@ impl Denied {
     }
 }
 
-fn deny(op: Operation, reason: DenyReason, message: impl fmt::Display) -> Result<(), Denied> {
+fn deny(
+    op: Operation,
+    reason: DenyReason,
+    held: Vec<Holder>,
+    message: impl fmt::Display,
+) -> Result<(), Denied> {
     Err(Denied {
         operation: op,
         reason,
         message: message.to_string(),
+        held,
     })
+}
+
+/// The roles that make an issue the viewer's: its assignee, and the lead of its project.
+fn issue_holders(assignee: Option<&str>, placement: Placement<'_>) -> Vec<Holder> {
+    let mut held = vec![Holder::new(Role::Assignee, assignee)];
+    if let Placement::Project { lead } = placement {
+        held.push(Holder::new(Role::Lead, lead));
+    }
+    held
 }
 
 /// Decide whether the viewer may perform `write` under the strict rules.
@@ -197,6 +251,48 @@ fn deny(op: Operation, reason: DenyReason, message: impl fmt::Display) -> Result
 /// issue is assigned to the viewer; anywhere else it changes nothing.
 pub fn check(viewer: &Viewer, write: &Write<'_>, allow_foreign: bool) -> Result<(), Denied> {
     check_with(viewer, Ownership::Strict, write, allow_foreign)
+}
+
+/// What [`check_forced`] decided when the write was not refused.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Verdict {
+    /// The ownership rules allow the write.
+    Allowed,
+    /// The ownership rules refuse the write and `force` let it through. Holds the
+    /// refusal that was overridden.
+    Forced(Denied),
+}
+
+impl Verdict {
+    /// The refusal that was overridden, if any.
+    pub fn overridden(&self) -> Option<&Denied> {
+        match self {
+            Self::Allowed => None,
+            Self::Forced(denied) => Some(denied),
+        }
+    }
+}
+
+/// [`check_with`], except that `force` lets a refused write through.
+///
+/// `force` is `--force`, and the caller must have checked that the workspace
+/// allows it (`allow_force`): this function only decides. A write the rules allow
+/// is [`Verdict::Allowed`] whether or not `force` is set, so a forced override is
+/// reported only when there was something to override. Only ownership is
+/// bypassed; validators and every other check are separate steps this does not
+/// touch.
+pub fn check_forced(
+    viewer: &Viewer,
+    ownership: Ownership,
+    write: &Write<'_>,
+    allow_foreign: bool,
+    force: bool,
+) -> Result<Verdict, Denied> {
+    match check_with(viewer, ownership, write, allow_foreign) {
+        Ok(()) => Ok(Verdict::Allowed),
+        Err(denied) if force => Ok(Verdict::Forced(denied)),
+        Err(denied) => Err(denied),
+    }
 }
 
 /// [`check`] under the workspace's `ownership` setting.
@@ -223,6 +319,7 @@ pub fn check_with(
                 deny(
                     op,
                     DenyReason::ProjectNotLed,
+                    vec![Holder::new(Role::Lead, lead)],
                     "a project you create must have you as its lead",
                 )
             }
@@ -234,6 +331,7 @@ pub fn check_with(
                 deny(
                     op,
                     DenyReason::ProjectNotLed,
+                    vec![Holder::new(Role::Lead, lead)],
                     format!("you are not the lead of this project ({})", who(lead)),
                 )
             }
@@ -245,6 +343,7 @@ pub fn check_with(
                 deny(
                     op,
                     DenyReason::InitiativeNotOwned,
+                    vec![Holder::new(Role::Owner, owner)],
                     format!(
                         "you are not the owner of this initiative ({})",
                         match owner {
@@ -266,6 +365,7 @@ pub fn check_with(
                     deny(
                         op,
                         DenyReason::IssueNotOwned,
+                        vec![Holder::new(Role::Assignee, assignee)],
                         "an issue without a project must be assigned to you",
                     )
                 }
@@ -276,6 +376,7 @@ pub fn check_with(
                 (true, false) => deny(
                     op,
                     DenyReason::ForeignProject,
+                    vec![Holder::new(Role::Lead, lead)],
                     format!(
                         "this project is not yours ({}); to create an issue assigned to you in it, pass --allow-foreign",
                         who(lead)
@@ -284,6 +385,7 @@ pub fn check_with(
                 (false, _) => deny(
                     op,
                     DenyReason::ForeignProject,
+                    issue_holders(assignee, placement),
                     format!(
                         "this project is not yours ({}); --allow-foreign only covers issues assigned to you",
                         who(lead)
@@ -301,6 +403,7 @@ pub fn check_with(
                 deny(
                     op,
                     DenyReason::IssueNotOwned,
+                    issue_holders(assignee, placement),
                     "canceling an issue needs it to be assigned to you or its project to be led by you",
                 )
             }
@@ -317,6 +420,7 @@ pub fn check_with(
                 deny(
                     op,
                     DenyReason::CommentNotOwned,
+                    vec![Holder::new(Role::Author, author)],
                     format!("you can only {what} your own comments (this one was written by {})", writer(author)),
                 )
             }
@@ -330,6 +434,7 @@ pub fn check_with(
                 return deny(
                     op,
                     DenyReason::IssueNotOwned,
+                    issue_holders(assignee, placement),
                     "this issue is not assigned to you and its project is not led by you",
                 );
             }
@@ -339,6 +444,7 @@ pub fn check_with(
                 Some(Placement::Project { lead }) if !viewer.is(lead) => deny(
                     op,
                     DenyReason::ForeignProject,
+                    vec![Holder::new(Role::Lead, lead)],
                     format!("the destination project is not yours ({})", who(lead)),
                 ),
                 _ => Ok(()),

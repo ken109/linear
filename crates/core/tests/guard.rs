@@ -328,6 +328,211 @@ fn a_comment_is_its_authors_to_change() {
     assert!(check(&me(), &update(Some(BOB)), true).is_err());
 }
 
+// -------------------------------------------------------------------- force
+
+fn forced(
+    ownership: Ownership,
+    w: Write<'_>,
+    allow_foreign: bool,
+    force: bool,
+) -> Result<Verdict, Denied> {
+    check_forced(&me(), ownership, &w, allow_foreign, force)
+}
+
+/// One write per denial reason, with who holds what it asks about.
+fn refused_writes() -> Vec<(Write<'static>, DenyReason, Vec<Holder>)> {
+    let holder = |role, user: Option<&str>| Holder {
+        role,
+        user: user.map(str::to_owned),
+    };
+    vec![
+        (
+            Write::ProjectUpdate { lead: Some(BOB) },
+            DenyReason::ProjectNotLed,
+            vec![holder(Role::Lead, Some(BOB))],
+        ),
+        (
+            Write::ProjectCreate { lead: None },
+            DenyReason::ProjectNotLed,
+            vec![holder(Role::Lead, None)],
+        ),
+        (
+            Write::InitiativeUpdate { owner: Some(BOB) },
+            DenyReason::InitiativeNotOwned,
+            vec![holder(Role::Owner, Some(BOB))],
+        ),
+        (
+            Write::IssueCreate {
+                assignee: Some(BOB),
+                placement: Placement::NoProject,
+            },
+            DenyReason::IssueNotOwned,
+            vec![holder(Role::Assignee, Some(BOB))],
+        ),
+        (
+            Write::IssueCreate {
+                assignee: Some(ME),
+                placement: bobs(),
+            },
+            DenyReason::ForeignProject,
+            vec![holder(Role::Lead, Some(BOB))],
+        ),
+        (
+            Write::IssueUpdate {
+                assignee: Some(BOB),
+                placement: bobs(),
+                moves_to: None,
+            },
+            DenyReason::IssueNotOwned,
+            vec![
+                holder(Role::Assignee, Some(BOB)),
+                holder(Role::Lead, Some(BOB)),
+            ],
+        ),
+        (
+            Write::IssueUpdate {
+                assignee: Some(ME),
+                placement: Placement::NoProject,
+                moves_to: Some(bobs()),
+            },
+            DenyReason::ForeignProject,
+            vec![holder(Role::Lead, Some(BOB))],
+        ),
+        (
+            Write::IssueCancel {
+                assignee: None,
+                placement: Placement::NoProject,
+            },
+            DenyReason::IssueNotOwned,
+            vec![holder(Role::Assignee, None)],
+        ),
+        (
+            Write::CommentUpdate { author: Some(BOB) },
+            DenyReason::CommentNotOwned,
+            vec![holder(Role::Author, Some(BOB))],
+        ),
+        (
+            Write::CommentDelete { author: None },
+            DenyReason::CommentNotOwned,
+            vec![holder(Role::Author, None)],
+        ),
+    ]
+}
+
+#[test]
+fn force_overrides_every_denial_and_says_what_it_overrode() {
+    for (w, reason, held) in refused_writes() {
+        // Strict: unforced it is refused, with the holders named; forced it goes through
+        // carrying that same refusal.
+        let refusal = forced(Ownership::Strict, w, false, false).unwrap_err();
+        assert_eq!(refusal.reason, reason, "{w:?}");
+        assert_eq!(refusal.held, held, "{w:?}");
+
+        let verdict = forced(Ownership::Strict, w, false, true).unwrap();
+        assert_eq!(verdict, Verdict::Forced(refusal.clone()), "{w:?}");
+        assert_eq!(verdict.overridden(), Some(&refusal));
+
+        // The same refusal that `check` gives: `check_forced` does not decide anything else.
+        assert_eq!(check(&me(), &w, false), Err(refusal), "{w:?}");
+    }
+}
+
+#[test]
+fn force_reports_nothing_when_the_rules_allow_the_write() {
+    let permitted = [
+        Write::ProjectUpdate { lead: Some(ME) },
+        Write::InitiativeUpdate { owner: Some(ME) },
+        Write::IssueCreate {
+            assignee: Some(BOB),
+            placement: mine(),
+        },
+        Write::IssueUpdate {
+            assignee: Some(ME),
+            placement: bobs(),
+            moves_to: None,
+        },
+        Write::IssueCancel {
+            assignee: None,
+            placement: mine(),
+        },
+        Write::CommentUpdate { author: Some(ME) },
+        Write::CommentDelete { author: Some(ME) },
+    ];
+    for w in permitted {
+        for force in [false, true] {
+            let verdict = forced(Ownership::Strict, w, false, force).unwrap();
+            assert_eq!(verdict, Verdict::Allowed, "{w:?} force={force}");
+            assert_eq!(verdict.overridden(), None);
+        }
+    }
+    // `--allow-foreign` already opens this one, so there is nothing to force.
+    let create = Write::IssueCreate {
+        assignee: Some(ME),
+        placement: bobs(),
+    };
+    assert_eq!(
+        forced(Ownership::Strict, create, true, true),
+        Ok(Verdict::Allowed)
+    );
+}
+
+#[test]
+fn force_is_reported_in_lenient_only_where_lenient_still_refuses() {
+    // Lenient already allows these, so forcing them overrides nothing.
+    let relaxed = [
+        Write::IssueCreate {
+            assignee: Some(BOB),
+            placement: bobs(),
+        },
+        Write::IssueUpdate {
+            assignee: Some(BOB),
+            placement: bobs(),
+            moves_to: Some(bobs()),
+        },
+        Write::CommentUpdate { author: Some(BOB) },
+    ];
+    for w in relaxed {
+        assert_eq!(
+            forced(Ownership::Lenient, w, false, true),
+            Ok(Verdict::Allowed),
+            "{w:?}"
+        );
+    }
+
+    // What lenient keeps refused: a project that is not mine, canceling, deleting a comment.
+    let kept = [
+        Write::ProjectUpdate { lead: Some(BOB) },
+        Write::ProjectCreate { lead: Some(BOB) },
+        Write::IssueCancel {
+            assignee: Some(BOB),
+            placement: bobs(),
+        },
+        Write::CommentDelete { author: Some(BOB) },
+    ];
+    for w in kept {
+        let refusal = forced(Ownership::Lenient, w, false, false).unwrap_err();
+        assert_eq!(
+            forced(Ownership::Lenient, w, false, true),
+            Ok(Verdict::Forced(refusal)),
+            "{w:?}"
+        );
+    }
+}
+
+#[test]
+fn a_denial_serializes_with_who_held_what() {
+    let d = denied(Write::ProjectUpdate { lead: Some(BOB) }, false);
+    assert_eq!(
+        serde_json::to_value(&d).unwrap(),
+        serde_json::json!({
+            "operation": "project_update",
+            "reason": "project_not_led",
+            "message": d.message,
+            "held": [{"role": "lead", "user": BOB}],
+        })
+    );
+}
+
 // ------------------------------------------------------------------- errors
 
 #[test]

@@ -136,6 +136,10 @@ pub struct WorkspaceConfig {
     /// `"lenient"` (see [`Ownership`]).
     #[serde(default, skip_serializing_if = "Ownership::is_strict")]
     pub ownership: Ownership,
+    /// Let `--force` write past the ownership rules (exit 4). Off by default: without
+    /// it, `--force` is a usage error. Validators and every other check still apply.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub allow_force: bool,
     /// Validator rules to enforce on writes.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub rules: Vec<Rule>,

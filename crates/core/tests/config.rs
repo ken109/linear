@@ -130,6 +130,31 @@ fn an_unknown_ownership_is_a_config_error() {
     }
 }
 
+// ------------------------------------------------------------------ allow_force
+
+#[test]
+fn allow_force_is_off_unless_set_and_a_bool() {
+    let c = Config::parse(
+        "[workspaces.a]\nurl_key = \"a\"\n[workspaces.b]\nurl_key = \"b\"\nallow_force = true\n\
+         [workspaces.c]\nurl_key = \"c\"\nallow_force = false\n",
+    )
+    .unwrap();
+    assert!(!c.get("a").unwrap().allow_force);
+    assert!(c.get("b").unwrap().allow_force);
+    assert!(!c.get("c").unwrap().allow_force);
+
+    // Off stays out of the file; on is written and read back.
+    let text = toml_edit::ser::to_string(&c).unwrap();
+    assert_eq!(text.matches("allow_force").count(), 1, "{text}");
+    assert_eq!(Config::parse(&text).unwrap(), c);
+
+    for bad in ["\"yes\"", "1", "\"true\""] {
+        let text = format!("[workspaces.a]\nurl_key = \"a\"\nallow_force = {bad}\n");
+        let err = Config::parse(&text).unwrap_err();
+        assert!(matches!(err, Error::Config(_)), "{bad:?} -> {err:?}");
+    }
+}
+
 // ------------------------------------------------------------------ client credentials
 
 #[test]
