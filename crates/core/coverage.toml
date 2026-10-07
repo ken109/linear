@@ -167,6 +167,15 @@ fields = [
 [[entry]]
 type = "Query"
 status = "implemented"
+via = ["read::webhooks"]
+commands = ["webhook list", "webhook delete"]
+fields = [
+  "webhooks",
+]
+
+[[entry]]
+type = "Query"
+status = "implemented"
 via = ["read::teams"]
 commands = ["team list", "team view"]
 fields = [
@@ -207,7 +216,7 @@ fields = [
   "organizationMeta", "partnerOfferDetails", "partnerOfferWorkspaces", "partnerProgramPartners",
   "pushSubscriptionTest", "rateLimitStatus", "ssoUrlFromEmail", "usageAlert", "usageAlerts",
   "userSessions", "userSettings", "userViewPreferences",
-  "verifyGitHubEnterpriseServerInstallation", "webhook", "webhooks",
+  "verifyGitHubEnterpriseServerInstallation", "webhook",
 ]
 
 [[entry]]
@@ -294,6 +303,15 @@ fields = [
 [[entry]]
 type = "Mutation"
 status = "implemented"
+via = ["inputs::webhook_create", "inputs::webhook_delete"]
+commands = ["webhook create", "webhook delete"]
+fields = [
+  "webhookCreate", "webhookDelete",
+]
+
+[[entry]]
+type = "Mutation"
+status = "implemented"
 via = [
   "project_write::project_create", "project_write::project_update",
   "project_write::project_delete", "project_write::project_update_create",
@@ -338,8 +356,7 @@ fields = [
   "organizationStartTrial", "organizationStartTrialForPlan", "organizationUpdate",
   "partnerApplicationCreate", "partnerOfferRedeem", "passkeyLoginFinish", "passkeyLoginStart",
   "pushSubscriptionCreate", "samlTokenUserAccountAuth", "trackAnonymousEvent", "userChangeRole",
-  "userDiscordConnect", "userFlagUpdate", "userSettingsUpdate", "userUpdate", "webhookCreate",
-  "webhookUpdate",
+  "userDiscordConnect", "userFlagUpdate", "userSettingsUpdate", "userUpdate", "webhookUpdate",
 ]
 
 [[entry]]
@@ -421,7 +438,7 @@ fields = [
   "templateDelete", "timeScheduleDelete", "triageResponsibilityDelete",
   "userExternalUserDisconnect", "userRevokeAllSessions", "userRevokeSession",
   "userSettingsFlagsReset", "userSuspend", "userUnlinkFromIdentityProvider", "userUnsuspend",
-  "viewPreferencesDelete", "webhookDelete", "webhookRotateSecret", "workflowStateArchive",
+  "viewPreferencesDelete", "webhookRotateSecret", "workflowStateArchive",
 ]
 
 [[entry]]

@@ -138,6 +138,32 @@ pub fn match_initiative<'a>(rows: &'a [Initiative], reference: &str) -> Result<&
     )
 }
 
+/// A webhook by id, label or URL. Several webhooks can deliver to one URL, so a
+/// URL that names more than one is ambiguous like any other repeated name.
+pub fn match_webhook<'a>(rows: &'a [Webhook], reference: &str) -> Result<&'a Webhook> {
+    let url_is = |w: &Webhook, same: fn(&str, &str) -> bool| {
+        w.url.as_deref().is_some_and(|u| same(u, reference))
+    };
+    let label_is = |w: &Webhook, same: fn(&str, &str) -> bool| {
+        w.label.as_deref().is_some_and(|l| same(l, reference))
+    };
+    pick(
+        rows,
+        "webhook",
+        reference,
+        |w| w.id.inner() == reference || label_is(w, |a, b| a == b) || url_is(w, |a, b| a == b),
+        |w| label_is(w, same_ignoring_case) || url_is(w, same_ignoring_case),
+        |w| {
+            let name = w
+                .label
+                .as_deref()
+                .or(w.url.as_deref())
+                .unwrap_or("(no label)");
+            format!("{name} ({})", w.id.inner())
+        },
+    )
+}
+
 /// A milestone of one project, by id or name.
 pub fn match_milestone<'a>(rows: &'a [Milestone], reference: &str) -> Result<&'a Milestone> {
     pick(

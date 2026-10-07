@@ -1,0 +1,36 @@
+{
+  "data": {
+    "webhooks": {
+      "nodes": [
+        {
+          "id": "00000000-0000-4000-8000-0000000000c1",
+          "label": "Deploy hook",
+          "url": "https://hooks.example.com/linear",
+          "enabled": true,
+          "resourceTypes": ["Issue", "Comment"],
+          "allPublicTeams": false,
+          "team": {
+            "id": "00000000-0000-4000-8000-000000000004",
+            "key": "EX",
+            "name": "Example"
+          },
+          "createdAt": "2026-09-01T10:00:00.000Z"
+        },
+        {
+          "id": "00000000-0000-4000-8000-0000000000c2",
+          "label": null,
+          "url": "https://other.example.com/hook",
+          "enabled": false,
+          "resourceTypes": ["Project"],
+          "allPublicTeams": true,
+          "team": null,
+          "createdAt": "2026-09-02T10:00:00.000Z"
+        }
+      ],
+      "pageInfo": {
+        "hasNextPage": false,
+        "endCursor": null
+      }
+    }
+  }
+}

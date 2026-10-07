@@ -571,6 +571,29 @@ pub struct Initiative {
 
 paged_container!(InitiativeConnection, "InitiativeConnection", Initiative);
 
+// ---------------------------------------------------------------- webhook
+
+/// A webhook subscription. The signing secret is not part of it: only the
+/// command that creates a webhook asks for it (`inputs::WebhookCreatePayload`).
+#[derive(cynic::QueryFragment, Debug, Clone, PartialEq, Serialize, JsonSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct Webhook {
+    #[schemars(with = "String")]
+    pub id: cynic::Id,
+    pub label: Option<String>,
+    /// `null` for the webhook of an OAuth application, which uses the URL set on the app.
+    pub url: Option<String>,
+    pub enabled: bool,
+    /// The kinds of resource it delivers: `Issue`, `Comment`, `Project`, ...
+    pub resource_types: Vec<String>,
+    pub all_public_teams: bool,
+    /// The single team it is scoped to.
+    pub team: Option<Team>,
+    pub created_at: DateTime<Utc>,
+}
+
+paged_container!(WebhookConnection, "WebhookConnection", Webhook);
+
 // ---------------------------------------------------------------- template
 
 #[derive(cynic::QueryFragment, Debug, Clone, PartialEq, Serialize, JsonSchema)]

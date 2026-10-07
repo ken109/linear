@@ -534,6 +534,22 @@ pub fn teams(vars: PageVars) -> Operation<Teams, PageVars> {
     Teams::build(vars)
 }
 
+// ---------------------------------------------------------------- webhooks
+
+#[derive(cynic::QueryFragment, Debug, Clone, PartialEq, Serialize, JsonSchema)]
+#[cynic(graphql_type = "Query", variables = "PageVars")]
+#[serde(rename_all = "camelCase")]
+pub struct Webhooks {
+    #[arguments(first: $first, after: $after)]
+    pub webhooks: WebhookConnection,
+}
+
+pub const WEBHOOKS_PAGE_SIZE: i32 = 50;
+
+pub fn webhooks(vars: PageVars) -> Operation<Webhooks, PageVars> {
+    Webhooks::build(vars)
+}
+
 paged_container!(UserConnection, "UserConnection", User);
 
 #[derive(cynic::QueryVariables, Debug, Clone)]

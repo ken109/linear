@@ -543,6 +543,73 @@ pub fn initiative_delete(
     InitiativeDelete::build(InitiativeIdVars { id: id.into() })
 }
 
+// ---------------------------------------------------------------- webhook
+
+#[derive(cynic::InputObject, Debug, Clone)]
+#[cynic(graphql_type = "WebhookCreateInput")]
+#[cynic(rename_all = "camelCase")]
+pub struct WebhookCreateInput {
+    pub url: String,
+    pub resource_types: Vec<String>,
+    #[cynic(skip_serializing_if = "Option::is_none")]
+    pub label: Option<String>,
+    /// A team's id or key; exclusive with `all_public_teams`.
+    #[cynic(skip_serializing_if = "Option::is_none")]
+    pub team_id: Option<String>,
+    #[cynic(skip_serializing_if = "Option::is_none")]
+    pub all_public_teams: Option<bool>,
+}
+
+#[derive(cynic::QueryVariables, Debug, Clone)]
+pub struct WebhookCreateVars {
+    pub input: WebhookCreateInput,
+}
+
+#[derive(cynic::QueryFragment, Debug, Clone, PartialEq)]
+#[cynic(graphql_type = "Mutation", variables = "WebhookCreateVars")]
+pub struct WebhookCreate {
+    #[arguments(input: $input)]
+    pub webhook_create: WebhookCreatePayload,
+}
+
+/// The new webhook, and the secret Linear generated to sign its deliveries.
+#[derive(cynic::QueryFragment, Debug, Clone, PartialEq)]
+#[cynic(graphql_type = "WebhookPayload")]
+pub struct WebhookCreatePayload {
+    pub success: bool,
+    pub webhook: crate::types::Webhook,
+    #[cynic(alias, rename = "webhook")]
+    pub signing: WebhookSigning,
+}
+
+#[derive(cynic::QueryFragment, Debug, Clone, PartialEq)]
+#[cynic(graphql_type = "Webhook")]
+pub struct WebhookSigning {
+    pub secret: Option<String>,
+}
+
+pub fn webhook_create(
+    input: WebhookCreateInput,
+) -> cynic::Operation<WebhookCreate, WebhookCreateVars> {
+    WebhookCreate::build(WebhookCreateVars { input })
+}
+
+#[derive(cynic::QueryVariables, Debug, Clone)]
+pub struct WebhookDeleteVars {
+    pub id: String,
+}
+
+#[derive(cynic::QueryFragment, Debug, Clone, PartialEq)]
+#[cynic(graphql_type = "Mutation", variables = "WebhookDeleteVars")]
+pub struct WebhookDelete {
+    #[arguments(id: $id)]
+    pub webhook_delete: DeleteResult,
+}
+
+pub fn webhook_delete(id: impl Into<String>) -> cynic::Operation<WebhookDelete, WebhookDeleteVars> {
+    WebhookDelete::build(WebhookDeleteVars { id: id.into() })
+}
+
 // ---------------------------------------------------------------- template
 
 #[derive(cynic::InputObject, Debug, Clone)]
