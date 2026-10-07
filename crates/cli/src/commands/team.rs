@@ -52,7 +52,7 @@ fn list(ctx: &Ctx, args: &ListCmd) -> Result<()> {
         warn_truncated(listing.items.len());
     }
     let tagged = InWorkspace::tag_all(&session.workspace, listing.items.clone());
-    ctx.out.emit(
+    ctx.out.emit_selectable(
         &tagged,
         || {
             if listing.items.is_empty() {
@@ -73,7 +73,7 @@ fn list(ctx: &Ctx, args: &ListCmd) -> Result<()> {
                 .collect::<Vec<_>>()
                 .join("\n")
         },
-    );
+    )?;
     Ok(())
 }
 
@@ -81,7 +81,7 @@ fn view(ctx: &Ctx, args: &ViewCmd) -> Result<()> {
     let session = ctx.session()?;
     let all = fetch(&session, None)?.items;
     let t = match_team(&all, &args.team)?;
-    ctx.out.emit(
+    ctx.out.emit_selectable(
         &InWorkspace::new(&session.workspace, t),
         || {
             fields(&[
@@ -91,6 +91,6 @@ fn view(ctx: &Ctx, args: &ViewCmd) -> Result<()> {
             ])
         },
         || t.key.clone(),
-    );
+    )?;
     Ok(())
 }

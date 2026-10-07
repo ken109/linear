@@ -47,7 +47,69 @@ pub struct Ctx {
     pub keyring: Box<dyn Keyring>,
 }
 
+/// The commands whose `--json` output `--fields` and `--id-only` can cut down: the list
+/// and view commands that print through `Output::emit_selectable`.
+pub const SELECTABLE: &str = "issue list|search|view, project list|view, milestone list|view, \
+initiative list|view|status-updates, label list|view, team list|view, user list|view, \
+document list|view, template list|view, cycle (by date)|list|view, webhook list";
+
+/// Whether `command` prints through `Output::emit_selectable`.
+pub fn is_selectable(command: &Command) -> bool {
+    use cycle::CycleCommand;
+    use initiative::InitiativeCommand as Init;
+    use issue::IssueCommand as Issue;
+    use template::TemplateCommand as Tpl;
+    match command {
+        Command::Issue(c) => matches!(c, Issue::List(_) | Issue::Search(_) | Issue::View(_)),
+        Command::Project(c) => matches!(
+            c,
+            project::ProjectCommand::List(_) | project::ProjectCommand::View(_)
+        ),
+        Command::Milestone(c) => matches!(
+            c,
+            milestone::MilestoneCommand::List(_) | milestone::MilestoneCommand::View(_)
+        ),
+        Command::Initiative(c) => {
+            matches!(c, Init::List(_) | Init::View(_) | Init::StatusUpdates(_))
+        }
+        Command::Label(c) => matches!(
+            c,
+            label::LabelCommand::List(_) | label::LabelCommand::View(_)
+        ),
+        Command::Team(c) => matches!(c, team::TeamCommand::List(_) | team::TeamCommand::View(_)),
+        Command::User(c) => matches!(c, user::UserCommand::List(_) | user::UserCommand::View(_)),
+        Command::Document(c) => matches!(
+            c,
+            document::DocumentCommand::List(_) | document::DocumentCommand::View(_)
+        ),
+        Command::Template(c) => matches!(c, Tpl::List(_) | Tpl::View(_)),
+        Command::Cycle(args) => matches!(
+            args.command,
+            None | Some(CycleCommand::List(_)) | Some(CycleCommand::View(_))
+        ),
+        Command::Webhook(c) => matches!(c, webhook::WebhookCommand::List(_)),
+        _ => false,
+    }
+}
+
+/// Refuse `--fields` and `--id-only` where they would be silently ignored (every write, for
+/// one), and the flag combinations that make no sense. Before anything is sent.
+fn check_selection(cli: &Cli) -> Result<()> {
+    if cli.fields.is_empty() && !cli.id_only {
+        return Ok(());
+    }
+    crate::output::Selection::check_flags(&cli.fields, cli.id_only, cli.json, cli.quiet)?;
+    if !is_selectable(&cli.command) {
+        let flag = if cli.id_only { "--id-only" } else { "--fields" };
+        return Err(CliError::usage(format!(
+            "{flag} does not apply to this command; it cuts down the output of: {SELECTABLE}"
+        )));
+    }
+    Ok(())
+}
+
 pub fn run(cli: &Cli, out: Output) -> Result<()> {
+    check_selection(cli)?;
     // These touch neither the configuration nor Linear, so they must work on a
     // machine that has no config directory and no network.
     match &cli.command {

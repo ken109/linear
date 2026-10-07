@@ -145,7 +145,7 @@ fn list(ctx: &Ctx, args: &ListCmd) -> Result<()> {
     }
 
     let tagged = InWorkspace::tag_all(&session.workspace, listing.items.clone());
-    ctx.out.emit(
+    ctx.out.emit_selectable(
         &tagged,
         || {
             if listing.items.is_empty() {
@@ -174,7 +174,7 @@ fn list(ctx: &Ctx, args: &ListCmd) -> Result<()> {
                 .collect::<Vec<_>>()
                 .join("\n")
         },
-    );
+    )?;
     Ok(())
 }
 
@@ -201,7 +201,7 @@ fn view(ctx: &Ctx, args: &ViewCmd) -> Result<()> {
         initiative: i,
         detail: d,
     };
-    ctx.out.emit(
+    ctx.out.emit_selectable(
         &value,
         || {
             let mut text = format!(
@@ -242,7 +242,7 @@ fn view(ctx: &Ctx, args: &ViewCmd) -> Result<()> {
             text
         },
         || i.slug_id.clone(),
-    );
+    )?;
     Ok(())
 }
 
@@ -270,7 +270,7 @@ fn status_updates(ctx: &Ctx, args: &ViewCmd) -> Result<()> {
         workspace: &session.workspace,
         updates: &updates,
     };
-    ctx.out.emit(
+    ctx.out.emit_selectable(
         &value,
         || {
             if updates.is_empty() {
@@ -296,6 +296,6 @@ fn status_updates(ctx: &Ctx, args: &ViewCmd) -> Result<()> {
                 .collect::<Vec<_>>()
                 .join("\n")
         },
-    );
+    )?;
     Ok(())
 }

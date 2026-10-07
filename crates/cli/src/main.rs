@@ -15,7 +15,7 @@ mod store;
 use clap::{error::ErrorKind, Parser};
 use cli::Cli;
 use linear_core::ErrorCode;
-use output::{report_error, Output};
+use output::{report_error, Output, Selection};
 use std::process::ExitCode;
 
 fn main() -> ExitCode {
@@ -55,6 +55,7 @@ fn main() -> ExitCode {
     let out = Output {
         json: cli.json,
         quiet: cli.quiet,
+        select: Selection::from_flags(&cli.fields, cli.id_only),
     };
     match commands::run(&cli, out) {
         Ok(()) => ExitCode::SUCCESS,

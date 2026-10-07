@@ -22,6 +22,17 @@ pub struct Cli {
     #[arg(short, long, global = true)]
     pub quiet: bool,
 
+    /// With --json on a list or view command: print only these keys of each object, comma-separated
+    /// (the camelCase names --json shows, top level only; an unknown name is a usage error that
+    /// lists the valid ones)
+    #[arg(long, global = true, value_name = "A,B,C", value_delimiter = ',')]
+    pub fields: Vec<String>,
+
+    /// On a list or view command: print only each item's id (Linear's uuid), one per line (a JSON
+    /// array with --json). --quiet prints the short reference (KK-12) instead
+    #[arg(long, global = true)]
+    pub id_only: bool,
+
     /// Give up on a request to Linear after this many seconds (default 30; LINEAR_TIMEOUT).
     /// A read that fails on a timeout, a 5xx or a short rate limit is retried twice; a write never is
     #[arg(long, global = true, value_name = "SECS")]

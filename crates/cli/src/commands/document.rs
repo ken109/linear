@@ -110,7 +110,7 @@ fn list(ctx: &Ctx, args: &ListCmd) -> Result<()> {
     }
 
     let tagged = InWorkspace::tag_all(&session.workspace, listing.items.clone());
-    ctx.out.emit(
+    ctx.out.emit_selectable(
         &tagged,
         || {
             if listing.items.is_empty() {
@@ -138,7 +138,7 @@ fn list(ctx: &Ctx, args: &ListCmd) -> Result<()> {
                 .collect::<Vec<_>>()
                 .join("\n")
         },
-    );
+    )?;
     Ok(())
 }
 
@@ -163,7 +163,7 @@ fn view(ctx: &Ctx, args: &ViewCmd) -> Result<()> {
         document: d,
         detail,
     };
-    ctx.out.emit(
+    ctx.out.emit_selectable(
         &value,
         || {
             let mut rows = vec![("In", d.parent_label())];
@@ -178,6 +178,6 @@ fn view(ctx: &Ctx, args: &ViewCmd) -> Result<()> {
             text
         },
         || d.slug_id.clone(),
-    );
+    )?;
     Ok(())
 }

@@ -195,7 +195,7 @@ fn fetch_list(ctx: &Ctx, args: &ListCmd) -> Result<(String, Vec<Project>)> {
 fn list(ctx: &Ctx, args: &ListCmd) -> Result<()> {
     let (workspace, items) = fetch_list(ctx, args)?;
     let rows: Vec<ProjectOut> = items.iter().map(|p| out(&workspace, p)).collect();
-    ctx.out.emit(
+    ctx.out.emit_selectable(
         &rows,
         || {
             if items.is_empty() {
@@ -235,7 +235,7 @@ fn list(ctx: &Ctx, args: &ListCmd) -> Result<()> {
                 .collect::<Vec<_>>()
                 .join("\n")
         },
-    );
+    )?;
     Ok(())
 }
 
@@ -308,7 +308,7 @@ fn show(
         detail: d,
     };
     ctx.out
-        .emit(&value, || render(p, d, with_content), || p.slug_id.clone());
+        .emit_selectable(&value, || render(p, d, with_content), || p.slug_id.clone())?;
     Ok(())
 }
 

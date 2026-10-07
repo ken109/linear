@@ -1148,6 +1148,35 @@ linear document update design-notes-1a2b3c4d5e6f [--title "Notes"] [--body-file 
 | 5    | write refused by a validator             |
 | 6    | `audit --fail-on` found actionable items |
 
+### Cutting the output down: `--fields` and `--id-only`
+
+`issue list --json` carries every description and comment count, which is a lot for a script or
+an agent that wants a title. Two global flags cut the output of the list and view commands
+(`issue list|search|view`, `project list|view`, `milestone list|view`,
+`initiative list|view|status-updates`, `label list|view`, `team list|view`, `user list|view`,
+`document list|view`, `template list|view`, `cycle` by date, `cycle list|view`, `webhook list`).
+Anywhere else (every write, `audit`, `brief`, `api`, ...) they are a usage error (exit 2) before
+anything is sent, rather than being ignored.
+
+```sh
+linear issue list --open --json --fields identifier,title,state    # only those keys of each issue
+linear project view my-project --json --fields name,description     # one object
+linear issue list --open --id-only | xargs -n1 ...                   # one uuid per line
+```
+
+- `--fields a,b,c` needs `--json`. The names are the camelCase keys `--json` prints, at the top
+  level only (there are no nested paths: `state` brings the whole `state` object). A name that is
+  not in the output is a usage error that lists the valid ones; the valid names are read from the
+  output itself, so they cannot drift from it, but an empty list has nothing to check them against
+  and prints `[]`. A list stays an array and a view stays one object. The keys come out in
+  alphabetical order, not in the order given.
+- `--id-only` prints each item's `id` (Linear's uuid, what the raw API takes), one per line, with no
+  table and no "No issues found." line; with `--json` it is an array of those strings. It is not
+  `--quiet`: `--quiet` prints the short reference you give to other `linear` commands (`KK-12`, a
+  project's slug id, a label's path), which differs from the uuid on most commands. The two cannot
+  be combined, and `--id-only` cannot be combined with `--fields`.
+- The flags cut what is printed, not what is fetched: the request and `--limit` are unchanged.
+
 ## Raw GraphQL: `linear api`
 
 For anything without a dedicated command, send a query directly. It uses the selected

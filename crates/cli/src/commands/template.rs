@@ -105,7 +105,7 @@ fn list(ctx: &Ctx, args: &ListCmd) -> Result<()> {
         })
         .collect();
     let rows: Vec<TemplateRow> = shown.iter().map(|t| row(&workspace, t)).collect();
-    ctx.out.emit(
+    ctx.out.emit_selectable(
         &rows,
         || {
             if shown.is_empty() {
@@ -132,7 +132,7 @@ fn list(ctx: &Ctx, args: &ListCmd) -> Result<()> {
                 .collect::<Vec<_>>()
                 .join("\n")
         },
-    );
+    )?;
     Ok(())
 }
 
@@ -155,7 +155,7 @@ fn view(ctx: &Ctx, args: &ViewCmd) -> Result<()> {
         sections: sections.clone(),
         data: t.data(),
     };
-    ctx.out.emit(
+    ctx.out.emit_selectable(
         &value,
         || {
             let mut text = format!(
@@ -184,7 +184,7 @@ fn view(ctx: &Ctx, args: &ViewCmd) -> Result<()> {
             text
         },
         || t.name.clone(),
-    );
+    )?;
     Ok(())
 }
 

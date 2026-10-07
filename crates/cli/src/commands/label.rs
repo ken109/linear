@@ -87,11 +87,11 @@ fn list(ctx: &Ctx, args: &ListCmd) -> Result<()> {
         warn_truncated(listing.items.len());
     }
     let tagged = InWorkspace::tag_all(&session.workspace, listing.items.clone());
-    ctx.out.emit(
+    ctx.out.emit_selectable(
         &tagged,
         || table_of(&listing.items),
         || paths(&listing.items),
-    );
+    )?;
     Ok(())
 }
 
@@ -113,6 +113,7 @@ fn view(ctx: &Ctx, args: &ViewCmd) -> Result<()> {
         by_path
     };
     let tagged = InWorkspace::tag_all(&session.workspace, found.clone());
-    ctx.out.emit(&tagged, || table_of(&found), || paths(&found));
+    ctx.out
+        .emit_selectable(&tagged, || table_of(&found), || paths(&found))?;
     Ok(())
 }

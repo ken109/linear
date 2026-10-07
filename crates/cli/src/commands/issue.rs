@@ -421,14 +421,13 @@ fn sort_manual(order: Order, items: &mut [Issue]) {
 
 fn list(ctx: &Ctx, args: &ListCmd) -> Result<()> {
     let (workspace, items) = fetch_list(ctx, args)?;
-    print_issues(ctx, &workspace, &items);
-    Ok(())
+    print_issues(ctx, &workspace, &items)
 }
 
 /// Print issues as `issue list` and `issue search` do: a table, `--json` rows, or identifiers.
-fn print_issues(ctx: &Ctx, workspace: &str, items: &[Issue]) {
+fn print_issues(ctx: &Ctx, workspace: &str, items: &[Issue]) -> Result<()> {
     let rows: Vec<IssueOut> = items.iter().map(|i| out(workspace, i)).collect();
-    ctx.out.emit(
+    ctx.out.emit_selectable(
         &rows,
         || {
             if items.is_empty() {
@@ -455,7 +454,7 @@ fn print_issues(ctx: &Ctx, workspace: &str, items: &[Issue]) {
                 .collect::<Vec<_>>()
                 .join("\n")
         },
-    );
+    )
 }
 
 fn search(ctx: &Ctx, args: &SearchCmd) -> Result<()> {
@@ -494,8 +493,7 @@ fn search(ctx: &Ctx, args: &SearchCmd) -> Result<()> {
         warn_truncated(listing.items.len());
     }
     let items: Vec<Issue> = listing.items.into_iter().map(Issue::from).collect();
-    print_issues(ctx, &session.workspace, &items);
-    Ok(())
+    print_issues(ctx, &session.workspace, &items)
 }
 
 #[derive(Serialize)]
@@ -576,7 +574,7 @@ fn show(ctx: &Ctx, workspace: &str, i: &Issue, d: Option<&IssueDetail>) -> Resul
         pull_requests: i.pull_requests(),
         detail: d,
     };
-    ctx.out.emit(
+    ctx.out.emit_selectable(
         &value,
         || {
             let labels = if i.labels.is_empty() {
@@ -672,6 +670,6 @@ fn show(ctx: &Ctx, workspace: &str, i: &Issue, d: Option<&IssueDetail>) -> Resul
             text
         },
         || i.identifier.clone(),
-    );
+    )?;
     Ok(())
 }

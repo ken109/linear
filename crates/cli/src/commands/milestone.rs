@@ -67,7 +67,7 @@ fn list(ctx: &Ctx, args: &ListCmd) -> Result<()> {
     let session = ctx.session()?;
     let rows = milestones(&session, &args.project)?;
     let tagged = InWorkspace::tag_all(&session.workspace, rows.clone());
-    ctx.out.emit(
+    ctx.out.emit_selectable(
         &tagged,
         || {
             if rows.is_empty() {
@@ -92,7 +92,7 @@ fn list(ctx: &Ctx, args: &ListCmd) -> Result<()> {
                 .collect::<Vec<_>>()
                 .join("\n")
         },
-    );
+    )?;
     Ok(())
 }
 
@@ -119,7 +119,7 @@ fn view(ctx: &Ctx, args: &ViewCmd) -> Result<()> {
         milestone: m,
         detail: d,
     };
-    ctx.out.emit(
+    ctx.out.emit_selectable(
         &value,
         || {
             let mut text = format!(
@@ -155,6 +155,6 @@ fn view(ctx: &Ctx, args: &ViewCmd) -> Result<()> {
             text
         },
         || m.name.clone(),
-    );
+    )?;
     Ok(())
 }

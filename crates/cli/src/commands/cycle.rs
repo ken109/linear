@@ -149,7 +149,7 @@ fn by_date(ctx: &Ctx, team: Option<&str>, held_on: NaiveDate) -> Result<()> {
         held_on,
         cycle: &cycle,
     };
-    ctx.out.emit(
+    ctx.out.emit_selectable(
         &value,
         || {
             format!(
@@ -167,7 +167,7 @@ fn by_date(ctx: &Ctx, team: Option<&str>, held_on: NaiveDate) -> Result<()> {
             )
         },
         || cycle.id.inner().to_owned(),
-    );
+    )?;
     Ok(())
 }
 
@@ -208,7 +208,7 @@ fn list(ctx: &Ctx, cmd: &ListCmd) -> Result<()> {
     }
 
     let tagged = InWorkspace::tag_all(&session.workspace, all.clone());
-    ctx.out.emit(
+    ctx.out.emit_selectable(
         &tagged,
         || {
             if all.is_empty() {
@@ -238,7 +238,7 @@ fn list(ctx: &Ctx, cmd: &ListCmd) -> Result<()> {
                 .collect::<Vec<_>>()
                 .join("\n")
         },
-    );
+    )?;
     Ok(())
 }
 
@@ -290,7 +290,7 @@ fn view(ctx: &Ctx, cmd: &ViewCmd) -> Result<()> {
         cycle: &cycle,
         issues,
     };
-    ctx.out.emit(
+    ctx.out.emit_selectable(
         &value,
         || {
             let mut text = format!(
@@ -330,6 +330,6 @@ fn view(ctx: &Ctx, cmd: &ViewCmd) -> Result<()> {
             text
         },
         || cycle.number_whole().to_string(),
-    );
+    )?;
     Ok(())
 }

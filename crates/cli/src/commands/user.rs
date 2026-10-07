@@ -56,7 +56,7 @@ fn list(ctx: &Ctx, args: &ListCmd) -> Result<()> {
         warn_truncated(listing.items.len());
     }
     let tagged = InWorkspace::tag_all(&session.workspace, listing.items.clone());
-    ctx.out.emit(
+    ctx.out.emit_selectable(
         &tagged,
         || {
             if listing.items.is_empty() {
@@ -84,7 +84,7 @@ fn list(ctx: &Ctx, args: &ListCmd) -> Result<()> {
                 .collect::<Vec<_>>()
                 .join("\n")
         },
-    );
+    )?;
     Ok(())
 }
 
@@ -99,7 +99,7 @@ fn view(ctx: &Ctx, args: &ViewCmd) -> Result<()> {
     } else {
         match_user(&all, &args.user)?
     };
-    ctx.out.emit(
+    ctx.out.emit_selectable(
         &InWorkspace::new(&session.workspace, u),
         || {
             fields(&[
@@ -112,6 +112,6 @@ fn view(ctx: &Ctx, args: &ViewCmd) -> Result<()> {
             ])
         },
         || u.email.clone(),
-    );
+    )?;
     Ok(())
 }
