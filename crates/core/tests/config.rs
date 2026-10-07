@@ -402,3 +402,35 @@ fn source_kinds_without_the_rule_or_with_an_empty_kind_is_an_error() {
         assert!(matches!(err, Error::Config(_)), "{bad:?} -> {err:?}");
     }
 }
+
+// ------------------------------------------------------------------ credential store
+
+#[test]
+fn credential_store_defaults_to_the_file_and_can_be_the_keyring() {
+    use linear_core::config::CredentialStore;
+    let c = Config::parse(
+        "[workspaces.a]\nurl_key = \"a\"\n\
+         [workspaces.b]\nurl_key = \"b\"\ncredential_store = \"keyring\"\n\
+         [workspaces.c]\nurl_key = \"c\"\ncredential_store = \"file\"\n",
+    )
+    .unwrap();
+    assert_eq!(c.get("a").unwrap().credential_store, CredentialStore::File);
+    assert_eq!(
+        c.get("b").unwrap().credential_store,
+        CredentialStore::Keyring
+    );
+    assert_eq!(c.get("c").unwrap().credential_store, CredentialStore::File);
+    assert_eq!(CredentialStore::Keyring.to_string(), "keyring");
+
+    // The default is not written back; the keyring is.
+    let text = toml_edit::ser::to_string(&c).unwrap();
+    assert_eq!(text.matches("credential_store").count(), 1, "{text}");
+    assert_eq!(Config::parse(&text).unwrap(), c);
+}
+
+#[test]
+fn an_unknown_credential_store_is_a_config_error() {
+    let err = Config::parse("[workspaces.a]\nurl_key = \"a\"\ncredential_store = \"vault\"\n")
+        .unwrap_err();
+    assert!(matches!(err, Error::Config(_)), "{err:?}");
+}

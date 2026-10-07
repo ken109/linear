@@ -36,6 +36,33 @@ impl fmt::Display for AuthMethod {
     }
 }
 
+/// Where a workspace's stored credential lives.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum CredentialStore {
+    /// `credentials/<workspace>.json`, mode 0600. The default.
+    #[default]
+    File,
+    /// The OS keyring (macOS Keychain, the Secret Service on Linux). Falls back
+    /// to the file where there is no keyring (WSL, CI).
+    Keyring,
+}
+
+impl CredentialStore {
+    pub fn is_file(&self) -> bool {
+        *self == Self::File
+    }
+}
+
+impl fmt::Display for CredentialStore {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(match self {
+            Self::File => "file",
+            Self::Keyring => "keyring",
+        })
+    }
+}
+
 /// How strictly the ownership rules (exit 4) apply in a workspace.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -93,6 +120,11 @@ pub struct WorkspaceConfig {
     /// `LINEAR_CLIENT_SECRET` (or `LINEAR_CLIENT_SECRET_<NAME>`).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub client_id: Option<String>,
+    /// Where `workspace login` keeps the credential: `"file"` (the default) or
+    /// `"keyring"` (the OS keyring, with the file as a fallback). Reading the
+    /// environment override (`LINEAR_API_KEY_<NAME>`) never depends on it.
+    #[serde(default, skip_serializing_if = "CredentialStore::is_file")]
+    pub credential_store: CredentialStore,
     /// How strictly the ownership rules apply: `"strict"` (the default) or
     /// `"lenient"` (see [`Ownership`]).
     #[serde(default, skip_serializing_if = "Ownership::is_strict")]
