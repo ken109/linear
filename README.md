@@ -722,6 +722,68 @@ default view); both are shown by `issue list --json`. The issues you name trade 
 already hold, so issues in between keep their place. Linear may adjust `prioritySortOrder` to
 its own liking within a priority, so the exact numbers are not guaranteed, only the order.
 
+### Dry run
+
+`--dry-run` is a global flag of every command that writes to Linear. The command runs exactly as
+it would for real (the workspace check, name resolution, the ownership rules, the validators, the
+"already exists" and "nothing changed" shortcuts), and then, **instead of sending its mutations,
+prints them**. The command line is the real one with `--dry-run` added; what refuses the real run
+refuses the dry run with the same message and exit code (2, 3, 4, 5...), including a missing
+`--yes`. Reads that resolving needs are still sent; no mutation ever is, and a file is not
+uploaded.
+
+```sh
+linear issue update KK-12 --state "In Progress" --labels bug --source https://example.com/a --dry-run --json
+linear issue create --title "Fix it" --project "My Project" --source https://example.com/a --dry-run
+linear issue batch --file issues.json --dry-run
+```
+
+```json
+{
+  "dryRun": true,
+  "workspace": "main",
+  "command": "issue update",
+  "target": { "kind": "issue", "name": "KK-12", "id": "<uuid>", "new": false },
+  "changed": ["state", "labels", "source"],
+  "mutations": [
+    { "operation": "IssueUpdate", "variables": { "id": "<uuid>", "input": { "stateId": "...", "labelIds": ["..."] } } },
+    { "operation": "AttachmentCreate", "variables": { "input": { "issueId": "<uuid>", "url": "https://example.com/a", "title": "Source" } } }
+  ],
+  "rollback": [
+    { "operation": "IssueUpdate", "variables": { "id": "<uuid>", "input": { "stateId": "...", "labelIds": ["..."] } } }
+  ],
+  "notes": [],
+  "reason": null
+}
+```
+
+- Every key is always there. `mutations` are the GraphQL operations in the order the real run
+  sends them, with the variables it would send. A value that only exists once an earlier mutation
+  has run (the id of the issue that `issue create` makes) is a placeholder in angle brackets.
+- `changed` is what an update would write (the same list the real run prints). `rollback` is what
+  the real run sends, newest first, if a later mutation fails (see "Every write goes through the
+  same steps" above), and `notes` says what a plan does besides sending mutations (`file upload`:
+  the bytes that go to the signed URL). Both are empty when there is nothing to say.
+- A run that would send nothing (the issue already exists for that source, the fields are already
+  as asked) has an empty `mutations` and says why in `reason`.
+- Without `--json` the plan is printed as text, and `--quiet` prints only the operation names.
+- `linear api --mutation --dry-run` prints the document and its variables after the same
+  `allow_raw_mutation` check; the ownership rules and the validators do not apply to a raw
+  mutation, with or without `--dry-run`.
+- `target.new` is `true` for a thing the write would create. `target.id` is then `null`.
+
+The flag is for the commands that write to Linear: `issue` (`create`, `update`, `comment`,
+`link-pr`, `attach-file`, `unlink`, `delete`, `archive`, `unarchive`, `relate`, `unrelate`,
+`reorder`, `batch`), `comment` (`update`, `delete`), `project` (`create`, `update`, `reorder`,
+`status-update`, `delete`, `unarchive`), `milestone`, `initiative` (every write), `template create`,
+`label` (`create`, `update`), `document` (`create`, `update`), `file upload`, `webhook` (`create`,
+`delete`) and `api --mutation`. Any other command refuses it (exit 2) rather than running without
+looking: reads have nothing to preview, and `workspace add|login|migrate`, `cache refresh|clear`
+and `file download` change only this machine (a file, the configuration, the cache).
+
+A client made for a dry run refuses to send a mutation or upload a file at all ("internal error:
+... during --dry-run"), so a write that did not record its step fails instead of writing.
+
 ### GitHub
 
 Linear's GitHub integration links a pull request to an issue and keeps its state in sync. Three
