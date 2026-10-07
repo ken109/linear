@@ -1,4 +1,4 @@
-//! `linear issue create|update|comment|link-pr|reorder`.
+//! `linear issue create|update|comment|link-pr|unlink|delete|archive|unarchive|reorder`.
 //!
 //! `update` is the write that can touch the most: fields of the issue, its
 //! description, its labels and its source attachment. It sends only what
@@ -1068,6 +1068,178 @@ fn emit_linked(
             format!("{identifier}  #{number}  {url}  ({how}{state})")
         },
         || url.to_owned(),
+    );
+    Ok(())
+}
+
+// ---------------------------------------------------------------- unlink
+
+#[derive(Debug, Args)]
+pub struct UnlinkCmd {
+    /// Issue identifier (such as KK-12) or id
+    pub issue: String,
+    /// The exact URL of the attachment to delete from the issue
+    pub url: String,
+    /// Delete it. Required: Linear documents no way to bring an attachment back
+    /// (without it, the command prints what it would delete and sends nothing)
+    #[arg(long)]
+    pub yes: bool,
+}
+
+/// What `unlink` prints.
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct Unlinked<'a> {
+    workspace: &'a str,
+    issue: &'a str,
+    url: &'a str,
+    /// `true` when the issue had no attachment with this URL, so nothing was sent.
+    not_linked: bool,
+    /// The id of the attachment that was deleted (absent when nothing was sent).
+    attachment_id: Option<&'a str>,
+}
+
+pub fn unlink(ctx: &Ctx, cmd: &UnlinkCmd) -> Result<()> {
+    let url = cmd.url.trim();
+    if url.is_empty() {
+        return Err(CliError::usage("the URL is empty"));
+    }
+
+    let ws = ctx.write_session()?;
+    let view = fetch_issue(&ws, &cmd.issue)?;
+    // Deleting an attachment is a write to the issue: it follows the same ownership as changing it.
+    ws.guard(
+        &Write::update_issue(&view.issue, placement_of(&view)),
+        false,
+    )?;
+    let identifier = view.issue.identifier.as_str();
+
+    // `attachmentsForURL` finds the attachments of every issue with this URL; keep this issue's.
+    let found: read::AttachmentTargetsQuery = ws.client.execute(&read::attachment_targets(url))?;
+    let target = found
+        .attachments_for_url
+        .iter()
+        .find(|a| a.url == url && a.issue.id == view.issue.id);
+    let Some(target) = target else {
+        let value = Unlinked {
+            workspace: &ws.workspace,
+            issue: identifier,
+            url,
+            not_linked: true,
+            attachment_id: None,
+        };
+        ctx.out.emit(
+            &value,
+            || format!("{identifier}  {url}  (not linked, nothing sent)"),
+            || url.to_owned(),
+        );
+        return Ok(());
+    };
+
+    if !cmd.yes {
+        return Err(CliError::usage(format!(
+            "would delete the attachment {:?} ({url}) from {identifier}; Linear documents no way \
+             to bring an attachment back, so nothing was sent. Run again with --yes to delete it",
+            target.title
+        )));
+    }
+    let data: inputs::AttachmentDelete = ws
+        .client
+        .execute(&inputs::attachment_delete(target.id.inner()))?;
+    if !data.attachment_delete.success {
+        return Err(CliError::general(format!(
+            "Linear could not delete the attachment {url} from {identifier}"
+        )));
+    }
+    let value = Unlinked {
+        workspace: &ws.workspace,
+        issue: identifier,
+        url,
+        not_linked: false,
+        attachment_id: Some(target.id.inner()),
+    };
+    ctx.out.emit(
+        &value,
+        || format!("{identifier}  {url}  (unlinked)"),
+        || url.to_owned(),
+    );
+    Ok(())
+}
+
+// ---------------------------------------------------------------- delete, archive, unarchive
+
+#[derive(Debug, Args)]
+pub struct IssueTargetCmd {
+    /// Issue identifier (such as KK-12) or id
+    pub issue: String,
+}
+
+/// What `delete`, `archive` and `unarchive` print.
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct Archived<'a> {
+    workspace: &'a str,
+    id: &'a str,
+    identifier: &'a str,
+    url: &'a str,
+    /// What was done: `deleted` (trashed), `archived` or `unarchived`.
+    action: &'static str,
+}
+
+/// Trash an issue. Linear keeps it for a while and `unarchive` brings it back.
+pub fn delete(ctx: &Ctx, cmd: &IssueTargetCmd) -> Result<()> {
+    change_archive(ctx, cmd, "deleted", |client, id| {
+        let r: IssueDelete = client.execute(&inputs::issue_delete(id))?;
+        Ok(r.issue_delete.success)
+    })
+}
+
+pub fn archive(ctx: &Ctx, cmd: &IssueTargetCmd) -> Result<()> {
+    change_archive(ctx, cmd, "archived", |client, id| {
+        let r: inputs::IssueArchive = client.execute(&inputs::issue_archive(id))?;
+        Ok(r.issue_archive.success)
+    })
+}
+
+pub fn unarchive(ctx: &Ctx, cmd: &IssueTargetCmd) -> Result<()> {
+    change_archive(ctx, cmd, "unarchived", |client, id| {
+        let r: inputs::IssueUnarchive = client.execute(&inputs::issue_unarchive(id))?;
+        Ok(r.issue_unarchive.success)
+    })
+}
+
+/// The shared path of the three: read the issue, ask the ownership rules (the
+/// same as for changing it), send `mutate`, print one line.
+fn change_archive(
+    ctx: &Ctx,
+    cmd: &IssueTargetCmd,
+    action: &'static str,
+    mutate: impl FnOnce(&crate::http::Client, &str) -> Result<bool>,
+) -> Result<()> {
+    let ws = ctx.write_session()?;
+    let view = fetch_issue(&ws, &cmd.issue)?;
+    ws.guard(
+        &Write::update_issue(&view.issue, placement_of(&view)),
+        false,
+    )?;
+    let issue = &view.issue;
+    if !mutate(&ws.client, issue.id.inner())? {
+        return Err(CliError::general(format!(
+            "Linear could not change {} ({action})",
+            issue.identifier
+        )));
+    }
+    let value = Archived {
+        workspace: &ws.workspace,
+        id: issue.id.inner(),
+        identifier: &issue.identifier,
+        url: &issue.url,
+        action,
+    };
+    ctx.out.emit(
+        &value,
+        || format!("{}  {}  ({action})", issue.identifier, issue.title),
+        || issue.identifier.clone(),
     );
     Ok(())
 }

@@ -198,6 +198,31 @@ pub fn issue_delete(id: impl Into<String>) -> cynic::Operation<IssueDelete, Issu
     IssueDelete::build(IssueDeleteVars { id: id.into() })
 }
 
+/// Archives an issue (`issueArchive`; without `trash`, so it can be restored
+/// with [`issue_unarchive`]).
+#[derive(cynic::QueryFragment, Debug, Clone, PartialEq)]
+#[cynic(graphql_type = "Mutation", variables = "IssueDeleteVars")]
+pub struct IssueArchive {
+    #[arguments(id: $id)]
+    pub issue_archive: ArchivePayload,
+}
+
+pub fn issue_archive(id: impl Into<String>) -> cynic::Operation<IssueArchive, IssueDeleteVars> {
+    IssueArchive::build(IssueDeleteVars { id: id.into() })
+}
+
+/// Brings back an archived or trashed issue (`issueUnarchive`).
+#[derive(cynic::QueryFragment, Debug, Clone, PartialEq)]
+#[cynic(graphql_type = "Mutation", variables = "IssueDeleteVars")]
+pub struct IssueUnarchive {
+    #[arguments(id: $id)]
+    pub issue_unarchive: ArchivePayload,
+}
+
+pub fn issue_unarchive(id: impl Into<String>) -> cynic::Operation<IssueUnarchive, IssueDeleteVars> {
+    IssueUnarchive::build(IssueDeleteVars { id: id.into() })
+}
+
 // ---------------------------------------------------------------- attachment
 
 #[derive(cynic::InputObject, Debug, Clone)]
@@ -237,6 +262,28 @@ pub fn attachment_create(
     input: AttachmentCreateInput,
 ) -> cynic::Operation<AttachmentCreate, AttachmentCreateVars> {
     AttachmentCreate::build(AttachmentCreateVars { input })
+}
+
+// ---------------------------------------------------------------- attachment delete
+
+#[derive(cynic::QueryVariables, Debug, Clone)]
+pub struct AttachmentDeleteVars {
+    pub id: String,
+}
+
+/// Deletes an attachment (`attachmentDelete`). Linear documents no way to get
+/// it back, so the CLI treats it as irreversible.
+#[derive(cynic::QueryFragment, Debug, Clone, PartialEq)]
+#[cynic(graphql_type = "Mutation", variables = "AttachmentDeleteVars")]
+pub struct AttachmentDelete {
+    #[arguments(id: $id)]
+    pub attachment_delete: DeleteResult,
+}
+
+pub fn attachment_delete(
+    id: impl Into<String>,
+) -> cynic::Operation<AttachmentDelete, AttachmentDeleteVars> {
+    AttachmentDelete::build(AttachmentDeleteVars { id: id.into() })
 }
 
 // ---------------------------------------------------------------- GitHub pull request

@@ -212,6 +212,37 @@ pub fn attachments_for_url(url: impl Into<String>) -> Operation<AttachmentsForUr
     AttachmentsForUrlQuery::build(UrlVars { url: url.into() })
 }
 
+/// An attachment reduced to what deleting it needs: its id, the exact URL
+/// and the issue it hangs on.
+#[derive(cynic::QueryFragment, Debug, Clone, PartialEq, Serialize, JsonSchema)]
+#[cynic(graphql_type = "Attachment")]
+pub struct AttachmentTarget {
+    #[schemars(with = "String")]
+    pub id: cynic::Id,
+    pub title: String,
+    pub url: String,
+    pub issue: IssueRef,
+}
+
+nodes_container!(
+    AttachmentTargetNodes,
+    "AttachmentConnection",
+    AttachmentTarget
+);
+
+#[derive(cynic::QueryFragment, Debug, Clone, PartialEq)]
+#[cynic(graphql_type = "Query", variables = "UrlVars")]
+pub struct AttachmentTargetsQuery {
+    #[cynic(rename = "attachmentsForURL")]
+    #[arguments(url: $url, first: 100)]
+    pub attachments_for_url: AttachmentTargetNodes,
+}
+
+/// Every attachment (of any issue) with this URL, to find the one of a given issue.
+pub fn attachment_targets(url: impl Into<String>) -> Operation<AttachmentTargetsQuery, UrlVars> {
+    AttachmentTargetsQuery::build(UrlVars { url: url.into() })
+}
+
 // ---------------------------------------------------------------- cycles
 
 #[derive(cynic::QueryVariables, Debug, Clone)]

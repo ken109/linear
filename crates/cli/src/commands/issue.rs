@@ -1,4 +1,4 @@
-//! `linear issue list|view|create|update|comment|reorder` (the writes live in `write::issue`).
+//! `linear issue list|view|create|update|comment|link-pr|unlink|delete|archive|unarchive|reorder` (the writes live in `write::issue`).
 
 use super::cached::{self, CachedArgs};
 use super::format::{date_time, fields, indent, opt_date, opt_text, person};
@@ -42,6 +42,27 @@ pub enum IssueCommand {
     /// sends nothing. A branch named with the issue's `branchName` links its pull request
     /// without this command.
     LinkPr(super::write::issue::LinkPrCmd),
+    /// Delete the attachment of an issue that has a given URL (needs --yes)
+    ///
+    /// Looks the attachment up on the issue by its exact URL; an issue without one is left
+    /// alone (the command says so and succeeds). Linear documents no way to bring a deleted
+    /// attachment back, and whether it can be recovered is not known, so the command refuses
+    /// without --yes: it prints what it would delete and sends nothing (exit code 2). Follows
+    /// the ownership rules of changing the issue.
+    Unlink(super::write::issue::UnlinkCmd),
+    /// Move an issue to the trash (restore it with `issue unarchive`)
+    ///
+    /// Linear keeps a deleted issue for a while before removing it for good. Follows the
+    /// ownership rules of changing the issue.
+    Delete(super::write::issue::IssueTargetCmd),
+    /// Archive an issue (restore it with `issue unarchive`)
+    ///
+    /// Follows the ownership rules of changing the issue.
+    Archive(super::write::issue::IssueTargetCmd),
+    /// Bring back an archived or deleted (trashed) issue
+    ///
+    /// Follows the ownership rules of changing the issue.
+    Unarchive(super::write::issue::IssueTargetCmd),
     /// Put issues of one project in a given order
     Reorder(super::write::issue::ReorderCmd),
 }
@@ -126,6 +147,10 @@ pub fn run(ctx: &Ctx, cmd: &IssueCommand) -> Result<()> {
         IssueCommand::Update(args) => write::issue::update(ctx, args),
         IssueCommand::Comment(args) => write::issue::comment(ctx, args),
         IssueCommand::LinkPr(args) => write::issue::link_pr(ctx, args),
+        IssueCommand::Unlink(args) => write::issue::unlink(ctx, args),
+        IssueCommand::Delete(args) => write::issue::delete(ctx, args),
+        IssueCommand::Archive(args) => write::issue::archive(ctx, args),
+        IssueCommand::Unarchive(args) => write::issue::unarchive(ctx, args),
         IssueCommand::Reorder(args) => write::issue::reorder(ctx, args),
     }
 }

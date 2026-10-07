@@ -62,8 +62,8 @@ fields = [
 [[entry]]
 type = "Query"
 status = "implemented"
-via = ["read::attachments_for_url"]
-commands = ["issue create"]
+via = ["read::attachments_for_url", "read::attachment_targets"]
+commands = ["issue create", "issue unlink"]
 fields = [
   "attachmentsForURL",
 ]
@@ -252,11 +252,16 @@ type = "Mutation"
 status = "implemented"
 via = [
   "inputs::issue_update", "inputs::issue_create", "inputs::issue_delete",
-  "inputs::attachment_create", "inputs::comment_create",
+  "inputs::attachment_create", "inputs::comment_create", "inputs::issue_archive",
+  "inputs::issue_unarchive", "inputs::attachment_delete",
 ]
-commands = ["issue create", "issue update", "issue comment", "issue reorder"]
+commands = [
+  "issue create", "issue update", "issue comment", "issue reorder", "issue delete",
+  "issue archive", "issue unarchive", "issue unlink",
+]
 fields = [
-  "attachmentCreate", "commentCreate", "issueCreate", "issueDelete", "issueUpdate",
+  "attachmentCreate", "attachmentDelete", "commentCreate", "issueArchive", "issueCreate",
+  "issueDelete", "issueUnarchive", "issueUpdate",
 ]
 
 [[entry]]
@@ -384,7 +389,7 @@ type = "Mutation"
 status = "unsupported"
 reason = "Not part of the planned write surface: the CLI creates and updates, it does not delete, archive or restore (its deletes are `issueDelete` and `projectDelete`, which only roll back an issue or project it just created, and `projectMilestoneDelete`, which refuses a milestone that still has issues)."
 fields = [
-  "agentActivityDeleteQueued", "agentSkillDelete", "attachmentDelete", "commentDelete",
+  "agentActivityDeleteQueued", "agentSkillDelete", "commentDelete",
   "customViewDelete", "customerDelete", "customerNeedArchive", "customerNeedDelete",
   "customerNeedUnarchive", "customerStatusDelete", "customerTierDelete", "cycleArchive",
   "documentDelete", "documentUnarchive", "emailIntakeAddressDelete", "emailIntakeAddressRotate",
@@ -392,9 +397,9 @@ fields = [
   "fileUploadDangerouslyDelete", "initiativeArchive", "initiativeDelete",
   "initiativeLabelDelete", "initiativeLabelRestore", "initiativeLabelRetire",
   "initiativeRelationDelete", "initiativeToProjectDelete", "initiativeUnarchive",
-  "initiativeUpdateArchive", "initiativeUpdateUnarchive", "issueArchive",
+  "initiativeUpdateArchive", "initiativeUpdateUnarchive",
   "issueLabelDelete", "issueLabelRestore", "issueLabelRetire", "issueRelationDelete",
-  "issueToReleaseDelete", "issueToReleaseDeleteByIssueAndRelease", "issueUnarchive",
+  "issueToReleaseDelete", "issueToReleaseDeleteByIssueAndRelease",
   "issueUnshare", "issueUnsubscribe", "notificationArchive", "notificationArchiveAll",
   "notificationSubscriptionDelete", "notificationUnarchive", "oauthApplicationArchive",
   "oauthApplicationRotateSecret", "oauthApplicationRotateWebhookSecret",

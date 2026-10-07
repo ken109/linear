@@ -92,11 +92,14 @@ impl Routed {
 
     /// Nothing was sent that changes anything.
     pub fn assert_read_only(&self) {
-        const MUTATIONS: [&str; 6] = [
+        const MUTATIONS: [&str; 9] = [
             "IssueCreate",
             "IssueUpdate",
             "IssueDelete",
+            "IssueArchive",
+            "IssueUnarchive",
             "AttachmentCreate",
+            "AttachmentDelete",
             "CommentCreate",
             "AttachmentLinkGitHubPr",
         ];
@@ -378,6 +381,21 @@ pub fn github_attachment(n: usize) -> Value {
 /// What `attachmentLinkGitHubPR` answers with this attachment.
 pub fn link_ok(attachment: Value) -> Reply {
     data(json!({ "attachmentLinkGitHubPR": { "success": true, "attachment": attachment } }))
+}
+
+/// What `attachmentsForURL` answers for the unlink lookup: attachments given as
+/// `(attachment id, url, issue id)`.
+pub fn attachment_targets(found: &[(&str, &str, &str)]) -> Reply {
+    let nodes: Vec<Value> = found
+        .iter()
+        .map(|(id, url, issue)| {
+            json!({
+                "id": id, "title": "Link", "url": url,
+                "issue": { "id": issue, "identifier": "EX-23", "url": "https://linear.app/example/issue/EX-23/x" }
+            })
+        })
+        .collect();
+    data(json!({ "attachmentsForURL": { "nodes": nodes } }))
 }
 
 /// What `integrations` answers for a workspace with these services.
