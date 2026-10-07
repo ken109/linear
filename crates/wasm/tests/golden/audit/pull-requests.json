@@ -1,0 +1,642 @@
+{
+  "description": "pr-merged-issue-open and pr-open-too-long: merged, long-open, mixed, draft and unreadable pull requests, a synced GitHub issue, a plain link.",
+  "expected": {
+    "data": {
+      "findings": [
+        {
+          "actionable": true,
+          "fix": "linear issue update KK-30 --state <state> -w ken109",
+          "message": "KK-30 is still State started but its pull request #43 is merged (https://github.com/example/app/pull/43)",
+          "rule": "pr-merged-issue-open",
+          "severity": "warn",
+          "target": {
+            "id": "i-KK-30",
+            "identifier": "KK-30",
+            "kind": "issue",
+            "title": "Title of KK-30",
+            "url": "https://linear.app/x/issue/KK-30"
+          },
+          "workspace": "ken109"
+        },
+        {
+          "actionable": false,
+          "fix": "linear issue update KK-32 --state <state> -w ken109",
+          "message": "KK-32 is still State started but its pull request #43 is merged (https://github.com/example/app/pull/43)",
+          "rule": "pr-merged-issue-open",
+          "severity": "warn",
+          "target": {
+            "id": "i-KK-32",
+            "identifier": "KK-32",
+            "kind": "issue",
+            "title": "Title of KK-32",
+            "url": "https://linear.app/x/issue/KK-32"
+          },
+          "workspace": "ken109"
+        },
+        {
+          "actionable": true,
+          "fix": "linear issue view KK-31 -w ken109",
+          "message": "KK-31: pull request #41 has been open for 18 days (limit 14): https://github.com/example/app/pull/41",
+          "rule": "pr-open-too-long",
+          "severity": "warn",
+          "target": {
+            "id": "i-KK-31",
+            "identifier": "KK-31",
+            "kind": "issue",
+            "title": "Title of KK-31",
+            "url": "https://linear.app/x/issue/KK-31"
+          },
+          "workspace": "ken109"
+        },
+        {
+          "actionable": false,
+          "fix": "linear issue view KK-37 -w ken109",
+          "message": "KK-37: pull request #41 has been open for 18 days (limit 14): https://github.com/example/app/pull/41",
+          "rule": "pr-open-too-long",
+          "severity": "warn",
+          "target": {
+            "id": "i-KK-37",
+            "identifier": "KK-37",
+            "kind": "issue",
+            "title": "Title of KK-37",
+            "url": "https://linear.app/x/issue/KK-37"
+          },
+          "workspace": "ken109"
+        }
+      ],
+      "unresolvedIssues": []
+    },
+    "ok": true
+  },
+  "input": {
+    "config": null,
+    "now": "2026-10-20T12:00:00Z",
+    "options": null,
+    "snapshot": {
+      "issues": [
+        {
+          "assignee": {
+            "active": true,
+            "displayName": "me",
+            "email": "u-me@example.com",
+            "id": "u-me",
+            "isMe": true,
+            "name": "Me"
+          },
+          "attachments": {
+            "nodes": [
+              {
+                "createdAt": "2026-10-03T09:05:00.000Z",
+                "id": "00000000-0000-4000-8000-0000000000a4",
+                "metadata": {
+                  "closedAt": "2026-10-05T09:00:00.000Z",
+                  "createdAt": "2026-10-03T09:00:00.000Z",
+                  "draft": false,
+                  "mergedAt": "2026-10-05T09:00:00.000Z",
+                  "number": 43,
+                  "status": "merged",
+                  "title": "Fix the widget"
+                },
+                "sourceType": "github",
+                "subtitle": null,
+                "title": "Fix the widget",
+                "url": "https://github.com/example/app/pull/43"
+              }
+            ]
+          },
+          "branchName": "branch-kk-30",
+          "canceledAt": null,
+          "completedAt": null,
+          "createdAt": "2026-09-01T00:00:00Z",
+          "description": null,
+          "dueDate": null,
+          "estimate": null,
+          "id": "i-KK-30",
+          "identifier": "KK-30",
+          "labels": {
+            "nodes": []
+          },
+          "parent": null,
+          "prioritySortOrder": 0.0,
+          "project": null,
+          "projectMilestone": null,
+          "sortOrder": 0.0,
+          "startedAt": null,
+          "state": {
+            "id": "s-started",
+            "name": "State started",
+            "type": "started"
+          },
+          "team": {
+            "id": "t-1",
+            "key": "KK",
+            "name": "Team"
+          },
+          "title": "Title of KK-30",
+          "updatedAt": "2026-10-19T00:00:00Z",
+          "url": "https://linear.app/x/issue/KK-30"
+        },
+        {
+          "assignee": {
+            "active": true,
+            "displayName": "me",
+            "email": "u-me@example.com",
+            "id": "u-me",
+            "isMe": true,
+            "name": "Me"
+          },
+          "attachments": {
+            "nodes": [
+              {
+                "createdAt": "2026-10-02T09:05:00.000Z",
+                "id": "00000000-0000-4000-8000-0000000000a2",
+                "metadata": {
+                  "closedAt": null,
+                  "createdAt": "2026-10-02T09:00:00.000Z",
+                  "draft": false,
+                  "mergedAt": null,
+                  "number": 41,
+                  "reviews": [
+                    {
+                      "state": "approved"
+                    }
+                  ],
+                  "status": "open",
+                  "title": "Add the widget"
+                },
+                "sourceType": "github",
+                "subtitle": null,
+                "title": "Add the widget",
+                "url": "https://github.com/example/app/pull/41"
+              }
+            ]
+          },
+          "branchName": "branch-kk-31",
+          "canceledAt": null,
+          "completedAt": null,
+          "createdAt": "2026-09-01T00:00:00Z",
+          "description": null,
+          "dueDate": null,
+          "estimate": null,
+          "id": "i-KK-31",
+          "identifier": "KK-31",
+          "labels": {
+            "nodes": []
+          },
+          "parent": null,
+          "prioritySortOrder": 0.0,
+          "project": null,
+          "projectMilestone": null,
+          "sortOrder": 0.0,
+          "startedAt": null,
+          "state": {
+            "id": "s-started",
+            "name": "State started",
+            "type": "started"
+          },
+          "team": {
+            "id": "t-1",
+            "key": "KK",
+            "name": "Team"
+          },
+          "title": "Title of KK-31",
+          "updatedAt": "2026-10-19T00:00:00Z",
+          "url": "https://linear.app/x/issue/KK-31"
+        },
+        {
+          "assignee": {
+            "active": true,
+            "displayName": "other",
+            "email": "u-other@example.com",
+            "id": "u-other",
+            "isMe": false,
+            "name": "Other"
+          },
+          "attachments": {
+            "nodes": [
+              {
+                "createdAt": "2026-10-03T09:05:00.000Z",
+                "id": "00000000-0000-4000-8000-0000000000a4",
+                "metadata": {
+                  "closedAt": "2026-10-05T09:00:00.000Z",
+                  "createdAt": "2026-10-03T09:00:00.000Z",
+                  "draft": false,
+                  "mergedAt": "2026-10-05T09:00:00.000Z",
+                  "number": 43,
+                  "status": "merged",
+                  "title": "Fix the widget"
+                },
+                "sourceType": "github",
+                "subtitle": null,
+                "title": "Fix the widget",
+                "url": "https://github.com/example/app/pull/43"
+              },
+              {
+                "createdAt": "2026-10-03T09:05:00.000Z",
+                "id": "00000000-0000-4000-8000-0000000000a5",
+                "metadata": {
+                  "closedAt": "2026-10-04T09:00:00.000Z",
+                  "createdAt": "2026-10-03T09:00:00.000Z",
+                  "number": 44,
+                  "status": "closed"
+                },
+                "sourceType": "github",
+                "subtitle": null,
+                "title": "Abandon the widget",
+                "url": "https://github.com/example/app/pull/44"
+              }
+            ]
+          },
+          "branchName": "branch-kk-32",
+          "canceledAt": null,
+          "completedAt": null,
+          "createdAt": "2026-09-01T00:00:00Z",
+          "description": null,
+          "dueDate": null,
+          "estimate": null,
+          "id": "i-KK-32",
+          "identifier": "KK-32",
+          "labels": {
+            "nodes": []
+          },
+          "parent": null,
+          "prioritySortOrder": 0.0,
+          "project": null,
+          "projectMilestone": null,
+          "sortOrder": 0.0,
+          "startedAt": null,
+          "state": {
+            "id": "s-started",
+            "name": "State started",
+            "type": "started"
+          },
+          "team": {
+            "id": "t-1",
+            "key": "KK",
+            "name": "Team"
+          },
+          "title": "Title of KK-32",
+          "updatedAt": "2026-10-19T00:00:00Z",
+          "url": "https://linear.app/x/issue/KK-32"
+        },
+        {
+          "assignee": {
+            "active": true,
+            "displayName": "other",
+            "email": "u-other@example.com",
+            "id": "u-other",
+            "isMe": false,
+            "name": "Other"
+          },
+          "attachments": {
+            "nodes": [
+              {
+                "createdAt": "2026-10-02T09:05:00.000Z",
+                "id": "00000000-0000-4000-8000-0000000000a2",
+                "metadata": {
+                  "closedAt": null,
+                  "createdAt": "2026-10-02T09:00:00.000Z",
+                  "draft": false,
+                  "mergedAt": null,
+                  "number": 41,
+                  "reviews": [
+                    {
+                      "state": "approved"
+                    }
+                  ],
+                  "status": "open",
+                  "title": "Add the widget"
+                },
+                "sourceType": "github",
+                "subtitle": null,
+                "title": "Add the widget",
+                "url": "https://github.com/example/app/pull/41"
+              }
+            ]
+          },
+          "branchName": "branch-kk-37",
+          "canceledAt": null,
+          "completedAt": null,
+          "createdAt": "2026-09-01T00:00:00Z",
+          "description": null,
+          "dueDate": null,
+          "estimate": null,
+          "id": "i-KK-37",
+          "identifier": "KK-37",
+          "labels": {
+            "nodes": []
+          },
+          "parent": null,
+          "prioritySortOrder": 0.0,
+          "project": null,
+          "projectMilestone": null,
+          "sortOrder": 0.0,
+          "startedAt": null,
+          "state": {
+            "id": "s-started",
+            "name": "State started",
+            "type": "started"
+          },
+          "team": {
+            "id": "t-1",
+            "key": "KK",
+            "name": "Team"
+          },
+          "title": "Title of KK-37",
+          "updatedAt": "2026-10-19T00:00:00Z",
+          "url": "https://linear.app/x/issue/KK-37"
+        },
+        {
+          "assignee": {
+            "active": true,
+            "displayName": "me",
+            "email": "u-me@example.com",
+            "id": "u-me",
+            "isMe": true,
+            "name": "Me"
+          },
+          "attachments": {
+            "nodes": [
+              {
+                "createdAt": "2026-10-03T09:05:00.000Z",
+                "id": "00000000-0000-4000-8000-0000000000a4",
+                "metadata": {
+                  "closedAt": "2026-10-05T09:00:00.000Z",
+                  "createdAt": "2026-10-03T09:00:00.000Z",
+                  "draft": false,
+                  "mergedAt": "2026-10-05T09:00:00.000Z",
+                  "number": 43,
+                  "status": "merged",
+                  "title": "Fix the widget"
+                },
+                "sourceType": "github",
+                "subtitle": null,
+                "title": "Fix the widget",
+                "url": "https://github.com/example/app/pull/43"
+              },
+              {
+                "createdAt": "2026-09-01T09:05:00.000Z",
+                "id": "00000000-0000-4000-8000-0000000000a3",
+                "metadata": {
+                  "createdAt": "2026-09-01T09:00:00.000Z",
+                  "draft": true,
+                  "number": 42,
+                  "status": "open",
+                  "title": "Rework the widget"
+                },
+                "sourceType": "github",
+                "subtitle": null,
+                "title": "Rework the widget",
+                "url": "https://github.com/example/app/pull/42"
+              }
+            ]
+          },
+          "branchName": "branch-kk-33",
+          "canceledAt": null,
+          "completedAt": null,
+          "createdAt": "2026-09-01T00:00:00Z",
+          "description": null,
+          "dueDate": null,
+          "estimate": null,
+          "id": "i-KK-33",
+          "identifier": "KK-33",
+          "labels": {
+            "nodes": []
+          },
+          "parent": null,
+          "prioritySortOrder": 0.0,
+          "project": null,
+          "projectMilestone": null,
+          "sortOrder": 0.0,
+          "startedAt": null,
+          "state": {
+            "id": "s-started",
+            "name": "State started",
+            "type": "started"
+          },
+          "team": {
+            "id": "t-1",
+            "key": "KK",
+            "name": "Team"
+          },
+          "title": "Title of KK-33",
+          "updatedAt": "2026-10-19T00:00:00Z",
+          "url": "https://linear.app/x/issue/KK-33"
+        },
+        {
+          "assignee": {
+            "active": true,
+            "displayName": "me",
+            "email": "u-me@example.com",
+            "id": "u-me",
+            "isMe": true,
+            "name": "Me"
+          },
+          "attachments": {
+            "nodes": [
+              {
+                "createdAt": "2026-10-03T09:05:00.000Z",
+                "id": "00000000-0000-4000-8000-0000000000a4",
+                "metadata": {
+                  "closedAt": "2026-10-05T09:00:00.000Z",
+                  "createdAt": "2026-10-03T09:00:00.000Z",
+                  "draft": false,
+                  "mergedAt": "2026-10-05T09:00:00.000Z",
+                  "number": 43,
+                  "status": "merged",
+                  "title": "Fix the widget"
+                },
+                "sourceType": "github",
+                "subtitle": null,
+                "title": "Fix the widget",
+                "url": "https://github.com/example/app/pull/43"
+              }
+            ]
+          },
+          "branchName": "branch-kk-34",
+          "canceledAt": null,
+          "completedAt": "2026-10-06T00:00:00Z",
+          "createdAt": "2026-09-01T00:00:00Z",
+          "description": null,
+          "dueDate": null,
+          "estimate": null,
+          "id": "i-KK-34",
+          "identifier": "KK-34",
+          "labels": {
+            "nodes": []
+          },
+          "parent": null,
+          "prioritySortOrder": 0.0,
+          "project": null,
+          "projectMilestone": null,
+          "sortOrder": 0.0,
+          "startedAt": null,
+          "state": {
+            "id": "s-completed",
+            "name": "State completed",
+            "type": "completed"
+          },
+          "team": {
+            "id": "t-1",
+            "key": "KK",
+            "name": "Team"
+          },
+          "title": "Title of KK-34",
+          "updatedAt": "2026-10-19T00:00:00Z",
+          "url": "https://linear.app/x/issue/KK-34"
+        },
+        {
+          "assignee": {
+            "active": true,
+            "displayName": "me",
+            "email": "u-me@example.com",
+            "id": "u-me",
+            "isMe": true,
+            "name": "Me"
+          },
+          "attachments": {
+            "nodes": [
+              {
+                "createdAt": "2026-09-01T09:05:00.000Z",
+                "id": "00000000-0000-4000-8000-0000000000a3",
+                "metadata": {
+                  "createdAt": "2026-09-01T09:00:00.000Z",
+                  "draft": true,
+                  "number": 42,
+                  "status": "open",
+                  "title": "Rework the widget"
+                },
+                "sourceType": "github",
+                "subtitle": null,
+                "title": "Rework the widget",
+                "url": "https://github.com/example/app/pull/42"
+              },
+              {
+                "createdAt": "2026-10-03T09:05:00.000Z",
+                "id": "00000000-0000-4000-8000-0000000000a5",
+                "metadata": {
+                  "closedAt": "2026-10-04T09:00:00.000Z",
+                  "createdAt": "2026-10-03T09:00:00.000Z",
+                  "number": 44,
+                  "status": "closed"
+                },
+                "sourceType": "github",
+                "subtitle": null,
+                "title": "Abandon the widget",
+                "url": "https://github.com/example/app/pull/44"
+              },
+              {
+                "createdAt": "2026-10-03T09:05:00.000Z",
+                "id": "00000000-0000-4000-8000-0000000000a6",
+                "metadata": {},
+                "sourceType": "github",
+                "subtitle": null,
+                "title": "A pull request whose metadata says nothing",
+                "url": "https://github.com/example/app/pull/45/files"
+              },
+              {
+                "createdAt": "2026-10-01T09:00:00.000Z",
+                "id": "00000000-0000-4000-8000-0000000000a1",
+                "metadata": {
+                  "id": 5382002642,
+                  "title": "Example synced issue"
+                },
+                "sourceType": "github",
+                "subtitle": null,
+                "title": "Example synced issue",
+                "url": "https://github.com/example/app/issues/194"
+              },
+              {
+                "createdAt": "2026-10-03T09:05:00.000Z",
+                "id": "00000000-0000-4000-8000-0000000000a7",
+                "metadata": {},
+                "sourceType": "oauthClient",
+                "subtitle": null,
+                "title": "Source",
+                "url": "https://github.com/example/app/pull/46"
+              }
+            ]
+          },
+          "branchName": "branch-kk-35",
+          "canceledAt": null,
+          "completedAt": null,
+          "createdAt": "2026-09-01T00:00:00Z",
+          "description": null,
+          "dueDate": null,
+          "estimate": null,
+          "id": "i-KK-35",
+          "identifier": "KK-35",
+          "labels": {
+            "nodes": []
+          },
+          "parent": null,
+          "prioritySortOrder": 0.0,
+          "project": null,
+          "projectMilestone": null,
+          "sortOrder": 0.0,
+          "startedAt": null,
+          "state": {
+            "id": "s-started",
+            "name": "State started",
+            "type": "started"
+          },
+          "team": {
+            "id": "t-1",
+            "key": "KK",
+            "name": "Team"
+          },
+          "title": "Title of KK-35",
+          "updatedAt": "2026-10-19T00:00:00Z",
+          "url": "https://linear.app/x/issue/KK-35"
+        },
+        {
+          "assignee": {
+            "active": true,
+            "displayName": "me",
+            "email": "u-me@example.com",
+            "id": "u-me",
+            "isMe": true,
+            "name": "Me"
+          },
+          "attachments": {
+            "nodes": []
+          },
+          "branchName": "branch-kk-36",
+          "canceledAt": null,
+          "completedAt": null,
+          "createdAt": "2026-09-01T00:00:00Z",
+          "description": null,
+          "dueDate": null,
+          "estimate": null,
+          "id": "i-KK-36",
+          "identifier": "KK-36",
+          "labels": {
+            "nodes": []
+          },
+          "parent": null,
+          "prioritySortOrder": 0.0,
+          "project": null,
+          "projectMilestone": null,
+          "sortOrder": 0.0,
+          "startedAt": null,
+          "state": {
+            "id": "s-started",
+            "name": "State started",
+            "type": "started"
+          },
+          "team": {
+            "id": "t-1",
+            "key": "KK",
+            "name": "Team"
+          },
+          "title": "Title of KK-36",
+          "updatedAt": "2026-10-19T00:00:00Z",
+          "url": "https://linear.app/x/issue/KK-36"
+        }
+      ],
+      "projects": [],
+      "templates": [],
+      "workspace": "ken109"
+    }
+  }
+}

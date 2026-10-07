@@ -22,6 +22,10 @@ pub enum RuleId {
     StaleInProgress,
     /// An In Progress project's latest status update is out of date.
     StatusUpdateOutdated,
+    /// An In Progress issue whose linked GitHub pull request is already merged.
+    PrMergedIssueOpen,
+    /// A GitHub pull request linked to an issue has been open for too long.
+    PrOpenTooLong,
     /// A validator rule (`template-sections`) applied to an existing issue.
     TemplateSections,
     /// A validator rule (`source-attachment`) applied to an existing issue.
@@ -42,6 +46,8 @@ impl RuleId {
             Self::ProjectWithoutLead => "project-without-lead",
             Self::StaleInProgress => "stale-in-progress",
             Self::StatusUpdateOutdated => "status-update-outdated",
+            Self::PrMergedIssueOpen => "pr-merged-issue-open",
+            Self::PrOpenTooLong => "pr-open-too-long",
             Self::TemplateSections => "template-sections",
             Self::SourceAttachment => "source-attachment",
             Self::LabelGroupsExclusive => "label-groups-exclusive",

@@ -125,6 +125,8 @@ fn the_golden_cases_reach_the_fix_of_every_rule() {
         "project-without-lead",
         "stale-in-progress",
         "status-update-outdated",
+        "pr-merged-issue-open",
+        "pr-open-too-long",
         "template-sections",
         "source-attachment",
         "label-groups-exclusive",
@@ -143,6 +145,7 @@ fn the_golden_cases_reach_the_fix_of_every_rule() {
         .collect();
     for command in [
         "linear issue update",
+        "linear issue view",
         "linear project update",
         "linear project status-update",
         "linear milestone update",

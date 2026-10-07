@@ -446,6 +446,7 @@ fn thresholds_come_from_workspace_settings_with_defaults_for_what_is_absent() {
         AuditConfig {
             stale_days: 3,
             status_update_days: 14,
+            pr_open_days: 14,
             validators: vec![],
             source_kinds: vec![]
         }
@@ -459,9 +460,16 @@ fn thresholds_come_from_workspace_settings_with_defaults_for_what_is_absent() {
         AuditConfig {
             stale_days: 7,
             status_update_days: 14,
+            pr_open_days: 14,
             validators: vec![],
             source_kinds: vec![]
         }
+    );
+    assert_eq!(
+        serde_json::from_str::<AuditConfig>(r#"{ "prOpenDays": 30 }"#)
+            .unwrap()
+            .pr_open_days,
+        30
     );
     assert!(serde_json::from_str::<AuditConfig>(r#"{ "stale": 3 }"#).is_err());
     // The JSON keys are camelCase, like every other shape; the snake_case

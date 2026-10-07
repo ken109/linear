@@ -136,6 +136,10 @@ pub struct AuditSettings {
     /// Days before a project's latest status update counts as outdated.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub status_update_days: Option<u32>,
+    /// Days a GitHub pull request linked to an issue may stay open before the
+    /// audit flags it.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub pr_open_days: Option<u32>,
 }
 
 impl AuditSettings {
@@ -172,6 +176,7 @@ impl WorkspaceConfig {
         for (key, value) in [
             ("stale_days", self.audit.stale_days),
             ("status_update_days", self.audit.status_update_days),
+            ("pr_open_days", self.audit.pr_open_days),
         ] {
             if value == Some(0) {
                 return Err(Error::Config(format!(

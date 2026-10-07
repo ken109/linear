@@ -252,6 +252,8 @@ fn the_audit_goldens_exercise_every_rule() {
         "project-without-lead",
         "stale-in-progress",
         "status-update-outdated",
+        "pr-merged-issue-open",
+        "pr-open-too-long",
         "template-sections",
         "source-attachment",
         "label-groups-exclusive",

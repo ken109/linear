@@ -73,6 +73,13 @@
       "additionalProperties": false,
       "description": "Audit settings, per workspace.",
       "properties": {
+        "prOpenDays": {
+          "default": 14,
+          "description": "`pr-open-too-long`: a GitHub pull request linked to an issue that has\nbeen open (not a draft) this many days is flagged.",
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
         "sourceKinds": {
           "default": [],
           "description": "`source-attachment`: the values `metadata.kind` of a source attachment\nmay take. Empty: the kind is not checked.",
@@ -107,6 +114,7 @@
       "required": [
         "staleDays",
         "statusUpdateDays",
+        "prOpenDays",
         "validators",
         "sourceKinds"
       ],
@@ -618,6 +626,10 @@
         "attachments": {
           "$ref": "#/$defs/AttachmentNodes"
         },
+        "branchName": {
+          "description": "The git branch name Linear suggests for the issue (Linear's `branchName`).\nA branch of this name, or one that holds the identifier, links its pull\nrequest to the issue through the GitHub integration.",
+          "type": "string"
+        },
         "canceledAt": {
           "format": "date-time",
           "type": [
@@ -735,6 +747,7 @@
         "title",
         "description",
         "url",
+        "branchName",
         "team",
         "state",
         "assignee",
@@ -1829,6 +1842,16 @@
           "type": "string"
         },
         {
+          "const": "pr-merged-issue-open",
+          "description": "An In Progress issue whose linked GitHub pull request is already merged.",
+          "type": "string"
+        },
+        {
+          "const": "pr-open-too-long",
+          "description": "A GitHub pull request linked to an issue has been open for too long.",
+          "type": "string"
+        },
+        {
           "const": "template-sections",
           "description": "A validator rule (`template-sections`) applied to an existing issue.",
           "type": "string"
@@ -2503,6 +2526,6 @@
       }
     }
   },
-  "schemaVersion": 3,
+  "schemaVersion": 4,
   "title": "linear-wasm"
 }

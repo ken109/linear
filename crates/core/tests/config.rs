@@ -211,6 +211,7 @@ rules = ["template-sections", "label-groups-exclusive"]
 [workspaces.a.audit]
 stale_days = 3
 status_update_days = 30
+pr_open_days = 21
 
 [workspaces.b]
 url_key = "b"
@@ -230,6 +231,7 @@ fn audit_settings_become_an_audit_config_over_the_defaults() {
     let a = AuditConfig::from_workspace(c.get("a").unwrap());
     assert_eq!(a.stale_days, 3);
     assert_eq!(a.status_update_days, 30);
+    assert_eq!(a.pr_open_days, 21);
     assert_eq!(
         a.validators,
         [Rule::TemplateSections, Rule::LabelGroupsExclusive]
@@ -242,6 +244,7 @@ fn audit_settings_become_an_audit_config_over_the_defaults() {
 
     let c = AuditConfig::from_workspace(c.get("c").unwrap());
     assert_eq!((c.stale_days, c.status_update_days), (10, 14));
+    assert_eq!(c.pr_open_days, 14);
 }
 
 #[test]
@@ -251,6 +254,7 @@ fn audit_settings_reject_unknown_keys_and_zero_days() {
         "[workspaces.a]\nurl_key = \"a\"\n[workspaces.a.audit]\nstale_days = 0\n",
         "[workspaces.a]\nurl_key = \"a\"\n[workspaces.a.audit]\nstatus_update_days = 0\n",
         "[workspaces.a]\nurl_key = \"a\"\n[workspaces.a.audit]\nstale_days = -1\n",
+        "[workspaces.a]\nurl_key = \"a\"\n[workspaces.a.audit]\npr_open_days = 0\n",
     ] {
         let err = Config::parse(bad).unwrap_err();
         assert!(matches!(err, Error::Config(_)), "{bad:?} -> {err:?}");

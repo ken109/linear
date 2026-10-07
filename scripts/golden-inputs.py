@@ -57,6 +57,7 @@ def issue(identifier, **kw):
     i = {
         'id': 'i-' + identifier, 'identifier': identifier, 'title': 'Title of ' + identifier,
         'description': None, 'url': 'https://linear.app/x/issue/' + identifier,
+        'branchName': 'branch-' + identifier.lower(),
         'team': {'id': 't-1', 'key': 'KK', 'name': 'Team'}, 'state': state('unstarted'),
         'assignee': None, 'project': None, 'projectMilestone': None, 'labels': {'nodes': []},
         'dueDate': None, 'estimate': None, 'sortOrder': 0.0, 'prioritySortOrder': 0.0,
@@ -176,6 +177,32 @@ def source_kinds_snapshot():
     ], [])
 
 
+def github_attachments(*picks):
+    """Attachments of fixtures/attachments_github.json (see its entry in the fixtures README), by position."""
+    nodes = json.load(open(FIX + 'attachments_github.json'))['nodes']
+    return {'nodes': [nodes[n] for n in picks]}
+
+
+def pull_requests_snapshot():
+    me, other = user(True), user(False)
+    started = state('started')
+    return snapshot([
+        # merged #43, still In Progress: pr-merged-issue-open
+        issue('KK-30', state=started, assignee=me, attachments=github_attachments(3)),
+        # open #41 since 10-02 (18 days): pr-open-too-long
+        issue('KK-31', state=started, assignee=me, attachments=github_attachments(1)),
+        # somebody else's, so not actionable: merged next to a closed one, and open for long
+        issue('KK-32', state=started, assignee=other, attachments=github_attachments(3, 4)),
+        issue('KK-37', state=started, assignee=other, attachments=github_attachments(1)),
+        # merged next to one still waiting (open, draft), and a merged one on a closed issue: nothing
+        issue('KK-33', state=started, assignee=me, attachments=github_attachments(3, 2)),
+        issue('KK-34', state=state('completed'), assignee=me, attachments=github_attachments(3), completedAt='2026-10-06T00:00:00Z'),
+        # a draft, a closed one, one whose state is unreadable, a synced GitHub issue, a plain link, nothing at all
+        issue('KK-35', state=started, assignee=me, attachments=github_attachments(2, 4, 5, 0, 6)),
+        issue('KK-36', state=started, assignee=me),
+    ], [])
+
+
 def real_snapshot():
     issue_r = json.load(open(FIX + 'issue.json'))['data']['issue']
     projects_r = json.load(open(FIX + 'projects.json'))['data']['projects']['nodes']
@@ -203,6 +230,10 @@ def phase1():
                                                            'validators': ['source-attachment'],
                                                            'sourceKinds': ['slack', 'life-decision']},
            'options': None, 'now': NOW})
+    write('audit', 'pull-requests', 'pr-merged-issue-open and pr-open-too-long: merged, long-open, mixed, draft and unreadable pull requests, a synced GitHub issue, a plain link.',
+          {'snapshot': pull_requests_snapshot(), 'config': None, 'options': None, 'now': NOW})
+    write('audit', 'pull-requests-threshold', 'pr-open-too-long with prOpenDays 19: the 18-day-old pull request is within it.',
+          {'snapshot': pull_requests_snapshot(), 'config': {'prOpenDays': 19}, 'options': None, 'now': NOW})
     write('audit', 'healthy-workspace', 'Nothing is wrong: no findings.',
           {'snapshot': clean_snapshot(), 'config': None, 'options': None, 'now': NOW})
     write('audit', 'empty-snapshot', 'No issues and no projects.',
@@ -217,7 +248,7 @@ def phase1():
           {'snapshot': clean_snapshot(), 'config': {'staleDay': 3}, 'options': None, 'now': NOW})
 
     # ---- refresh
-    base = {'schemaVersion': 3}
+    base = {'schemaVersion': 4}
     cases = [
         ('never-fetched', 'No cache at all.', None, {'kind': 'read'}),
         ('fresh-read', 'Fetched a minute ago: leave it.', {**base, 'fetchedAt': '2026-10-20T11:59:00Z'}, {'kind': 'read'}),

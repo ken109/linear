@@ -8,6 +8,7 @@
 mod consistency;
 mod diff;
 mod finding;
+mod pull_requests;
 mod scope;
 mod stale;
 mod validators;
@@ -50,6 +51,9 @@ pub struct AuditConfig {
     /// `status-update-outdated`: a project's latest status update this many
     /// days old is outdated.
     pub status_update_days: u32,
+    /// `pr-open-too-long`: a GitHub pull request linked to an issue that has
+    /// been open (not a draft) this many days is flagged.
+    pub pr_open_days: u32,
     /// Validator rules to apply to existing issues: the workspace's enabled
     /// rules. `template-sections` needs [`Snapshot::templates`]; an issue does
     /// not record which template it came from, so the closest one is used.
@@ -70,6 +74,7 @@ impl AuditConfig {
                 .audit
                 .status_update_days
                 .unwrap_or(default.status_update_days),
+            pr_open_days: workspace.audit.pr_open_days.unwrap_or(default.pr_open_days),
             validators: workspace.rules.clone(),
             source_kinds: workspace.source_kinds.clone(),
         }
@@ -81,6 +86,7 @@ impl Default for AuditConfig {
         Self {
             stale_days: 7,
             status_update_days: 14,
+            pr_open_days: 14,
             validators: Vec::new(),
             source_kinds: Vec::new(),
         }
@@ -131,6 +137,7 @@ fn run(
     let mut findings = Vec::new();
     consistency::run(&ctx, &mut findings);
     stale::run(&ctx, &mut findings);
+    pull_requests::run(&ctx, &mut findings);
     validators::run(&ctx, &mut findings);
     scope::run(&ctx, &mut findings);
     findings.sort_by(|a, b| {

@@ -60,6 +60,7 @@ fn workspaces_toml(name: &str, config: &Value) -> String {
     let days = [
         ("staleDays", "stale_days"),
         ("statusUpdateDays", "status_update_days"),
+        ("prOpenDays", "pr_open_days"),
     ];
     let set: Vec<String> = days
         .iter()
