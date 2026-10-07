@@ -771,6 +771,10 @@ linear issue batch --file issues.json --dry-run
   `allow_raw_mutation` check; the ownership rules and the validators do not apply to a raw
   mutation, with or without `--dry-run`.
 - `target.new` is `true` for a thing the write would create. `target.id` is then `null`.
+- With `--force` (see [Ownership rules](#ownership-rules)), a dry run makes the same check and the
+  same stderr report as the real run: `forced` is `true` and `overridden` lists the refusals it
+  would override, the objects the real run prints under `overridden`. Without an override they
+  are `false` and `[]`. `issue batch` does not take `--force`.
 
 The flag is for the commands that write to Linear: `issue` (`create`, `update`, `comment`,
 `link-pr`, `attach-file`, `unlink`, `delete`, `archive`, `unarchive`, `relate`, `unrelate`,
