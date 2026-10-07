@@ -264,6 +264,7 @@ pub fn attach_file(ctx: &Ctx, cmd: &AttachFileCmd) -> Result<()> {
 
     if ws.dry_run {
         record_upload(&ws, &file)?;
+        ws.record_undo(&files::file_upload_delete(ASSET_URL));
         ws.record(&inputs::attachment_create(AttachmentCreateInput {
             issue_id: view.issue.id.inner().to_owned(),
             url: ASSET_URL.to_owned(),
@@ -275,7 +276,6 @@ pub fn attach_file(ctx: &Ctx, cmd: &AttachFileCmd) -> Result<()> {
             )),
             metadata: None,
         }));
-        ws.record_undo(&files::file_upload_delete(ASSET_URL));
         return ws.finish_dry_run(Plan::new("issue attach-file", issue_target(&view)));
     }
     let target = store(&ws, &file)?;

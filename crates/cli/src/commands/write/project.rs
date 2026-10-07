@@ -158,12 +158,12 @@ pub fn create(ctx: &Ctx, cmd: &CreateCmd) -> Result<()> {
     };
     if ws.dry_run {
         ws.record(&pw::project_create(input));
+        ws.record_undo(&pw::project_delete(NEW_PROJECT_ID));
         if let Some(initiative) = &initiative {
             ws.record(&pw::initiative_to_project_create(
                 initiative.id.inner(),
                 NEW_PROJECT_ID,
             ));
-            ws.record_undo(&pw::project_delete(NEW_PROJECT_ID));
         }
         return ws.finish_dry_run(Plan::new("project create", Target::new("project", name)));
     }
@@ -405,9 +405,7 @@ pub fn update(ctx: &Ctx, cmd: &UpdateCmd) -> Result<()> {
     if ws.dry_run {
         if !input.is_empty() {
             ws.record(&pw::project_update(id, input));
-            if link.is_some() {
-                ws.record_undo(&pw::project_update(id, restore));
-            }
+            ws.record_undo(&pw::project_update(id, restore));
         }
         if let Some(initiative) = link {
             ws.record(&pw::initiative_to_project_create(initiative.id.inner(), id));

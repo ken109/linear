@@ -36,7 +36,7 @@
 
 use super::WriteSession;
 use crate::error::Result;
-use linear_core::wire::build_request;
+use linear_core::wire::{build_request, Request};
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 use serde_json::Value;
@@ -54,6 +54,15 @@ pub struct Step {
     pub operation: String,
     /// Its variables, exactly as they would be sent.
     pub variables: Value,
+    /// The document, for a caller that goes on to send the step (`issue batch`).
+    #[serde(skip)]
+    pub query: String,
+    /// What puts it back, if a later step fails.
+    #[serde(skip)]
+    pub undo: Option<Box<Step>>,
+    /// Cannot be undone, so a caller that sends several steps sends it after the others.
+    #[serde(skip)]
+    pub deferred: bool,
 }
 
 impl Step {
@@ -62,14 +71,20 @@ impl Step {
         Step {
             operation: request.operation_name.unwrap_or_default(),
             variables: request.variables,
+            query: request.query,
+            undo: None,
+            deferred: false,
         }
     }
 
-    /// A raw document (`linear api --mutation`), named by its operation name when it has one.
-    pub fn raw(operation: Option<&str>, variables: Value) -> Self {
-        Step {
-            operation: operation.unwrap_or("(unnamed)").to_owned(),
+    /// The request that sends this step, with `substitute` applied to its variables.
+    pub fn request(&self, substitute: &dyn Fn(&mut Value)) -> Request {
+        let mut variables = self.variables.clone();
+        substitute(&mut variables);
+        Request {
+            query: self.query.clone(),
             variables,
+            operation_name: Some(self.operation.clone()),
         }
     }
 }
@@ -78,14 +93,34 @@ impl Step {
 #[derive(Debug, Default)]
 pub struct Recorded {
     mutations: Vec<Step>,
-    rollback: Vec<Step>,
     notes: Vec<String>,
+}
+
+impl Recorded {
+    /// What would be sent, newest first, if a later step failed: the undo of every step but
+    /// the last (nothing follows it, so nothing can fail after it).
+    fn rollback(&self) -> Vec<&Step> {
+        let n = self.mutations.len().saturating_sub(1);
+        self.mutations[..n]
+            .iter()
+            .rev()
+            .filter_map(|s| s.undo.as_deref())
+            .collect()
+    }
 }
 
 pub type Recorder = RefCell<Recorded>;
 
+/// A plan a command finished while a batch was collecting them.
+#[derive(Debug)]
+pub struct Collected {
+    pub plan: Plan,
+    pub mutations: Vec<Step>,
+    pub notes: Vec<String>,
+}
+
 /// What a write is aimed at.
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct Target {
     /// `issue`, `project`, `milestone`, `initiative`, ...
     pub kind: &'static str,
@@ -128,6 +163,7 @@ impl Target {
 }
 
 /// What a command says about its own dry run, besides the mutations it recorded.
+#[derive(Debug)]
 pub struct Plan {
     pub command: &'static str,
     pub target: Target,
@@ -167,7 +203,7 @@ struct Printed<'a> {
     target: &'a Target,
     changed: &'a [&'static str],
     mutations: &'a [Step],
-    rollback: &'a [Step],
+    rollback: Vec<&'a Step>,
     notes: &'a [String],
     reason: Option<&'a str>,
 }
@@ -178,10 +214,20 @@ impl WriteSession {
         self.recorded.borrow_mut().mutations.push(Step::of(op));
     }
 
-    /// Note a step the real run would send after a failure to undo what came before.
-    /// Call in the order the undos are registered; they print newest first.
+    /// Note a mutation that cannot be taken back (a source attached to an issue that already
+    /// exists): a caller that sends several steps sends it after the others.
+    pub fn record_deferred<Q, V: Serialize>(&self, op: &cynic::Operation<Q, V>) {
+        let mut step = Step::of(op);
+        step.deferred = true;
+        self.recorded.borrow_mut().mutations.push(step);
+    }
+
+    /// Note what the real run sends to take back the mutation recorded last, when a later
+    /// step fails.
     pub fn record_undo<Q, V: Serialize>(&self, op: &cynic::Operation<Q, V>) {
-        self.recorded.borrow_mut().rollback.push(Step::of(op));
+        if let Some(last) = self.recorded.borrow_mut().mutations.last_mut() {
+            last.undo = Some(Box::new(Step::of(op)));
+        }
     }
 
     /// Say about the plan something that is not a mutation (bytes that would be uploaded).
@@ -207,8 +253,32 @@ impl WriteSession {
         Ok(success(data))
     }
 
+    /// Start keeping the plans commands finish instead of printing them.
+    pub fn collect_plans(&self) {
+        *self.collected.borrow_mut() = Some(Vec::new());
+    }
+
+    /// The plans kept since `collect_plans`.
+    pub fn take_collected(&self) -> Vec<Collected> {
+        self.collected.borrow_mut().take().unwrap_or_default()
+    }
+
+    /// Forget what a command recorded before it failed.
+    pub fn discard_recorded(&self) {
+        *self.recorded.borrow_mut() = Recorded::default();
+    }
+
     /// Print the plan and finish: the last thing a dry run of a command does.
     pub fn finish_dry_run(&self, plan: Plan) -> Result<()> {
+        if let Some(kept) = self.collected.borrow_mut().as_mut() {
+            let recorded = std::mem::take(&mut *self.recorded.borrow_mut());
+            kept.push(Collected {
+                plan,
+                mutations: recorded.mutations,
+                notes: recorded.notes,
+            });
+            return Ok(());
+        }
         let recorded = self.recorded.borrow();
         let reason = recorded.mutations.is_empty().then_some(plan.reason);
         let value = Printed {
@@ -218,7 +288,7 @@ impl WriteSession {
             target: &plan.target,
             changed: &plan.changed,
             mutations: &recorded.mutations,
-            rollback: &recorded.rollback,
+            rollback: recorded.rollback(),
             notes: &recorded.notes,
             reason,
         };
@@ -266,9 +336,10 @@ fn human(workspace: &str, plan: &Plan, recorded: &Recorded) -> String {
         text.push_str(&format!("\n{}. {}", n + 1, step.operation));
         text.push_str(&indented(&step.variables));
     }
-    if !recorded.rollback.is_empty() {
+    let rollback = recorded.rollback();
+    if !rollback.is_empty() {
         text.push_str("\nif a later mutation failed, it would send (newest first):");
-        for step in recorded.rollback.iter().rev() {
+        for step in rollback {
             text.push_str(&format!("\n- {}", step.operation));
             text.push_str(&indented(&step.variables));
         }

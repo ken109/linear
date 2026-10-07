@@ -115,6 +115,8 @@ pub struct WriteSession {
     pub dry_run: bool,
     /// What a dry run has recorded so far.
     pub recorded: dry_run::Recorder,
+    /// The plans finished while `issue batch` collects them (see `collect_plans`).
+    pub collected: std::cell::RefCell<Option<Vec<dry_run::Collected>>>,
 }
 
 impl Ctx {
@@ -131,6 +133,12 @@ impl Ctx {
     /// [`Ctx::write_session`] for a command that takes `--force`. `--force` in a workspace
     /// that does not set `allow_force` is a usage error, before anything is sent.
     pub fn write_session_with(&self, force: ForceArg) -> Result<WriteSession> {
+        self.write_session_in(force, self.dry_run)
+    }
+
+    /// A write session that records its mutations (`dry_run`) or sends them. `issue batch`
+    /// plans every item this way before it sends the first.
+    pub fn write_session_in(&self, force: ForceArg, dry_run: bool) -> Result<WriteSession> {
         let stored = crate::store::read_config(&self.dirs)?;
         let resolved = self.resolve(&stored)?;
         if force.force && !resolved.config.allow_force {
@@ -145,6 +153,7 @@ impl Ctx {
             config,
             client,
         } = self.session_for(&resolved.name, resolved.config)?;
+        let client = client.dry_run(dry_run);
         let who = super::verify(&client, &workspace, &config.url_key)?;
         Ok(WriteSession {
             viewer: Viewer::from_user(&workspace, &who.viewer),
@@ -157,8 +166,9 @@ impl Ctx {
             workspace,
             client,
             out: self.out,
-            dry_run: self.dry_run,
+            dry_run,
             recorded: Default::default(),
+            collected: Default::default(),
         })
     }
 }

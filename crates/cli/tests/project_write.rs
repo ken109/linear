@@ -1432,5 +1432,6 @@ fn a_dry_run_of_status_update_and_reorder_plan_their_mutations() {
         planned(&v),
         ["ProjectUpdate", "ProjectUpdate", "ProjectUpdate"]
     );
-    assert_eq!(v["rollback"].as_array().unwrap().len(), 3);
+    // The last write has nothing after it to fail, so only the first two are undone.
+    assert_eq!(v["rollback"].as_array().unwrap().len(), 2);
 }

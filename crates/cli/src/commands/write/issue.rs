@@ -132,10 +132,16 @@ struct Created<'a> {
     changed: Vec<&'static str>,
 }
 
+/// What `create` takes from outside its command line: the description (read from a file by the
+/// command, given inline by a batch) and the checked metadata of the source.
+pub struct CreateInputs {
+    pub body: Option<String>,
+    pub metadata: Option<AttachmentMetadata>,
+}
+
 pub fn create(ctx: &Ctx, cmd: &CreateCmd) -> Result<()> {
     // Everything that can be judged from the arguments alone comes first.
     let body = cmd.body_file.as_deref().map(read_text).transpose()?;
-    let source = cmd.source.as_deref().map(str::trim);
     let metadata = if cmd.meta.is_empty() {
         None
     } else {
@@ -146,6 +152,13 @@ pub fn create(ctx: &Ctx, cmd: &CreateCmd) -> Result<()> {
     };
 
     let ws = ctx.write_session_with(cmd.force)?;
+    create_in(&ws, cmd, CreateInputs { body, metadata })
+}
+
+/// `create`, in a session that is already open: what `issue batch` runs for each of its items.
+pub fn create_in(ws: &WriteSession, cmd: &CreateCmd, inputs: CreateInputs) -> Result<()> {
+    let CreateInputs { body, metadata } = inputs;
+    let source = cmd.source.as_deref().map(str::trim);
 
     // An origin that is not an http(s) URL is never attached. With the
     // `source-attachment` rule on, the validators report it (exit 5) together
@@ -163,18 +176,18 @@ pub fn create(ctx: &Ctx, cmd: &CreateCmd) -> Result<()> {
     }
 
     // Resolve names to ids (read-only; unknown names stop here).
-    let team = resolve::team(&ws, cmd.team.as_deref())?;
-    let project = resolve::project(&ws, &cmd.project)?;
+    let team = resolve::team(ws, cmd.team.as_deref())?;
+    let project = resolve::project(ws, &cmd.project)?;
     let milestone = cmd
         .milestone
         .as_deref()
         .map(|m| resolve::milestone(&project, m))
         .transpose()?;
     let assignee = match cmd.assignee.as_deref() {
-        Some(who) => resolve::user_id(&ws, who)?,
+        Some(who) => resolve::user_id(ws, who)?,
         None => ws.viewer.id.clone(),
     };
-    let labels = resolve::labels(&ws, &cmd.label)?;
+    let labels = resolve::labels(ws, &cmd.label)?;
     // A day no cycle contains, and a number no cycle has, stop here, before anything is written.
     let cycle = match (cmd.held_on, cmd.cycle) {
         (Some(day), _) => Some(cycle::find(&ws.client, &team.key, day)?),
@@ -238,7 +251,7 @@ pub fn create(ctx: &Ctx, cmd: &CreateCmd) -> Result<()> {
         // that differs from what is stored is written onto that attachment.
         let metadata_updated = match (source, &metadata) {
             (Some(url), Some(wanted)) => refresh_source_metadata(
-                &ws,
+                ws,
                 existing.id.inner(),
                 url,
                 cmd.source_title.as_deref(),
@@ -248,7 +261,7 @@ pub fn create(ctx: &Ctx, cmd: &CreateCmd) -> Result<()> {
         };
         // The cycle is the one thing aligned afterwards, and only when it is empty.
         let (cycle, changed) = match &cycle {
-            Some(wanted) => put_in_cycle(&ws, existing.id.inner(), wanted)?,
+            Some(wanted) => put_in_cycle(ws, existing.id.inner(), wanted)?,
             None => (None, Vec::new()),
         };
         if ws.dry_run {
@@ -266,7 +279,7 @@ pub fn create(ctx: &Ctx, cmd: &CreateCmd) -> Result<()> {
             );
         }
         emit_created(
-            &ws,
+            ws,
             Made {
                 id: existing.id.inner(),
                 identifier: &existing.identifier,
@@ -297,16 +310,17 @@ pub fn create(ctx: &Ctx, cmd: &CreateCmd) -> Result<()> {
         parent_id: parent.as_ref().map(|p| p.id.inner().to_owned()),
     };
     if ws.dry_run {
+        // Taking the issue away takes its source with it, so only the issue has an undo.
         ws.record(&inputs::issue_create(input));
+        ws.record_undo(&inputs::issue_delete(NEW_ISSUE_ID));
         if let Some(source) = source {
             ws.record(&inputs::attachment_create(source_input(
-                &ws,
+                ws,
                 cmd,
                 NEW_ISSUE_ID,
                 source,
                 &metadata,
             )));
-            ws.record_undo(&inputs::issue_delete(NEW_ISSUE_ID));
         }
         return ws.finish_dry_run(Plan::new("issue create", Target::new("issue", &cmd.title)));
     }
@@ -329,7 +343,7 @@ pub fn create(ctx: &Ctx, cmd: &CreateCmd) -> Result<()> {
             }
         });
         let attached = retry(ws.out, "attaching the source", &ATTACH_WAITS, || {
-            let input = source_input(&ws, cmd, issue.id.inner(), source, &metadata);
+            let input = source_input(ws, cmd, issue.id.inner(), source, &metadata);
             let r: AttachmentCreate = ws.client.execute(&inputs::attachment_create(input))?;
             if r.attachment_create.success {
                 Ok(())
@@ -343,7 +357,7 @@ pub fn create(ctx: &Ctx, cmd: &CreateCmd) -> Result<()> {
     }
 
     emit_created(
-        &ws,
+        ws,
         Made {
             id: issue.id.inner(),
             identifier: &issue.identifier,
@@ -418,6 +432,13 @@ fn put_in_cycle(
     let op = inputs::issue_update(view.issue.id.inner(), input);
     if ws.dry_run {
         ws.record(&op);
+        ws.record_undo(&inputs::issue_update(
+            view.issue.id.inner(),
+            IssueUpdateInput {
+                cycle_id: Patch::Clear,
+                ..Default::default()
+            },
+        ));
         return Ok((Some(wanted.clone()), vec!["cycle"]));
     }
     let data: IssueUpdate = ws.client.execute(&op)?;
@@ -465,7 +486,7 @@ fn refresh_source_metadata(
     };
     let op = inputs::attachment_create(input);
     if ws.dry_run {
-        ws.record(&op);
+        ws.record_deferred(&op);
         return Ok(true);
     }
     let r: AttachmentCreate = ws.client.execute(&op)?;
@@ -646,6 +667,12 @@ fn put_back<T>(old: Option<T>) -> Patch<T> {
     }
 }
 
+/// What `update` takes from outside its command line (see [`CreateInputs`]).
+pub struct UpdateInputs {
+    pub body: Option<String>,
+    pub metadata: Option<AttachmentMetadata>,
+}
+
 pub fn update(ctx: &Ctx, cmd: &UpdateCmd) -> Result<()> {
     let relabel =
         !cmd.labels.is_empty() || !cmd.add_labels.is_empty() || !cmd.remove_labels.is_empty();
@@ -673,7 +700,6 @@ pub fn update(ctx: &Ctx, cmd: &UpdateCmd) -> Result<()> {
     if body.as_deref().is_some_and(|b| b.trim().is_empty()) {
         return Err(CliError::usage("the body file is empty"));
     }
-    let source = cmd.source.as_deref().map(str::trim);
     let metadata = if cmd.meta.is_empty() {
         None
     } else {
@@ -684,6 +710,15 @@ pub fn update(ctx: &Ctx, cmd: &UpdateCmd) -> Result<()> {
     };
 
     let ws = ctx.write_session_with(cmd.force)?;
+    update_in(&ws, cmd, UpdateInputs { body, metadata })
+}
+
+/// `update`, in a session that is already open: what `issue batch` runs for each of its items.
+pub fn update_in(ws: &WriteSession, cmd: &UpdateCmd, inputs: UpdateInputs) -> Result<()> {
+    let UpdateInputs { body, metadata } = inputs;
+    let relabel =
+        !cmd.labels.is_empty() || !cmd.add_labels.is_empty() || !cmd.remove_labels.is_empty();
+    let source = cmd.source.as_deref().map(str::trim);
     // An origin that is not an http(s) URL is never attached. With the
     // `source-attachment` rule on, the validators report it (exit 5) together
     // with any other violation; without it, it is a usage error.
@@ -698,7 +733,7 @@ pub fn update(ctx: &Ctx, cmd: &UpdateCmd) -> Result<()> {
             )));
         }
     }
-    let view = fetch_issue(&ws, &cmd.issue)?;
+    let view = fetch_issue(ws, &cmd.issue)?;
     let issue = &view.issue;
     let current = view.write.project.as_ref();
 
@@ -711,7 +746,7 @@ pub fn update(ctx: &Ctx, cmd: &UpdateCmd) -> Result<()> {
     // The project the milestone is looked up in: the destination when moving, else the current one.
     let mut target = None;
     if let Some(reference) = &cmd.project {
-        let dest = resolve::project(&ws, reference)?;
+        let dest = resolve::project(ws, reference)?;
         if Some(dest.id.inner()) != current.map(|p| p.id.inner()) {
             target = Some(dest);
         }
@@ -731,10 +766,10 @@ pub fn update(ctx: &Ctx, cmd: &UpdateCmd) -> Result<()> {
     let assignee = cmd
         .assignee
         .as_deref()
-        .map(|who| resolve::user_id(&ws, who))
+        .map(|who| resolve::user_id(ws, who))
         .transpose()?;
     let labels = if relabel {
-        Some(labels_after(&ws, issue, cmd)?)
+        Some(labels_after(ws, issue, cmd)?)
     } else {
         None
     };
@@ -950,15 +985,13 @@ pub fn update(ctx: &Ctx, cmd: &UpdateCmd) -> Result<()> {
 
     if ws.dry_run {
         // The same two steps, recorded: the fields, then the source. The fields are put back
-        // only when the source (the later step) fails.
+        // when the source (the later step) fails; the source itself is not taken back.
         if !input.is_empty() {
             ws.record(&inputs::issue_update(issue.id.inner(), input));
-            if attachment.is_some() {
-                ws.record_undo(&inputs::issue_update(issue.id.inner(), restore));
-            }
+            ws.record_undo(&inputs::issue_update(issue.id.inner(), restore));
         }
         if let Some(input) = attachment {
-            ws.record(&inputs::attachment_create(input));
+            ws.record_deferred(&inputs::attachment_create(input));
         }
         return ws.finish_dry_run(
             Plan::new(
@@ -1014,9 +1047,9 @@ pub fn update(ctx: &Ctx, cmd: &UpdateCmd) -> Result<()> {
     let now = match updated {
         Some(issue) => issue,
         None if changed.is_empty() => view.issue.clone(),
-        None => fetch_issue(&ws, issue.id.inner())?.issue,
+        None => fetch_issue(ws, issue.id.inner())?.issue,
     };
-    show_issue(&ws, &now, &changed);
+    show_issue(ws, &now, &changed);
     Ok(())
 }
 

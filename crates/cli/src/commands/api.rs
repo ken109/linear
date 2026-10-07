@@ -15,7 +15,6 @@
 //! and `--quiet`, like the other status lines, so a script that asked for
 //! machine output gets exactly the response. Subscriptions are never sent.
 
-use super::write::dry_run::Step;
 use super::{verify, Ctx};
 use crate::cli::ApiArgs;
 use crate::error::{CliError, Result};
@@ -109,7 +108,7 @@ pub fn run(ctx: &Ctx, args: &ApiArgs) -> Result<()> {
         // Only a mutation gets here (`--dry-run` is refused for a query). The ownership rules
         // and the validators do not apply to a raw mutation, dry run or not; what is checked
         // is the same as for the real run: `--mutation`, `allow_raw_mutation`, the workspace.
-        let step = Step::raw(args.operation_name.as_deref(), request.variables.clone());
+        let operation = args.operation_name.as_deref().unwrap_or("(unnamed)");
         let value = serde_json::json!({
             "dryRun": true,
             "workspace": resolved.name,
@@ -117,8 +116,8 @@ pub fn run(ctx: &Ctx, args: &ApiArgs) -> Result<()> {
             "target": { "kind": "raw", "name": args.operation_name, "id": null, "new": false },
             "changed": [],
             "mutations": [{
-                "operation": step.operation,
-                "variables": step.variables,
+                "operation": operation,
+                "variables": request.variables,
                 "query": request.query,
             }],
             "rollback": [],
@@ -136,7 +135,7 @@ pub fn run(ctx: &Ctx, args: &ApiArgs) -> Result<()> {
                     pretty(&request.variables)
                 )
             },
-            || step.operation.clone(),
+            || operation.to_owned(),
         );
         return Ok(());
     }

@@ -1202,7 +1202,8 @@ fn a_dry_run_of_reorder_plans_each_write_and_its_undo() {
         v["mutations"][0]["variables"],
         json!({ "id": "id-EX-3", "input": { "sortOrder": 1.0, "prioritySortOrder": 10.0 } })
     );
-    assert_eq!(v["rollback"].as_array().unwrap().len(), 3);
+    // The last write has nothing after it to fail, so only the first two are undone.
+    assert_eq!(v["rollback"].as_array().unwrap().len(), 2);
 
     // Already in order: nothing to send.
     let held = |id: &str, n: f64| mine_in(id).order(n, n * 10.0).reply();
