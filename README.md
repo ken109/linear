@@ -149,7 +149,7 @@ default = "main"
 [workspaces.main]
 url_key = "my-company"   # linear.app/<url_key>
 default_team = "ENG"
-auth = "api-key"         # or "client_credentials" (CI, see below); "oauth" is not implemented yet
+auth = "api-key"         # or "oauth" (a browser login) or "client_credentials" (CI); see below
 ownership = "strict"     # or "lenient": see "Ownership rules" below
 # source_title = "出どころ"  # title of a new source attachment without --source-title (default "Source")
 ```
@@ -198,6 +198,41 @@ the entry is written (`migrate` reads the entry back before it removes anything)
   wrote; "Always Allow" remembers it.
 - A binary built with `--no-default-features` has no keyring support and always falls back to the
   file. The environment override `LINEAR_API_KEY_<NAME>` still comes first in every case.
+
+### OAuth login (browser)
+
+A workspace can log a person in through Linear's OAuth (authorization code flow with PKCE)
+instead of a personal API key. Create an OAuth app in Linear (Settings, API) and add
+`http://localhost:4601/callback` to its redirect URIs; a PKCE client has no secret to keep.
+
+```sh
+linear workspace login main --oauth --client-id <the app's client id>
+# or: linear workspace add main --url-key my-company --auth oauth --client-id <id>, then
+linear workspace login main
+```
+
+The command prints an authorization URL (and opens it in your browser unless `--no-browser`),
+waits for Linear to redirect to `http://localhost:<port>/callback`, trades the code for tokens, and
+checks them against the workspace like any login. `--oauth` also sets `auth = "oauth"` and
+`client_id` in `workspaces.toml`; the client id is public. Scopes: `read,write`.
+
+- **The callback port** is `--port`, else `LINEAR_OAUTH_PORT`, else `oauth_port` in the workspace's
+  config (`linear workspace add --oauth-port`), else 4601. The redirect URI
+  `http://localhost:<port>/callback` has to be listed on the OAuth app exactly. The server listens
+  on 127.0.0.1 only, answers requests that are not Linear's callback (a wrong `state`, no code) with
+  an error and keeps waiting, and gives up after 5 minutes (`LINEAR_OAUTH_TIMEOUT`, in seconds).
+- **What is stored** is the same file or keyring entry as for a key, with the shape
+  `{"kind": "oauth", "access_token": ..., "refresh_token": ..., "expires_at": ...}`;
+  `credential_store` and `--keyring` work as above.
+- **Refresh.** The access token of a recently created OAuth app expires after a day. Every
+  command checks `expires_at`; a token that has run out or will within a minute is traded for a
+  new one with the refresh token (and the client id: PKCE needs no secret), and the answer is
+  stored where the old token was. If Linear cannot be reached for it, a token that is still valid
+  is used as it is. A token without an `expires_at` is never refreshed.
+- **Expiry.** When the refresh token is refused (revoked, or expired), or there is none, the command
+  stops with exit code 3 and tells you to run `linear workspace login <name>` again. A token that
+  Linear revokes before its `expires_at` is only noticed when a request fails with exit code 3.
+- `LINEAR_OAUTH_TOKEN_URL` overrides the token endpoint (for tests and proxies).
 
 ### Client credentials (CI)
 
