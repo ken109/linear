@@ -474,6 +474,10 @@ linear issue link-pr KK-12 https://github.com/owner/repo/pull/34      # needs th
 linear issue attach-file KK-12 ./shot.png [--title "Login bug"]       # upload a file and attach it
 linear issue unlink KK-12 https://example.com/a --yes                  # delete that attachment
 linear issue delete KK-12                                              # trash; also: archive, unarchive
+linear issue relate KK-12 --blocks KK-13                               # or --related, or --duplicate (of)
+linear issue unrelate KK-12 --blocks KK-13                             # the same arguments remove it
+linear comment update <COMMENT-ID> --body-file comment.md              # a comment you wrote
+linear comment delete <COMMENT-ID> --yes                               # cannot be undone
 linear issue reorder KK-3 KK-1 KK-2                                    # same project; top first
 linear issue reorder KK-3,KK-1,KK-2                                    # the same, comma-separated
 ```
@@ -619,6 +623,52 @@ attachment was made), and reports anything it cannot read as `unknown`, which no
 `issue link-pr` needs a workspace with the integration and so is not covered by the live (sandbox)
 tests; the mock tests cover it, including the refusal when the integration is missing.
 
+### Comments and relations
+
+```sh
+linear comment update <COMMENT-ID> --body-file comment.md
+linear comment delete <COMMENT-ID> --yes
+linear issue relate KK-12 --blocks KK-13      # KK-12 blocks KK-13
+linear issue relate KK-12 --duplicate KK-13   # KK-12 is a duplicate of KK-13 (the issue you keep)
+linear issue relate KK-12 --related KK-13     # no direction
+linear issue unrelate KK-12 --blocks KK-13
+```
+
+- **A comment is its author's.** `comment update` and `comment delete` name the comment by its id
+  (the `id` that `issue comment --json` and `issue view --json` print; only a comment on an issue
+  qualifies). The ownership rule looks at who wrote the comment, not at who owns the issue it is on:
+  in a `strict` workspace somebody else's comment, or one with no author (an integration's), is
+  refused (exit 4). A `lenient` workspace lets anyone edit a comment, like any change to an issue,
+  but `comment delete` stays the author's even there (see the table under "Ownership rules").
+  `comment update` replaces the text (`--body-file`, `-` for standard input); text equal to what is
+  there sends nothing (`changed: false`).
+- **`comment delete` needs `--yes`, because a deleted comment cannot be restored.** Measured on the
+  sandbox (2026-10-07): afterwards `comment(id:)` answers "Entity not found" and the issue's
+  `comments(includeArchived: true)` no longer lists it, and Linear's schema has no mutation that
+  brings a comment back (no `commentUnarchive`). Without `--yes` the command fails with exit 2
+  before any request.
+- **A relation is one fact, stored once** as `issue` `type` `relatedIssue`: `KK-12 blocks KK-13` is
+  shown on KK-12 under `relations` and on KK-13 under `inverseRelations`. `issue relate` writes it
+  from the issue named first, so that is the issue the ownership rules ask about (the same as for
+  changing it: assigned to you, or in a project you lead); the other issue only has to exist, and
+  may be somebody else's. A relation that is already there is not made again (`alreadyRelated`);
+  `blocks` and `duplicate` have a direction (`KK-13 blocks KK-12` is another relation), `related`
+  has none and is found from either end. An issue cannot be related to itself (exit 2).
+- **A duplicate relation closes the issue.** Linear moves the issue to its `Duplicate` state when the
+  relation is made (measured on the sandbox), which is canceling it, so `issue relate --duplicate`
+  also asks the cancel rule: it stays refused on somebody else's issue in a `lenient` workspace.
+  Removing the relation moves the issue back out of `Duplicate` (measured: it was `Backlog` again),
+  which is not a cancel, so `unrelate` asks only for the ordinary change.
+- **`issue unrelate` takes the same arguments as `relate` and needs no `--yes`.** A relation holds
+  only the two issues and its kind, so `relate` makes it again exactly (only its id changes). One
+  that is not there sends nothing (`removed: []`, exit 0), so running it twice is safe.
+- **`issue view --json` shows the relations**, in Linear's own shape: `relations` and
+  `inverseRelations`, each `{ "nodes": [{ id, type, issue, relatedIssue }] }` where an end is
+  `{ id, identifier, title, url, state }` (at most 50 of each). `type` is `blocks`, `duplicate`,
+  `related` or `similar` (Linear's own suggestion; the CLI makes the first three). The text view
+  lists them from the issue's point of view (`blocks`, `blocked by`, `duplicate of`,
+  `duplicated by`, `related to`). `--cached` has no relations: the cache holds only the list fields.
+
 ### Projects
 
 ```sh
@@ -669,6 +719,8 @@ ownership = "lenient"   # default: "strict"
 | create an issue without a project | only assigned to you | allowed, for anyone |
 | change, comment on, reorder, delete, archive or restore an issue owned by someone else, or unlink its attachments or attach a file to it (this includes moving it to another project) | refused | allowed |
 | cancel an issue (a `canceled` or `duplicate` state) that is not yours | refused | **refused** |
+| edit a comment somebody else wrote (`comment update`) | refused | allowed |
+| delete a comment somebody else wrote (`comment delete`) | refused | **refused** |
 | create, change, delete or restore a project (and its milestones and status updates) you do not lead | refused | **refused** |
 
 `linear workspace list` shows the value (`ownership` in `--json`). The setting is checked when
@@ -967,9 +1019,10 @@ cargo test --workspace
   config directory (`LINEAR_CONFIG_DIR`).
   `tests/issue_write.rs` answers by operation name (`write_support`), to check the order of
   requests, rollback, idempotence and exit codes 4 and 5; `structure_write.rs` does the same
-  for milestones, initiatives and templates, and `api_mutation.rs` for `linear api --mutation`.
+  for milestones, initiatives and templates, `comment_write.rs` and `issue_relation.rs` for
+  `comment update|delete` and `issue relate|unrelate`, and `api_mutation.rs` for `linear api --mutation`.
 - `crates/cli/tests/live*.rs` talk to a real (sandbox) workspace and are ignored by default;
-  `live_write.rs` and `live_attachment_meta.rs` create issues there and cancel them when they are done;
+  `live_write.rs`, `live_attachment_meta.rs` and `live_comment_relation.rs` create issues there and cancel them when they are done;
   `live_structure.rs` creates initiatives, projects and issues and removes them with `delete` and
   `archive` (after exercising `unarchive`):
 
