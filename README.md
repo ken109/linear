@@ -151,6 +151,7 @@ url_key = "my-company"   # linear.app/<url_key>
 default_team = "ENG"
 auth = "api-key"         # or "oauth" (a browser login) or "client_credentials" (CI); see below
 ownership = "strict"     # or "lenient": see "Ownership rules" below
+# allow_force = true     # let `--force` write past the ownership rules (default: false); see below
 # source_title = "出どころ"  # title of a new source attachment without --source-title (default "Source")
 ```
 
@@ -858,6 +859,50 @@ ownership = "lenient"   # default: "strict"
 the configuration is read; anything but `strict` or `lenient` is an error. Use `lenient` for a
 workspace where people file and edit issues for each other (a team workspace); keep `strict`
 for a personal one. Validators and the workspace check still apply in both.
+
+#### `--force`
+
+Some work is yours to do even where the rules say no: changing the state of a project somebody
+else leads, or deleting a comment an integration wrote. `--force` lets one write through, and
+only in a workspace that opted in:
+
+```toml
+[workspaces.main]
+allow_force = true   # default: false
+```
+
+```sh
+linear project update "Roadmap" --status "In Progress" --force
+```
+
+- **Off by default.** `--force` in a workspace without `allow_force = true` is a usage error
+  (exit 2) that names the key, and nothing is sent, not even the check of who the key belongs
+  to. The key must be `true` or `false`; anything else is an error when the configuration is
+  read. `linear workspace list` shows it (the `FORCE` column, `allowForce` in `--json`).
+- **It overrides ownership and nothing else.** A refusal with exit 4 from the table above
+  (strict or lenient, including the ones lenient keeps) is let through. These are never
+  bypassed: validators (exit 5), `--yes` where a command asks for it (`comment delete`,
+  `issue unlink`), usage errors, the check that the credentials belong to the workspace, and
+  `linear api --mutation`, which has its own `allow_raw_mutation` and takes no `--force`.
+- **It is never silent.** When `--force` overrides a refusal, stderr says what was overridden
+  before anything is sent (`warning: --force overrides the ownership rules for project "Roadmap"
+  (project_update): you are not the lead of this project (led by someone else); held by: lead
+  <user id>`), and the `--json` output of the command gets `"forced": true` and an `overridden`
+  list with one entry per refusal: `target`, `operation`, `reason` (`project_not_led`,
+  `issue_not_owned`, `foreign_project`, `comment_not_owned` or `initiative_not_owned`), `message`
+  and `held`, the roles the write needed you to hold and who holds them now (`lead`, `owner`,
+  `assignee` or `author`, with a user id, or `null` when nobody does). `--quiet` leaves the
+  stderr line out, as `--json` does.
+- **Only an override is reported.** A write the rules allow anyway (`--force` on a project you
+  lead, or on an issue change a lenient workspace allows) is sent as usual, with no warning and
+  no `forced` in the output.
+- **Where it works.** Every command that asks the ownership rules: `issue create`, `update`,
+  `comment`, `link-pr`, `unlink`, `attach-file`, `relate`, `unrelate`, `reorder`, `delete`,
+  `archive` and `unarchive`; `comment update` and `delete`; `project create`, `update`,
+  `reorder`, `status-update`, `delete` and `unarchive`; `milestone create`, `update` and
+  `delete`; `initiative add-project` and `remove-project`; `document create` and `update`.
+  A command with no ownership rule (initiative, label, template, webhook and file writes) has
+  no `--force`.
 
 ### Validator rules
 
