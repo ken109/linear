@@ -1,22 +1,38 @@
 name: Release
 
-# Pushing a tag vX.Y.Z builds the `linear` binary for macOS (arm64, x86_64) and Linux
-# (x86_64, static musl), builds the wasm npm tarball, attaches all of them with their
-# checksums to a GitHub Release, and commits a regenerated Formula/linear.rb to the
+# Called by release-please.yml once its release PR is merged: it passes the tag
+# (vX.Y.Z) that release-please just created. This workflow then builds the `linear`
+# binary for macOS (arm64, x86_64) and Linux (x86_64, static musl), builds the wasm npm
+# tarball, attaches all of them with their checksums to the GitHub Release that
+# release-please already created, and commits a regenerated Formula/linear.rb to the
 # Homebrew tap ken109/homebrew-tap.
 #
+# There is deliberately no `push: tags` trigger. release-please creates the tag with the
+# default GITHUB_TOKEN, which does not start workflows, so a tag trigger would never
+# fire for it; and if one did fire (a tag pushed by hand) it would race the call.
+#
 # The tag must equal the workspace version in Cargo.toml and the version in
-# packages/linear-wasm/package.json; the workflow fails otherwise and bumps nothing.
+# packages/linear-wasm/package.json at the tag; the workflow fails otherwise and bumps
+# nothing. Every job builds from the tag, not from the branch head.
 #
-# workflow_dispatch with dry_run (the default) runs the whole build and packaging and
-# uploads everything, the formula included, to the run, but creates no Release and
-# does not touch the tap.
+# workflow_dispatch with dry_run (the default) runs the whole build and packaging from
+# the selected branch and uploads everything, the formula included, to the run, but
+# creates no Release and does not touch the tap.
 #
-# Secret: TAP_GITHUB_TOKEN, a token that can push to ken109/homebrew-tap.
+# Secret: TAP_GITHUB_TOKEN, a token that can push to ken109/homebrew-tap (passed to the
+# call with `secrets: inherit`).
 
 on:
-  push:
-    tags: ["v*.*.*"]
+  workflow_call:
+    inputs:
+      tag:
+        description: The release tag to build and publish, for example v0.1.0
+        type: string
+        required: true
+      dry_run:
+        description: Build and package only; create no Release and do not touch the tap
+        type: boolean
+        default: false
   workflow_dispatch:
     inputs:
       dry_run:
@@ -31,7 +47,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: release-${{ github.ref }}
+  group: release-${{ inputs.tag || github.ref }}
   cancel-in-progress: false
 
 jobs:
@@ -44,21 +60,21 @@ jobs:
       prerelease: ${{ steps.v.outputs.prerelease }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag }}
       - id: v
         env:
-          EVENT: ${{ github.event_name }}
-          REF_TYPE: ${{ github.ref_type }}
-          REF_NAME: ${{ github.ref_name }}
+          TAG: ${{ inputs.tag }}
           DRY_RUN_INPUT: ${{ inputs.dry_run }}
         run: |
-          if [ "$EVENT" = push ]; then
-            [ "$REF_TYPE" = tag ] || { echo "expected a tag push" >&2; exit 1; }
-            version=$(sh scripts/release/check-version.sh "$REF_NAME")
-            dry_run=false
+          if [ -n "$TAG" ]; then
+            # Called with a tag: the checkout is that tag, and it must match the versions.
+            version=$(sh scripts/release/check-version.sh "$TAG")
+            dry_run=${DRY_RUN_INPUT:-false}
           else
             # A manual run has no tag: check the two versions agree and use that version.
             version=$(sh scripts/release/check-version.sh)
-            dry_run=$DRY_RUN_INPUT
+            dry_run=${DRY_RUN_INPUT:-true}
           fi
           prerelease=false
           case "$version" in *-*) prerelease=true ;; esac
@@ -88,6 +104,8 @@ jobs:
       CARGO_PROFILE_RELEASE_STRIP: "true"
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag }}
       - uses: dtolnay/rust-toolchain@stable
         with:
           targets: ${{ matrix.target }}
@@ -126,6 +144,8 @@ jobs:
         working-directory: packages/linear-wasm
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag }}
       - uses: dtolnay/rust-toolchain@stable
         with:
           targets: wasm32-unknown-unknown
@@ -178,6 +198,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag }}
       - uses: actions/download-artifact@v4
         with:
           pattern: linear-*-*
@@ -218,13 +240,16 @@ jobs:
           pattern: linear-*
           path: dist
           merge-multiple: true
-      - name: Create the release and attach the files
+      - name: Attach the files to the release
         run: |
           ls -l dist
           if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
-            # A re-run of a failed release: replace the assets.
+            # The normal path: release-please created the Release and its notes when it
+            # tagged. Also a re-run of a failed release: replace the assets.
             gh release upload "$TAG" dist/* --clobber --repo "$GITHUB_REPOSITORY"
           else
+            # Fallback when no Release exists for the tag (a manual re-run, or a Release
+            # that was deleted): create it here with generated notes.
             flags=""
             [ "$PRERELEASE" = true ] && flags="--prerelease"
             gh release create "$TAG" dist/* --repo "$GITHUB_REPOSITORY" \
