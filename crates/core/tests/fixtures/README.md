@@ -19,6 +19,7 @@ Structure, nullability and value formats are exactly Linear's.
 | `initiative_view.json`      | `read::initiative_view`       | **hand-written** (the sandbox only ever holds archived test initiatives) |
 | `labels.json`               | `read::labels`                | a group, a child and a plain label, in creation order |
 | `teams.json`, `users.json`  | `read::teams`, `read::users`  | `users.json` includes Linear's own bot user        |
+| `label_details.json`        | `label_write::label_details`  | **hand-written** on the shape of `labels.json` plus the fields a label write reads (`team`, `description`, `groupType`): workspace group `area` with child `api`, workspace labels `Bug` and `Feature`, a team group `flow` (team EX) with child `review`, and the team label `Team only`; the shape was verified against the sandbox |
 | `templates_sections.json`   | `queries::templates`          | `templates.json` plus a template with real heading nodes and a project template |
 | `issue_comments.json`       | `queries::issue_comments`     |                                                    |
 | `templates.json`            | `queries::templates`          | `templateData` is a JSON document inside a string  |
@@ -50,6 +51,13 @@ find it. The initiative scenario creates one initiative (`live initiative <nanos
 projects to it, and at the end cancels the projects and archives the initiative (a raw `initiativeArchive` mutation, since the
 CLI has no archive command), even when an assertion fails. What remains after each run: those canceled projects and that
 archived initiative. The rollback of a failed link is not provoked live (it cannot be done safely); the mock tests cover it.
+
+The live label test (`crates/cli/tests/live_label.rs`) uses `Fixture Project` only. It creates one group and two labels
+(`live group <nanoseconds>`, ...) and one issue that carries two of them per run, and deletes the labels (a raw
+`issueLabelDelete`) and cancels the issue at the end, even when an assertion fails. It does not try multi-select groups: the
+sandbox workspace does not have them enabled.
+
+The live cycle test (`crates/cli/tests/live_cycle.rs`) only reads: the sandbox team has no cycles.
 
 The live audit test (`crates/cli/tests/live_audit.rs`) relies on the projects, milestone and issues named
 `audit-seed ...` that `scripts/seed-sandbox-audit.py` plants (an overdue project without a lead, a completed project with

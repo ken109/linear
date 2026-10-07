@@ -1,0 +1,102 @@
+{
+  "data": {
+    "issueLabels": {
+      "nodes": [
+        {
+          "id": "00000000-0000-4000-8000-000000000009",
+          "name": "area",
+          "color": "#4EA7FC",
+          "description": null,
+          "isGroup": true,
+          "groupType": "singleSelect",
+          "parent": null,
+          "team": null
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000008",
+          "name": "api",
+          "color": "#4EA7FC",
+          "description": "Public API",
+          "isGroup": false,
+          "groupType": null,
+          "parent": {
+            "id": "00000000-0000-4000-8000-000000000009",
+            "name": "area",
+            "groupType": "singleSelect"
+          },
+          "team": null
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000010",
+          "name": "Bug",
+          "color": "#EB5757",
+          "description": null,
+          "isGroup": false,
+          "groupType": null,
+          "parent": null,
+          "team": null
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000011",
+          "name": "Feature",
+          "color": "#BB87FC",
+          "description": null,
+          "isGroup": false,
+          "groupType": null,
+          "parent": null,
+          "team": null
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000012",
+          "name": "flow",
+          "color": "#F2C94C",
+          "description": null,
+          "isGroup": true,
+          "groupType": "singleSelect",
+          "parent": null,
+          "team": {
+            "id": "00000000-0000-4000-8000-000000000004",
+            "key": "EX",
+            "name": "Example"
+          }
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000013",
+          "name": "review",
+          "color": "#26B5CE",
+          "description": null,
+          "isGroup": false,
+          "groupType": null,
+          "parent": {
+            "id": "00000000-0000-4000-8000-000000000012",
+            "name": "flow",
+            "groupType": "singleSelect"
+          },
+          "team": {
+            "id": "00000000-0000-4000-8000-000000000004",
+            "key": "EX",
+            "name": "Example"
+          }
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000014",
+          "name": "Team only",
+          "color": "#95A2B3",
+          "description": null,
+          "isGroup": false,
+          "groupType": null,
+          "parent": null,
+          "team": {
+            "id": "00000000-0000-4000-8000-000000000004",
+            "key": "EX",
+            "name": "Example"
+          }
+        }
+      ],
+      "pageInfo": {
+        "hasNextPage": false,
+        "endCursor": null
+      }
+    }
+  }
+}

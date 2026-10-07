@@ -169,6 +169,12 @@ impl RuleSet {
         self.rules.values().all(BTreeSet::is_empty)
     }
 
+    /// Is `rule` enabled for any operation? (For checks that are not one of the
+    /// [`Operation`]s, such as a change to the label groups themselves.)
+    pub fn enabled(&self, rule: Rule) -> bool {
+        self.rules.get(&rule).is_some_and(|ops| !ops.is_empty())
+    }
+
     /// Does `rule` run for `op`?
     pub fn applies(&self, rule: Rule, op: Operation) -> bool {
         self.rules.get(&rule).is_some_and(|ops| ops.contains(&op))

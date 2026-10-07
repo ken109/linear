@@ -18,6 +18,7 @@ pub mod filters;
 pub mod guard;
 pub mod initiative_write;
 pub mod inputs;
+pub mod label_write;
 pub mod markdown;
 pub mod matching;
 pub mod metadata;

@@ -7,7 +7,7 @@
 
 use super::{Violation, ViolationKind};
 use crate::config::Rule;
-use crate::types::{Label, LabelGroupType};
+use crate::types::{Issue, Label, LabelGroup, LabelGroupType};
 use std::collections::BTreeMap;
 
 /// A group with more than one of its labels chosen.
@@ -71,4 +71,82 @@ pub(super) fn check(labels: &[Label]) -> Vec<Violation> {
             )
         })
         .collect()
+}
+
+/// A change to the label groups that the issues which already carry the labels
+/// have to survive: it must not leave an issue with two labels of a
+/// single-select group.
+///
+/// This is the same rule as for an issue write, asked about the other
+/// direction: not "may this issue take these labels" but "may these labels
+/// move". A label that is created is on no issue yet, so a creation has
+/// nothing to check here.
+#[derive(Debug, Clone, Copy)]
+pub enum Regroup<'a> {
+    /// The label with this id moves into `group` (whose type then applies to it).
+    Move {
+        label_id: &'a str,
+        group: &'a LabelGroup,
+    },
+    /// The group with this id changes its selection mode.
+    Retype {
+        group_id: &'a str,
+        group_type: &'a LabelGroupType,
+    },
+}
+
+impl Regroup<'_> {
+    /// The labels of an issue as they would be after the change.
+    fn apply(&self, labels: &[Label]) -> Vec<Label> {
+        labels
+            .iter()
+            .map(|label| {
+                let mut label = label.clone();
+                match *self {
+                    Regroup::Move { label_id, group } if label.id.inner() == label_id => {
+                        label.parent = Some(group.clone());
+                    }
+                    Regroup::Retype {
+                        group_id,
+                        group_type,
+                    } => {
+                        if let Some(parent) = label.parent.as_mut() {
+                            if parent.id.inner() == group_id {
+                                parent.group_type = Some(group_type.clone());
+                            }
+                        }
+                    }
+                    Regroup::Move { .. } => {}
+                }
+                label
+            })
+            .collect()
+    }
+}
+
+/// The issues (of the ones given: those that carry the labels concerned) that
+/// the change would leave with two labels of a single-select group. A conflict
+/// an issue already has is not the change's doing and is not reported.
+pub fn regroup_violations(issues: &[Issue], change: &Regroup<'_>) -> Vec<Violation> {
+    let mut out = Vec::new();
+    for issue in issues {
+        let before = conflicts(&issue.labels);
+        for conflict in conflicts(&change.apply(&issue.labels)) {
+            if before.contains(&conflict) {
+                continue;
+            }
+            out.push(Violation::new(
+                Rule::LabelGroupsExclusive,
+                ViolationKind::LabelGroupConflict,
+                Some(conflict.group.clone()),
+                format!(
+                    "{} would have more than one label of the group {:?} ({})",
+                    issue.identifier,
+                    conflict.group,
+                    conflict.labels.join(", ")
+                ),
+            ));
+        }
+    }
+    out
 }

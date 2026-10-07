@@ -198,7 +198,21 @@ pub struct IssueMilestoneFilter {
 #[cynic(graphql_type = "IssueLabelFilter")]
 pub struct LabelFilter {
     #[cynic(skip_serializing_if = "Option::is_none")]
+    pub id: Option<IdComparator>,
+    #[cynic(skip_serializing_if = "Option::is_none")]
     pub name: Option<StringComparator>,
+    /// The group the label is in.
+    #[cynic(skip_serializing_if = "Option::is_none")]
+    pub parent: Option<LabelGroupFilter>,
+}
+
+/// A label filter that looks at nothing but the id: the group of a label is a
+/// label too, but only its identity matters here.
+#[derive(cynic::InputObject, Debug, Clone, Default, PartialEq)]
+#[cynic(graphql_type = "IssueLabelFilter")]
+pub struct LabelGroupFilter {
+    #[cynic(skip_serializing_if = "Option::is_none")]
+    pub id: Option<IdComparator>,
 }
 
 #[derive(cynic::InputObject, Debug, Clone, Default, PartialEq)]
@@ -452,7 +466,40 @@ fn label_named(name: &str) -> LabelCollectionFilter {
     LabelCollectionFilter {
         some: Some(LabelFilter {
             name: Some(StringComparator::eq_ignore_case(name)),
+            ..LabelFilter::default()
         }),
+    }
+}
+
+/// The issues that carry the label with this id.
+pub fn issues_with_label(label_id: &str) -> IssueFilter {
+    IssueFilter {
+        labels: Some(LabelCollectionFilter {
+            some: Some(LabelFilter {
+                id: Some(IdComparator {
+                    eq: Some(cynic::Id::new(label_id)),
+                }),
+                ..LabelFilter::default()
+            }),
+        }),
+        ..IssueFilter::default()
+    }
+}
+
+/// The issues that carry at least one label of the group with this id.
+pub fn issues_with_label_of_group(group_id: &str) -> IssueFilter {
+    IssueFilter {
+        labels: Some(LabelCollectionFilter {
+            some: Some(LabelFilter {
+                parent: Some(LabelGroupFilter {
+                    id: Some(IdComparator {
+                        eq: Some(cynic::Id::new(group_id)),
+                    }),
+                }),
+                ..LabelFilter::default()
+            }),
+        }),
+        ..IssueFilter::default()
     }
 }
 
