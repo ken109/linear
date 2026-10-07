@@ -21,9 +21,11 @@ pub struct SectionProblem {
 
 /// The template name to read for `draft`, if there is a template to hold it to.
 ///
-/// A creation is checked whenever it names a template (naming none is itself
-/// a violation, reported when checking). An update is checked only when it both
-/// replaces the body and names the template to hold it to.
+/// A write is checked whenever it names a template. A creation that names
+/// none is a violation, and so is an update that replaces the body without
+/// one (an issue or project does not record its template): both are reported
+/// when checking. An update that leaves the body alone has nothing to hold to
+/// a template.
 pub fn template_to_check(draft: &Draft) -> Option<&str> {
     let name = draft
         .template
@@ -48,6 +50,14 @@ pub(super) fn check(draft: &Draft, fetched: &Fetched) -> Vec<Violation> {
                 ViolationKind::TemplateRequired,
                 None,
                 "a template is required (pass --template)",
+            )];
+        }
+        if draft.body.is_some() {
+            return vec![Violation::new(
+                rule,
+                ViolationKind::TemplateRequired,
+                None,
+                "a template is required to replace the body (pass --template with --body-file)",
             )];
         }
         return Vec::new();

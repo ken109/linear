@@ -388,15 +388,63 @@ fn an_unknown_template_lists_what_exists() {
 }
 
 #[test]
-fn an_update_is_not_held_to_a_template_unless_it_names_one_with_a_body() {
+fn an_update_that_replaces_the_body_must_name_a_template() {
     let rules = all_rules();
+    // The body is replaced and no template is named: refused, naming the flag.
     let plain = Draft::new(Operation::IssueUpdate).body("anything");
-    assert_eq!(rules.check(&plain, &fetched()), Ok(Outcome::Proceed));
+    let err = rules.check(&plain, &fetched()).unwrap_err();
+    assert_eq!(
+        kinds(&err),
+        vec![(
+            Rule::TemplateSections,
+            ViolationKind::TemplateRequired,
+            None
+        )]
+    );
+    assert!(err.violations()[0].message.contains("--template"));
+    assert_eq!(err.code(), ErrorCode::Validation);
 
+    // The same for a project body.
+    let project = Draft::new(Operation::ProjectUpdate).body("anything");
+    assert!(rules.check(&project, &fetched()).is_err());
+
+    // A blank template name is no template.
+    let blank = Draft::new(Operation::IssueUpdate)
+        .template("  ")
+        .body("anything");
+    assert!(rules.check(&blank, &fetched()).is_err());
+
+    // An update that leaves the body alone has nothing to hold to a template.
+    let no_body = Draft::new(Operation::IssueUpdate);
+    assert_eq!(rules.check(&no_body, &fetched()), Ok(Outcome::Proceed));
+
+    // The sections are judged against the named template.
     let bad = Draft::new(Operation::IssueUpdate)
         .template("Research")
         .body("x");
     assert!(rules.check(&bad, &fetched()).is_err());
+    let good = Draft::new(Operation::IssueUpdate)
+        .template("Research")
+        .body(GOOD_BODY);
+    assert_eq!(rules.check(&good, &fetched()), Ok(Outcome::Proceed));
+}
+
+#[test]
+fn an_update_is_not_checked_when_rule_operations_leave_it_out() {
+    let cfg = Config::parse(
+        "[workspaces.w]\nurl_key = \"w\"\nrules = [\"template-sections\"]\n\
+         [workspaces.w.rule_operations]\ntemplate-sections = [\"issue_create\"]\n",
+    )
+    .unwrap();
+    let rules = RuleSet::from_workspace(cfg.get("w").unwrap());
+    let issue = Draft::new(Operation::IssueUpdate).body("anything");
+    let project = Draft::new(Operation::ProjectUpdate).body("anything");
+    assert_eq!(rules.check(&issue, &fetched()), Ok(Outcome::Proceed));
+    assert_eq!(rules.check(&project, &fetched()), Ok(Outcome::Proceed));
+    // Creation is still held to a template.
+    assert!(rules
+        .check(&Draft::new(Operation::IssueCreate), &fetched())
+        .is_err());
 }
 
 #[test]
