@@ -483,8 +483,10 @@ for a field it was not asked to clear. A second identical run sends nothing and 
 - `--body-file FILE|-` replaces the description (an empty file is a usage error). Trailing
   whitespace does not count as a difference, nor does the bullet Linear rewrites (`- item` is
   stored as `* item`); another rewrite the CLI does not know about costs one redundant write. `--template NAME` (only with `--body-file`) holds the
-  new body to that Linear template through the `template-sections` rule; without `--template` no
-  template is checked, because an issue does not record which one it came from.
+  new body to that Linear template through the `template-sections` rule. An issue does not
+  record which template it came from, so with the rule on, `--body-file` without `--template`
+  is refused (exit 5) rather than left unchecked; there is no flag to skip the check. To leave
+  updates unchecked, narrow the rule with `rule_operations` (see [Validator rules](#validator-rules)).
 - `--source URL` attaches the URL as the issue's source, with `--source-title` and `--meta
   KEY=VALUE` read exactly as in `issue create` (a number is sent as a number, `str:` forces text).
   An attachment the issue already has with that URL is updated, never duplicated: Linear upserts
@@ -606,9 +608,14 @@ is refused (exit 5), and `audit` reports an issue that has no http(s) attachment
 `metadata.kind` is in the list, naming the issue. Unset, metadata is not looked at. An empty
 list or an empty kind is a configuration error.
 
-By default `template-sections` also covers project bodies: `project create --body-file` without
-`--template` is refused (exit 5) while the rule is on. To check issues only, narrow it with
-`rule_operations = { "template-sections" = ["issue_create"] }`.
+By default `template-sections` covers all four writes, `issue_create`, `issue_update`,
+`project_create` and `project_update`: while the rule is on, `issue create`, `project create`, `issue update --body-file`
+and `project update --body-file` are refused (exit 5) unless `--template` names the Linear
+template to hold the body to. An update that leaves the body alone is not checked. Replacing a body without a template is refused, not skipped, because an
+issue or a project does not record which template it came from. There is no flag to opt out of one
+write; to stop checking some operations, name the ones to keep in `rule_operations`, for example
+`rule_operations = { "template-sections" = ["issue_create"] }` to check issue creation only (updates
+and projects are then unchecked).
 
 Without a rule, its flag is optional (`--template` with no `template-sections` rule is ignored,
 with a note). Whatever the rules, an unknown name, an empty update or comment, a `--source`
