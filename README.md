@@ -423,6 +423,8 @@ linear issue update KK-12 --labels bug,api                             # exactly
 linear issue update KK-12 --add-labels bug --remove-labels triage      # or edit the set
 linear issue comment KK-12 --body-file comment.md
 linear issue link-pr KK-12 https://github.com/owner/repo/pull/34      # needs the GitHub integration
+linear issue unlink KK-12 https://example.com/a --yes                  # delete that attachment
+linear issue delete KK-12                                              # trash; also: archive, unarchive
 linear issue reorder KK-3 KK-1 KK-2                                    # same project; top first
 linear issue reorder KK-3,KK-1,KK-2                                    # the same, comma-separated
 ```
@@ -437,7 +439,7 @@ nothing is sent until the first two have passed:
 
 1. **Ownership rules** (always on; exit 4; see "Ownership rules" below for the `lenient`
    setting). A project may be written only when you lead it. An
-   issue may be changed (or commented on, or reordered) when it is assigned to you or its project
+   issue may be changed (or commented on, reordered, deleted, archived, restored or unlinked from) when it is assigned to you or its project
    is led by you. An issue may be created in a project you lead, or in one somebody else leads
    only if it is assigned to you and you pass `--allow-foreign`. "You" is the viewer of the
    selected workspace, and the credentials must belong to the workspace the configuration names.
@@ -577,6 +579,8 @@ linear project update "Ship it" [--name ..] [--summary ..] [--body-file body.md]
   [--status "In Progress"] [--target-date 2027-01-31] [--initiative "Roadmap"] [--lead me]
 linear project status-update "Ship it" --health onTrack|atRisk|offTrack --body-file update.md
 linear project reorder "Ship it" "Other" "Third"                       # top first
+linear project delete "Ship it"                                        # trash; unarchive brings it back
+linear project unarchive "Ship it"
 ```
 
 A project may be created or written only when you lead it: `create` with another `--lead`,
@@ -614,9 +618,9 @@ ownership = "lenient"   # default: "strict"
 | --- | --- | --- |
 | create an issue in a project somebody else leads | only assigned to you, with `--allow-foreign` | allowed, for anyone, no flag |
 | create an issue without a project | only assigned to you | allowed, for anyone |
-| change, comment on or reorder an issue owned by someone else (this includes moving it to another project) | refused | allowed |
+| change, comment on, reorder, delete, archive or restore an issue owned by someone else, or unlink its attachments (this includes moving it to another project) | refused | allowed |
 | cancel an issue (a `canceled` or `duplicate` state) that is not yours | refused | **refused** |
-| create or change a project (and its milestones and status updates) you do not lead | refused | **refused** |
+| create, change, delete or restore a project (and its milestones and status updates) you do not lead | refused | **refused** |
 
 `linear workspace list` shows the value (`ownership` in `--json`). The setting is checked when
 the configuration is read; anything but `strict` or `lenient` is an error. Use `lenient` for a
@@ -670,6 +674,7 @@ linear milestone update "Design review" --project "My Project" \
 linear milestone delete "Review" --project "My Project"
 
 linear initiative create --name "Long effort" [--description-file desc.md]
+linear initiative archive "Long effort"                                # also: unarchive, delete
 linear template create --name "Bug report" --body-file body.md [--description "..."] [--team ENG]
 linear template create --type project --name "Project" --body-file body.md [--description "..."]
 ```
@@ -696,6 +701,43 @@ linear template create --type project --name "Project" --body-file body.md [--de
 
 No validator rule applies to these three (the rules cover issues and projects), and initiatives
 and templates are not owned by a project, so only the checks above run.
+
+### Delete and archive
+
+```sh
+linear issue delete KK-12        # trash it
+linear issue archive KK-12
+linear issue unarchive KK-12     # brings back an archived or deleted issue
+linear project delete "Ship it"  # trash it
+linear project unarchive "Ship it"
+linear initiative archive "Long effort"
+linear initiative unarchive "Long effort"
+linear initiative delete "Long effort"   # trash it
+linear issue unlink KK-12 https://example.com/a --yes
+```
+
+| Command | Reversible | How it is undone |
+| --- | --- | --- |
+| `issue delete`, `project delete`, `initiative delete` | yes: Linear moves it to the trash and keeps it for a while | `issue unarchive`, `project unarchive`; for an initiative, `initiative unarchive` |
+| `issue archive`, `initiative archive` | yes | `issue unarchive`, `initiative unarchive` |
+| `issue unlink` | **unknown**: Linear documents no way to bring a deleted attachment back | none; the command needs `--yes` |
+
+None of these needs `--yes` except `issue unlink`. Without it, `issue unlink` looks the
+attachment up, prints what it would delete and exits with code 2, sending nothing. It finds the
+attachment of that issue whose URL is exactly the one given; an issue without one is left alone
+(the command says so and exits 0, `notLinked` with `--json`), like `issue link-pr` with a pull
+request already linked. Metadata of an attachment cannot be changed with these commands.
+
+The ownership rules are those of changing the thing: an issue must be yours (assigned to you, or
+in a project you lead; any issue in a `lenient` workspace), and a project must be one you lead,
+as for `project update`. An initiative belongs to the workspace and has no ownership rule, as for
+`initiative create`. A project or initiative that was deleted or archived is found by `unarchive`
+among the deleted ones too (by id, slug id, URL or name); the other commands only see live ones.
+`--json` prints the workspace, the `id`, the identifier (`identifier` for an issue, `slugId` and
+`name` for a project or initiative), the `url` and the `action` (`deleted`, `archived` or
+`unarchived`); `--quiet` prints the identifier or slug id. There is no `project archive`: Linear
+has deprecated `projectArchive` in favour of `projectDelete`. Deleting comments,
+labels or relations, and deleting in bulk, is not supported.
 
 ## Output and exit codes
 
@@ -783,7 +825,9 @@ cargo test --workspace
   requests, rollback, idempotence and exit codes 4 and 5; `structure_write.rs` does the same
   for milestones, initiatives and templates, and `api_mutation.rs` for `linear api --mutation`.
 - `crates/cli/tests/live*.rs` talk to a real (sandbox) workspace and are ignored by default;
-  `live_write.rs` and `live_attachment_meta.rs` create issues there and cancel them when they are done:
+  `live_write.rs` and `live_attachment_meta.rs` create issues there and cancel them when they are done;
+  `live_structure.rs` creates initiatives, projects and issues and removes them with `delete` and
+  `archive` (after exercising `unarchive`):
 
   ```sh
   LINEAR_API_KEY_SANDBOX=... cargo test -p linear --test live_write -- --ignored
