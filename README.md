@@ -234,6 +234,7 @@ linear milestone list --project "My Project"
 linear milestone view "M1" --project "My Project"
 
 linear initiative list --status active                       # --json includes each description
+linear initiative status-updates "Long effort"               # its status updates, newest first
 linear template list
 linear template skeleton "Bug report"                       # the sections, read from Linear
 linear template skeleton "Project" --type project           # the same for a project template
@@ -470,6 +471,7 @@ linear issue update KK-12 --labels bug,api                             # exactly
 linear issue update KK-12 --add-labels bug --remove-labels triage      # or edit the set
 linear issue comment KK-12 --body-file comment.md
 linear issue link-pr KK-12 https://github.com/owner/repo/pull/34      # needs the GitHub integration
+linear issue attach-file KK-12 ./shot.png [--title "Login bug"]       # upload a file and attach it
 linear issue unlink KK-12 https://example.com/a --yes                  # delete that attachment
 linear issue delete KK-12                                              # trash; also: archive, unarchive
 linear issue reorder KK-3 KK-1 KK-2                                    # same project; top first
@@ -486,7 +488,7 @@ nothing is sent until the first two have passed:
 
 1. **Ownership rules** (always on; exit 4; see "Ownership rules" below for the `lenient`
    setting). A project may be written only when you lead it. An
-   issue may be changed (or commented on, reordered, deleted, archived, restored or unlinked from) when it is assigned to you or its project
+   issue may be changed (or commented on, reordered, deleted, archived, restored, unlinked from or attached a file to) when it is assigned to you or its project
    is led by you. An issue may be created in a project you lead, or in one somebody else leads
    only if it is assigned to you and you pass `--allow-foreign`. "You" is the viewer of the
    selected workspace, and the credentials must belong to the workspace the configuration names.
@@ -665,7 +667,7 @@ ownership = "lenient"   # default: "strict"
 | --- | --- | --- |
 | create an issue in a project somebody else leads | only assigned to you, with `--allow-foreign` | allowed, for anyone, no flag |
 | create an issue without a project | only assigned to you | allowed, for anyone |
-| change, comment on, reorder, delete, archive or restore an issue owned by someone else, or unlink its attachments (this includes moving it to another project) | refused | allowed |
+| change, comment on, reorder, delete, archive or restore an issue owned by someone else, or unlink its attachments or attach a file to it (this includes moving it to another project) | refused | allowed |
 | cancel an issue (a `canceled` or `duplicate` state) that is not yours | refused | **refused** |
 | create, change, delete or restore a project (and its milestones and status updates) you do not lead | refused | **refused** |
 
@@ -721,6 +723,10 @@ linear milestone update "Design review" --project "My Project" \
 linear milestone delete "Review" --project "My Project"
 
 linear initiative create --name "Long effort" [--description-file desc.md]
+linear initiative update "Long effort" [--name "New name"] [--description-file desc.md] \
+  [--status active] [--target-date 2027-03-31] [--owner me]
+linear initiative add-project "Long effort" "My Project"               # also: remove-project
+linear initiative status-update "Long effort" --health onTrack --body-file update.md
 linear initiative archive "Long effort"                                # also: unarchive, delete
 linear template create --name "Bug report" --body-file body.md [--description "..."] [--team ENG]
 linear template create --type project --name "Project" --body-file body.md [--description "..."]
@@ -735,6 +741,20 @@ linear template create --type project --name "Project" --body-file body.md [--de
   would silently unfile them.
 - An **initiative** with the same name as an existing one is returned instead of creating
   another. (Linear refuses to create initiatives on its free plan; the message is passed on.)
+  `initiative update` changes the name, the description (from a file), the status
+  (`active`, `planned`, `proposed`, `completed`, `canceled`), the target date and the owner, and
+  sends only what differs from now (`changed` lists it with `--json`; a run that changes nothing
+  sends nothing). `initiative add-project` and `remove-project` put a project under an initiative
+  or take it out; both are idempotent (a project already under it, or not under it, is left
+  alone and nothing is sent, `unchanged` with `--json`). Only the link goes: the project and the
+  initiative stay, and the other command puts it back. `initiative status-update` is
+  `project status-update` for an initiative: `--health onTrack|atRisk|offTrack` and the text from
+  `--body-file`; `initiative status-updates` lists them. An initiative belongs to the workspace
+  and has no ownership rule (as for `create`, `archive` and `delete`), so anyone may update it
+  and write its status updates. A project's initiatives change when it is added or removed, so
+  `add-project` and `remove-project` also follow the ownership rule of the project (you must lead
+  it, exit 4), as `project update --initiative` does. Initiative relations and labels are not
+  supported.
 - `template create` makes an **issue template** (the default) or, with `--type project`, a
   **project template** from a markdown body. Headings are the sections, and a body without one is
   refused. Understood markdown: headings, paragraphs, bullet and numbered lists and `**bold**`.
@@ -748,6 +768,46 @@ linear template create --type project --name "Project" --body-file body.md [--de
 
 No validator rule applies to these three (the rules cover issues and projects), and initiatives
 and templates are not owned by a project, so only the checks above run.
+
+### Files
+
+```sh
+linear file upload ./shot.png [--name "Login screen"] [--content-type image/png]
+linear issue attach-file KK-12 ./shot.png [--title "Login bug"]
+linear file download https://uploads.linear.app/<org>/<id>/<id> [--output shot.png] [--force]
+```
+
+A file reaches Linear in two steps: `fileUpload` returns a signed URL and the headers to send,
+then the bytes are `PUT` there (without your credential, which the signed URL does not need).
+The result is an asset URL that is private to the workspace.
+
+- `file upload` stops there and prints the URL and the markdown that embeds it: `![name](url)`
+  for an image, `[name](url)` for anything else (`--json`: `assetUrl` and `markdown`; `--quiet`:
+  the URL). Paste the markdown into an issue description or a comment (`issue comment`,
+  `issue update --body-file`) to show the image inline.
+- `issue attach-file` also attaches the URL to the issue, titled with the file's name unless
+  `--title` says otherwise, and prints the same URL and markdown. It follows the ownership rules
+  of changing the issue and, like the other issue writes, the issue's validators run first.
+- **Limit:** a file may be at most **25 MiB** (a screenshot, a log, a document; not a video).
+  A larger file, an empty one, a directory and an unreadable path are refused (exit 2) before any
+  request. The whole file is read into memory and sent in one request, and `--timeout` applies to
+  it, so a large file on a slow line needs `--timeout` raised. Linear applies limits of its own on
+  top. Videos and large files are not handled any further than this.
+- **Failure:** if the `PUT` fails, nothing was stored and nothing was attached (exit 1). If the
+  file was stored but attaching it fails (after two more tries: `attachmentCreate` is an upsert on
+  the URL, so repeating it is safe), the CLI looks whether an attachment with that URL exists. If
+  none does, it deletes the stored file again (Linear's `fileUploadDangerouslyDelete`, used for
+  nothing else), and the error says so; if one does, or that cannot be checked, the file is kept
+  and its URL is in the error; if the delete fails, the URL is in the error as well (a file with
+  nothing attached to it is harmless).
+- `file download` saves the file at a Linear URL. The workspace's credential is sent only to
+  `uploads.linear.app` over https (or to the origin of the API endpoint, which is how a proxy
+  stands in for Linear), and a redirect to another host drops it, so a URL of any other site is
+  fetched without it. It saves to `--output` (`-` for standard output), by default to the last
+  part of the URL in the current directory, refuses to replace an existing file without
+  `--force`, writes through a temporary file so a failed download leaves nothing, and refuses to
+  save more than 100 MiB. A deleted file may stay downloadable for a short while from Linear's
+  cache.
 
 ### Delete and archive
 
@@ -916,6 +976,10 @@ cargo test --workspace
   ```sh
   LINEAR_API_KEY_SANDBOX=... cargo test -p linear --test live_write -- --ignored
   ```
+
+  `live_initiative_write.rs` and `live_files.rs` do the same for initiative updates, project
+  links and status updates, and for file upload, attach and download (they delete the files they
+  uploaded through the cleanup mutation).
 
   `live_audit.rs` needs the discrepancies `scripts/seed-sandbox-audit.py` plants (run it once;
   it is idempotent and refuses any workspace but the sandbox).
