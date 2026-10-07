@@ -10,7 +10,7 @@ use crate::output::table;
 use clap::{Args, Subcommand};
 use linear_core::matching::match_template;
 use linear_core::queries::{self, Templates};
-use linear_core::template::{description_doc, headings_of, is_issue_template, skeleton_of};
+use linear_core::template::{description_doc, headings_of, skeleton_of};
 use linear_core::types::{Team, Template};
 use serde::Serialize;
 
@@ -20,9 +20,9 @@ pub enum TemplateCommand {
     List(ListCmd),
     /// Show one template and its sections
     View(ViewCmd),
-    /// Print the markdown skeleton (one `## heading` per section) of an issue template, or of all of them
+    /// Print the markdown skeleton (one `## heading` per section) of a template, or of all of them
     Skeleton(SkeletonCmd),
-    /// Create an issue template from a markdown body (the same name returns the existing one instead)
+    /// Create an issue or project template from a markdown body (the same name and type returns the existing one instead)
     Create(write::template::CreateCmd),
 }
 
@@ -41,8 +41,16 @@ pub struct ViewCmd {
 
 #[derive(Debug, Args)]
 pub struct SkeletonCmd {
-    /// Issue template name; without it, every issue template is printed under its name
+    /// Template name; without it, every template of the type is printed under its name
     pub template: Option<String>,
+    /// Which templates to read: issue or project
+    #[arg(
+        long = "type",
+        value_enum,
+        value_name = "TYPE",
+        default_value = "issue"
+    )]
+    pub kind: write::template::TemplateKind,
 }
 
 pub fn run(ctx: &Ctx, cmd: &TemplateCommand) -> Result<()> {
@@ -191,7 +199,10 @@ struct SkeletonOut<'a> {
 
 fn skeleton(ctx: &Ctx, args: &SkeletonCmd) -> Result<()> {
     let (workspace, templates) = all(ctx)?;
-    let issue_templates: Vec<Template> = templates.into_iter().filter(is_issue_template).collect();
+    let issue_templates: Vec<Template> = templates
+        .into_iter()
+        .filter(|t| args.kind.matches(t))
+        .collect();
 
     let (picked, named): (Vec<&Template>, bool) = match &args.template {
         Some(name) => (vec![match_template(&issue_templates, name)?], true),

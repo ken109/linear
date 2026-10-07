@@ -48,7 +48,7 @@ pub enum Command {
     /// Read initiatives, and create one
     #[command(subcommand)]
     Initiative(crate::commands::initiative::InitiativeCommand),
-    /// Read issue templates and their sections, and create one
+    /// Read issue and project templates and their sections, and create one
     #[command(subcommand)]
     Template(crate::commands::template::TemplateCommand),
     /// Read labels

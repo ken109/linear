@@ -428,6 +428,7 @@ pub struct TemplateCreateInput {
     #[cynic(skip_serializing_if = "Option::is_none")]
     pub description: Option<String>,
     /// For an issue template: `{ "title": "", "descriptionData": <ProseMirror doc> }`.
+    /// For a project template: `{ "descriptionData": <ProseMirror doc> }` (no title, and no `team_id`).
     pub template_data: serde_json::Value,
 }
 
