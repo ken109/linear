@@ -95,6 +95,13 @@ pub enum Command {
     /// --json prints the same facts as data. `--session` is for a SessionStart hook: it prints
     /// nothing in CI, prints nothing and exits 0 on any failure, and gives up after 4 seconds.
     Brief(crate::commands::brief::BriefArgs),
+    /// Print a shell completion script (bash, zsh, fish, elvish or powershell)
+    ///
+    /// Static: it completes commands, subcommands and flags, not issue ids or project
+    /// names. For zsh, put the output in a file named `_linear` in a directory of $fpath;
+    /// for bash, `source` it from ~/.bashrc; for fish, save it as
+    /// ~/.config/fish/completions/linear.fish. Needs no configuration or credentials.
+    Completions(crate::commands::completions::CompletionsArgs),
     /// Send a raw GraphQL document and print the response data (queries; mutations only with --mutation)
     Api(ApiArgs),
 }

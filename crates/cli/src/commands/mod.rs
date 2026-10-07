@@ -5,6 +5,7 @@ pub mod audit;
 pub mod brief;
 pub mod cache;
 pub mod cached;
+pub mod completions;
 pub mod cycle;
 mod format;
 pub mod initiative;
@@ -37,6 +38,11 @@ pub struct Ctx {
 }
 
 pub fn run(cli: &Cli, out: Output) -> Result<()> {
+    // These touch neither the configuration nor Linear, so they must work on a
+    // machine that has no config directory and no network.
+    if let Command::Completions(args) = &cli.command {
+        return completions::run(args);
+    }
     crate::http::configure(crate::http::Settings::resolve(cli.timeout)?);
     let ctx = Ctx {
         dirs: Dirs::from_env()?,
@@ -59,6 +65,7 @@ pub fn run(cli: &Cli, out: Output) -> Result<()> {
         Command::Cache(cmd) => cache::run(&ctx, cmd),
         Command::Status(args) => status::run(&ctx, args),
         Command::Brief(args) => brief::run(&ctx, args),
+        Command::Completions(_) => unreachable!("handled before the context is built"),
     }
 }
 
