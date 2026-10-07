@@ -27,6 +27,7 @@ pub mod comment;
 pub mod file;
 pub mod initiative;
 pub mod issue;
+pub mod label;
 pub mod milestone;
 pub mod project;
 pub mod resolve;

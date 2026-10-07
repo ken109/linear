@@ -57,7 +57,7 @@ pub enum Command {
     /// Read issue and project templates and their sections, and create one
     #[command(subcommand)]
     Template(crate::commands::template::TemplateCommand),
-    /// Read labels
+    /// Read labels, and create or update one
     #[command(subcommand)]
     Label(crate::commands::label::LabelCommand),
     /// Read teams

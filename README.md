@@ -954,6 +954,39 @@ linear webhook verify --signature <hex> [--body-file body.json] [--secret-file s
 There is no listener: receiving deliveries is your server's job; `verify` is for the check it makes
 (or for trying one by hand).
 
+### Labels
+
+```sh
+linear label create --name "ship" [--team ENG] [--group area] [--color "#4EA7FC"] [--description "..."]
+linear label create --name "area" --is-group [--group-type single-select]
+linear label update "area/ship" [--new-name "released"] [--color "#4EA7FC"] [--description "..."] \
+  [--group other-group | --no-group] [--group-type single-select]
+```
+
+- `label create` makes a label (or, with `--is-group`, a group) in a team (`--team KEY`) or, without
+  `--team`, in the whole workspace; with `--group` and no `--team` it takes the group's team. It
+  does not fall back to `default_team`: a label with no team is visible to every team. `--color`
+  is `#RRGGBB`. A label that already exists in the place asked for (same name ignoring case, same
+  team, same group) is returned instead of made again (`"existing": true` with `--json`).
+- `label update` takes a name, a `group/name` path or an id, and sends only what differs from now
+  (`"changed": false` when nothing does). `--description ""` clears the description. `--group`
+  moves the label into a group, `--no-group` takes it out; `--group-type` changes a group's
+  selection mode (single-select, or multi-select where the workspace has it). Turning a label into
+  a group or back is not supported.
+- Checked before anything is sent (exit 2): the name is not empty and no other label has it
+  (Linear keeps names unique across the workspace and its teams, whatever the case and group, so a
+  team label cannot take a workspace label's name either); the group exists and is a group, of the
+  label's own team (or the workspace's, for a workspace label); a group is not put in a group;
+  `--group-type` is only for groups; a name that two labels share is given as an id.
+- `label-groups-exclusive` (see [Validator rules](#validator-rules)) also covers `label update`:
+  moving a label into a single-select group, or making a group single-select, is refused
+  (exit 5, naming the issues) when an issue that is already in Linear would end up with two labels
+  of that group. It reads the issues that carry the label (or the group's labels), the first 1000
+  of them, and says so when there were more. A label that is being created is on no issue, so a
+  creation has nothing to hold against the rule, and a multi-select group never conflicts.
+- No ownership rule applies (a label belongs to a team or the workspace, not to a project or an
+  issue); Linear decides who may add workspace labels. Deleting a label is not supported.
+
 ## Output and exit codes
 
 `--json` prints machine-readable output; errors then go to stderr as

@@ -1,7 +1,7 @@
-//! `linear label list|view`.
+//! `linear label list|view|create|update` (the writes live in `write::label`).
 
 use super::listing::{paginate, warn_truncated, ListArgs, Listing, Session};
-use super::Ctx;
+use super::{write, Ctx};
 use crate::error::Result;
 use crate::output::table;
 use clap::{Args, Subcommand};
@@ -16,6 +16,10 @@ pub enum LabelCommand {
     List(ListCmd),
     /// Show the label(s) with a name or id
     View(ViewCmd),
+    /// Create a label or a group, in a team or the whole workspace (one that exists is returned)
+    Create(write::label::CreateCmd),
+    /// Rename a label, change its color or description, or move it between groups
+    Update(write::label::UpdateCmd),
 }
 
 #[derive(Debug, Args)]
@@ -34,6 +38,8 @@ pub fn run(ctx: &Ctx, cmd: &LabelCommand) -> Result<()> {
     match cmd {
         LabelCommand::List(args) => list(ctx, args),
         LabelCommand::View(args) => view(ctx, args),
+        LabelCommand::Create(args) => write::label::create(ctx, args),
+        LabelCommand::Update(args) => write::label::update(ctx, args),
     }
 }
 
