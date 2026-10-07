@@ -1,5 +1,83 @@
 # Changelog
 
+## [0.6.0](https://github.com/ken109/linear/compare/v0.5.0...v0.6.0) (2026-10-07)
+
+
+### ⚠ BREAKING CHANGES
+
+* **core:** select priority on every issue
+
+### Features
+
+* **cli:** a dry run with --force reports the ownership override it would make ([e726040](https://github.com/ken109/linear/commit/e7260403ceeb2aa50ff7d23d03455a038de0a1f6))
+* **cli:** add --force to the writes the ownership rules guard ([4795737](https://github.com/ken109/linear/commit/479573714b4b5d78fe08745c8ec238ac8f894201))
+* **cli:** add `comment update` and `comment delete` ([62eb30f](https://github.com/ken109/linear/commit/62eb30f418c13d794a8b1d6ce9070de180158f70))
+* **cli:** add `issue relate` and `issue unrelate`, show relations in `issue view` ([30de477](https://github.com/ken109/linear/commit/30de4777035ad08c0a87c206ebae9436a177e537))
+* **cli:** add `linear completions <shell>` for bash, zsh, fish, elvish and powershell ([1aae9a8](https://github.com/ken109/linear/commit/1aae9a86b8e5a6d01cb384c69143ef89a23a4b5b))
+* **cli:** add `linear webhook list|create|delete|verify` ([f8ec45a](https://github.com/ken109/linear/commit/f8ec45a25161d97b8a4d852e54904266190be6f4))
+* **cli:** add cycle list and cycle view ([3729cdc](https://github.com/ken109/linear/commit/3729cdca89d4cf7db112ac86c5846f20c31c4706))
+* **cli:** add document list, view, create and update ([d966c6f](https://github.com/ken109/linear/commit/d966c6f4c3bb9f4f4dddb6469ae4dda943e4d849))
+* **cli:** add issue batch, creating and updating several issues all or nothing ([c2c5a1d](https://github.com/ken109/linear/commit/c2c5a1d97fc29565fa29cb92a41461369c0037a5))
+* **cli:** add label create and label update ([fc92650](https://github.com/ken109/linear/commit/fc92650fd012c2be6f37034e6f4740b02101c737))
+* **cli:** add linear usage and linear &lt;group&gt; usage, generated from the command tree ([32d6138](https://github.com/ken109/linear/commit/32d6138028602eb88d2f228e5a420f505b7e3532))
+* **cli:** add the --dry-run flag and the plan every write prints ([57348db](https://github.com/ken109/linear/commit/57348dba4db309aba59d40ffae59995026c7b35e))
+* **cli:** cut list and view output down with --fields and --id-only ([886c2ca](https://github.com/ken109/linear/commit/886c2ca3bc88eafc59e3f31d23a750ac3ab03ea8))
+* **cli:** dry-run the issue, comment and file writes ([b879707](https://github.com/ken109/linear/commit/b879707632934ed112768f451f7673619583889b))
+* **cli:** dry-run the milestone, initiative, template, label and document writes ([a277d3f](https://github.com/ken109/linear/commit/a277d3f21cc9d74e6fafc088c103e5017d20bcd1))
+* **cli:** dry-run the project writes ([71dcc90](https://github.com/ken109/linear/commit/71dcc901cff3de2712c6a07bc00f7f816d535576))
+* **cli:** dry-run webhook create and delete and raw mutations ([1992601](https://github.com/ken109/linear/commit/19926018a761ced24dfd0ec2079b5cf7b5737c05))
+* **cli:** file upload, file download and issue attach-file ([b790f78](https://github.com/ken109/linear/commit/b790f78e99ff71f72c9b4c30209739ceb7732108))
+* **cli:** initiative archive, unarchive and delete ([94a0da6](https://github.com/ken109/linear/commit/94a0da650227dfb2da275b7649de0f95635f242b))
+* **cli:** initiative update, add-project, remove-project and status updates ([b16f2d9](https://github.com/ken109/linear/commit/b16f2d94ebac75589fae09a4123c5bd4fbcf245c))
+* **cli:** issue search through Linear's searchIssues ([44d152b](https://github.com/ken109/linear/commit/44d152bc7e7acf35c82f8dd368f6e0ee917d271b))
+* **cli:** issue unlink, delete, archive and unarchive ([dee63bd](https://github.com/ken109/linear/commit/dee63bd7c3314a7d5227d0ad7c80432cb860b3f6))
+* **cli:** keep credentials in the OS keyring, with the file as a fallback ([781de8d](https://github.com/ken109/linear/commit/781de8d3641403c5b5c996c494bf9c8479e93b4a))
+* **cli:** log in with OAuth (PKCE) and refresh the token ([b3f754b](https://github.com/ken109/linear/commit/b3f754b685ba9c9c258d1d451e9c266cc65375fb))
+* **cli:** project delete and unarchive ([e446b88](https://github.com/ken109/linear/commit/e446b88fe1abdadc6211807a3b1165541b001118))
+* **cli:** set and filter issues by priority, estimate, parent and cycle ([c6cdb8e](https://github.com/ken109/linear/commit/c6cdb8e30cf30badb2abd7511137635adea7663f))
+* **cli:** show allow_force in workspace list ([b581381](https://github.com/ken109/linear/commit/b581381d03750846473321f5408c3b4bca0c539a))
+* **core:** add the credential_store workspace setting ([d4b91cf](https://github.com/ken109/linear/commit/d4b91cf6779fe3badc096e647b875458f317a10b))
+* **core:** add the pure half of the OAuth PKCE login ([0e64fc4](https://github.com/ken109/linear/commit/0e64fc400da590ab32b7948b9b6d79c4bfcfe345))
+* **core:** file upload operations, size limits and markdown embedding ([b6381ef](https://github.com/ken109/linear/commit/b6381ef4239eb47894c8ab3c0a6cdb9911a38c75))
+* **core:** initiative update, project link removal and status updates ([d800351](https://github.com/ken109/linear/commit/d8003513e1f03bfee27d62f35a1ab5077b56dc97))
+* **core:** let the ownership guard report an overridden refusal ([4592cca](https://github.com/ken109/linear/commit/4592cca106769412c0fa971f2c35764832fc5a7a))
+* **core:** list every error code in ErrorCode::ALL ([4d27321](https://github.com/ken109/linear/commit/4d27321d03ffc132b34e101d42f6d98d81c43743))
+* **core:** query a team's cycles with their state and the issues in one ([aa862ab](https://github.com/ken109/linear/commit/aa862ab1db3569178f619e990b3a9726bb1c554d))
+* **core:** query, create and delete webhooks, and match one by id, label or URL ([a75a0d2](https://github.com/ken109/linear/commit/a75a0d24412c5ee0eb90fbb95bb3ecc920d42c06))
+* **core:** read and write documents, and hold their bodies to document templates ([25fa244](https://github.com/ken109/linear/commit/25fa244d415c10613ec0e362bf5313ef7e671bcb))
+* **core:** read and write labels with their team and group, and check regrouping against issues ([b029415](https://github.com/ken109/linear/commit/b0294156639cb5d789a3736ab581b36f098606e6))
+* **core:** select priority on every issue ([be6de5d](https://github.com/ken109/linear/commit/be6de5d711d17e42b1f281f65d6e264b776cd54c))
+* **core:** the input of issue batch and its JSON Schema ([8c46591](https://github.com/ken109/linear/commit/8c46591b6f578ed0b38e742e60fa2335c12d60f8))
+* **core:** wire comment update/delete and issue relation create/delete ([a42bc68](https://github.com/ken109/linear/commit/a42bc68d450b6ea018608a3cbc250ec74d8f6920))
+
+
+### Bug Fixes
+
+* **cli:** keep the config in %APPDATA% and the cache in %LOCALAPPDATA% on Windows ([283dd02](https://github.com/ken109/linear/commit/283dd0297a9cf21567d3d5c4ba13cf4a134a27bc))
+* **cli:** refuse --keyring for an app workspace and ignore an env API key for an oauth one ([298c49f](https://github.com/ken109/linear/commit/298c49fd30d902a7cd6b505558d206f6c0a5786f))
+
+
+### Code Refactoring
+
+* **cli:** keep an undo with the mutation it undoes, and let create and update run in an open session ([51fe9e7](https://github.com/ken109/linear/commit/51fe9e7e229d48dca359069e7278585d5aebe256))
+
+
+### Documentation
+
+* delete and archive commands in the README ([e795c81](https://github.com/ken109/linear/commit/e795c81ae93fc8cb92a28222139919a4cd54c874))
+* describe --force and allow_force ([6dd6caa](https://github.com/ken109/linear/commit/6dd6caa349efa41252f20470f37259a0bdd79482))
+* document comment update/delete and issue relate/unrelate ([aec88e8](https://github.com/ken109/linear/commit/aec88e8450b2138a37da06cf09ee0b11dca9235b))
+* initiative updates, project links, status updates and files in the README ([bcdc0d8](https://github.com/ken109/linear/commit/bcdc0d804f8120c40526e1842e72ef16aa8ac4ac))
+* **readme:** document --dry-run, and check it against the sandbox ([ce51dd0](https://github.com/ken109/linear/commit/ce51dd0af886196e2dcb1f883440e8433c6ed1af))
+* **readme:** document issue batch ([5ea0aca](https://github.com/ken109/linear/commit/5ea0aca9d0b1d63c14487c82ee9714ab2e2dd5b7))
+* **readme:** document the OAuth login, its callback port and the refresh ([6cbd2dc](https://github.com/ken109/linear/commit/6cbd2dc00c448c6e0ee60e0070c5e074aa1a6ce4))
+* **readme:** document the OS keyring credential store ([5bc06a1](https://github.com/ken109/linear/commit/5bc06a181d7d4356285c43deb4a97548e96972fc))
+* **readme:** say how --dry-run and --force compose ([396b57b](https://github.com/ken109/linear/commit/396b57bb92852b7013f9dfacafbb4bf7e3c80445))
+* say the duplicate state may take a few seconds to clear ([9c9a585](https://github.com/ken109/linear/commit/9c9a5856ca8e9fb19b7a70b3539b2ca1feafc106))
+* shell completions and installing on Windows ([0b199e7](https://github.com/ken109/linear/commit/0b199e754d38b87912dcbda58dc7c87d7df8622d))
+* ship a Claude Code skill and a README section for AI agents ([cd30c01](https://github.com/ken109/linear/commit/cd30c01419d7e7d35f0e106d4536f3f9d4b1419e))
+* the webhook commands ([bc88e04](https://github.com/ken109/linear/commit/bc88e04dedfbd2fa6d4b1f9c7a8b435f6ce5b14b))
+
 ## [0.5.0](https://github.com/ken109/linear/compare/v0.4.0...v0.5.0) (2026-10-07)
 
 
