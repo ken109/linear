@@ -378,3 +378,74 @@ fn force_is_a_flag_of_exactly_the_commands_that_ask_the_ownership_rules() {
     }
     assert!(mock.ops().is_empty());
 }
+
+// ------------------------------------------------------------------ --dry-run
+
+#[test]
+fn a_dry_run_with_force_plans_the_override_and_sends_nothing() {
+    let sb = forcing();
+    let mock = Routed::start(project_routes(bot()));
+
+    let o = run_args(
+        &sb,
+        &mock,
+        &with(&UPDATE, &["--force", "--dry-run", "--json"]),
+    );
+    let v = plan(&o, &mock);
+    assert_eq!(planned(&v), ["ProjectUpdate"]);
+    assert_eq!(v["forced"], true);
+    // The same object the real run reports under `overridden`.
+    let overridden = v["overridden"].as_array().unwrap();
+    assert_eq!(overridden.len(), 1, "{v}");
+    assert_eq!(overridden[0]["target"], "project \"Fixture Project\"");
+    assert_eq!(overridden[0]["operation"], "project_update");
+    assert_eq!(overridden[0]["reason"], "project_not_led");
+    assert_eq!(
+        overridden[0]["held"],
+        json!([{ "role": "lead", "user": BOT }])
+    );
+    // Reported on stderr before anything, as in the real run (but not with --json).
+    let o = run_args(&sb, &mock, &with(&UPDATE, &["--force", "--dry-run"]));
+    assert_eq!(code(&o), 0, "{}", stderr(&o));
+    assert!(
+        stderr(&o).contains("--force overrides the ownership rules"),
+        "{}",
+        stderr(&o)
+    );
+    assert!(
+        stdout(&o).contains("forced: --force would override"),
+        "{}",
+        stdout(&o)
+    );
+    assert_eq!(written(&mock, "ProjectUpdate"), 0);
+}
+
+#[test]
+fn a_dry_run_without_force_is_refused_where_the_real_run_is() {
+    let sb = forcing();
+    let mock = Routed::start(project_routes(bot()));
+    let o = run_args(&sb, &mock, &with(&UPDATE, &["--dry-run"]));
+    assert_eq!(code(&o), 4, "{}", stderr(&o));
+    mock.assert_read_only();
+
+    // --force in a workspace that does not allow it: usage error, as for the real run.
+    let sb = workspace_with_rules(&[]);
+    let mock = Routed::start(project_routes(bot()));
+    let o = run_args(&sb, &mock, &with(&UPDATE, &["--force", "--dry-run"]));
+    assert_eq!(code(&o), 2, "{}", stderr(&o));
+    assert!(mock.ops().is_empty(), "{:?}", mock.ops());
+}
+
+#[test]
+fn a_dry_run_with_force_on_a_write_the_rules_allow_overrides_nothing() {
+    let sb = forcing();
+    let mock = Routed::start(project_routes(my_lead()));
+    let o = run_args(
+        &sb,
+        &mock,
+        &with(&UPDATE, &["--force", "--dry-run", "--json"]),
+    );
+    let v = plan(&o, &mock);
+    assert_eq!(v["forced"], false);
+    assert_eq!(v["overridden"], json!([]));
+}

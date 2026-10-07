@@ -38,9 +38,9 @@ pub struct Cli {
     #[arg(long, global = true, value_name = "SECS")]
     pub timeout: Option<u64>,
 
-    /// For a command that writes to Linear: run every check and resolve every name, then print
-    /// the mutations that would be sent (operation and variables) instead of sending them.
-    /// Refusals and exit codes are those of the real run. Other commands refuse the flag
+    /// Print the mutations a write would send instead of sending them (write commands only).
+    /// Every check and name resolution still runs, so refusals and exit codes are those of the
+    /// real run; other commands refuse the flag
     #[arg(long, global = true)]
     pub dry_run: bool,
 

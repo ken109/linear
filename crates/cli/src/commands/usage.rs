@@ -341,7 +341,7 @@ pub fn overview(root: &clap::Command) -> String {
     );
     if tree_has_flag(root, "dry-run") {
         s.push_str(
-            "  Where a command lists --dry-run, run it first: it shows the write without sending it.\n",
+            "  Add --dry-run to a write to see its mutations without sending them; refusals and exit codes are the real ones.\n",
         );
     }
     s.push_str("  With --json, errors go to stderr as {\"error\":{\"code\",\"message\"}}.\n");

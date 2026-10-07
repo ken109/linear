@@ -24,7 +24,9 @@
 //!   "mutations": [ { "operation": "IssueUpdate", "variables": { ... } } ],
 //!   "rollback": [ { "operation": "IssueUpdate", "variables": { ... } } ],
 //!   "notes": [],
-//!   "reason": null
+//!   "reason": null,
+//!   "forced": false,
+//!   "overridden": []
 //! }
 //! ```
 //!
@@ -32,9 +34,11 @@
 //! step has run (the id of the issue a create makes) is a placeholder such as
 //! [`NEW_ISSUE_ID`]. `rollback` lists what would be sent, newest first, if a later step
 //! failed. `notes` names what a plan does besides sending mutations (the bytes of a file
-//! that would be uploaded). `reason` says why `mutations` is empty (a run that has nothing to send).
+//! that would be uploaded). `reason` says why `mutations` is empty (a run that has nothing to send). With `--force`,
+//! `forced` is `true` and `overridden` lists the ownership refusals the real run would override
+//! (the same objects it reports), and they are reported on stderr as in the real run.
 
-use super::WriteSession;
+use super::{Overridden, WriteSession};
 use crate::error::Result;
 use linear_core::wire::{build_request, Request};
 use serde::de::DeserializeOwned;
@@ -206,6 +210,10 @@ struct Printed<'a> {
     rollback: Vec<&'a Step>,
     notes: &'a [String],
     reason: Option<&'a str>,
+    /// `--force` overrode an ownership refusal on the way to this plan (the real run would too).
+    forced: bool,
+    /// The refusals it overrode, as the real run reports them.
+    overridden: Vec<Overridden>,
 }
 
 impl WriteSession {
@@ -281,6 +289,7 @@ impl WriteSession {
         }
         let recorded = self.recorded.borrow();
         let reason = recorded.mutations.is_empty().then_some(plan.reason);
+        let overridden = self.overridden();
         let value = Printed {
             dry_run: true,
             workspace: &self.workspace,
@@ -291,10 +300,12 @@ impl WriteSession {
             rollback: recorded.rollback(),
             notes: &recorded.notes,
             reason,
+            forced: !overridden.is_empty(),
+            overridden,
         };
         self.out.emit(
             &value,
-            || human(&self.workspace, &plan, &recorded),
+            || human(&self.workspace, &plan, &recorded, &value.overridden),
             || {
                 recorded
                     .mutations
@@ -308,7 +319,7 @@ impl WriteSession {
     }
 }
 
-fn human(workspace: &str, plan: &Plan, recorded: &Recorded) -> String {
+fn human(workspace: &str, plan: &Plan, recorded: &Recorded, overridden: &[Overridden]) -> String {
     let what = if plan.target.new {
         format!("new {} {:?}", plan.target.kind, plan.target.name)
     } else {
@@ -318,6 +329,12 @@ fn human(workspace: &str, plan: &Plan, recorded: &Recorded) -> String {
         "dry run, nothing was sent: {} ({what}, workspace {workspace})",
         plan.command
     );
+    for o in overridden {
+        text.push_str(&format!(
+            "\nforced: --force would override the ownership rules for {} ({})",
+            o.target, o.denied.operation
+        ));
+    }
     if !plan.changed.is_empty() {
         text.push_str(&format!("\nwould change: {}", plan.changed.join(", ")));
     }
