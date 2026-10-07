@@ -1,0 +1,77 @@
+name: Release Please
+
+# On every push to main, release-please keeps one release PR open. The PR bumps the
+# version (Cargo.toml, Cargo.lock, packages/linear-wasm) and writes CHANGELOG.md from
+# the Conventional Commits since the last release. Merging that PR makes
+# release-please tag vX.Y.Z and create the GitHub Release (with the changelog as its
+# notes); this workflow then calls release.yml to build and attach the binaries, the wasm
+# tarball and the checksums, and to commit the Homebrew formula.
+#
+# Why release.yml is called from here instead of being triggered by the tag: a tag or
+# Release created with the default GITHUB_TOKEN does not start other workflows, and this
+# setup avoids needing a personal access token for that.
+#
+# Needs "Allow GitHub Actions to create and approve pull requests" under
+# Settings > Actions > General. A PR opened with the default GITHUB_TOKEN does not start
+# other workflows, so ci.yml does not run on the release PR; the verify job below only
+# checks that the version files and Cargo.lock agree.
+#
+# ONE-TIME: release-please-config.json sets "release-as": "0.1.0" so that the first
+# release is 0.1.0 and not 0.2.0. Remove that key (in its own commit) once v0.1.0 has
+# been released; left in place it would pin every later release to 0.1.0.
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-please
+  cancel-in-progress: false
+
+jobs:
+  release-please:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    outputs:
+      release_created: ${{ steps.rp.outputs.release_created }}
+      tag_name: ${{ steps.rp.outputs.tag_name }}
+      prs_created: ${{ steps.rp.outputs.prs_created }}
+      pr: ${{ steps.rp.outputs.pr }}
+    steps:
+      - id: rp
+        uses: googleapis/release-please-action@v4
+        with:
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
+
+  # The release PR edits Cargo.lock through release-please's TOML updater. If that ever
+  # stops matching, the lockfile would be stale and the release build (`--locked`) would
+  # fail after the tag exists; fail here, on the PR, instead.
+  verify-release-pr:
+    needs: release-please
+    if: needs.release-please.outputs.prs_created == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ fromJSON(needs.release-please.outputs.pr).headBranchName }}
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Versions agree and Cargo.lock is current
+        run: |
+          sh scripts/release/check-version.sh
+          cargo metadata --format-version 1 --locked > /dev/null
+
+  release:
+    needs: release-please
+    if: needs.release-please.outputs.release_created == 'true'
+    permissions:
+      contents: write
+    uses: ./.github/workflows/release.yml
+    with:
+      tag: ${{ needs.release-please.outputs.tag_name }}
+    secrets: inherit
