@@ -29,11 +29,14 @@ use crate::cli::{Cli, Command};
 use crate::error::{CliError, Result};
 use crate::http::Client;
 use crate::keystore::{self, Keyring};
+use crate::oauth;
 use crate::output::Output;
 use crate::store::{self, CredentialSource, Dirs};
-use linear_core::auth::{client_secret_env_var, AuthMethod, CLIENT_SECRET_ENV};
-use linear_core::config::{self, Config, Resolved, Selectors};
+use chrono::Utc;
+use linear_core::auth::{client_secret_env_var, AuthMethod, Credential, CLIENT_SECRET_ENV};
+use linear_core::config::{self, Config, CredentialStore, Resolved, Selectors, WorkspaceConfig};
 use linear_core::queries::{self, Whoami};
+use linear_core::ErrorCode;
 
 /// What every command needs.
 pub struct Ctx {
@@ -106,10 +109,7 @@ impl Ctx {
     }
 
     /// Load the credential for a workspace, or fail with an auth error that says what to do.
-    pub fn credential(
-        &self,
-        name: &str,
-    ) -> Result<(linear_core::auth::Credential, CredentialSource)> {
+    pub fn credential(&self, name: &str) -> Result<(Credential, CredentialSource)> {
         // A workspace that authenticates as an app has no stored credential: its
         // client id and secret come from the environment.
         let config = store::read_config(&self.dirs)?;
@@ -126,11 +126,67 @@ impl Ctx {
             });
         }
         let store = store::credential_store(config.get(name))?;
-        store::load_credential(&self.dirs, self.keyring.as_ref(), name, store)?.ok_or_else(|| {
-            CliError::auth(format!(
-                "no credentials for workspace {name:?}; run `linear workspace login {name}`"
-            ))
-        })
+        let loaded = store::load_credential(&self.dirs, self.keyring.as_ref(), name, store)?
+            .ok_or_else(|| {
+                CliError::auth(format!(
+                    "no credentials for workspace {name:?}; run `linear workspace login {name}`"
+                ))
+            })?;
+        self.renewed(name, config.get(name), store, loaded)
+    }
+
+    /// An OAuth access token that has run out, or is about to, is replaced with the refresh
+    /// token and the new one stored where the old one was. Anything else passes through.
+    fn renewed(
+        &self,
+        name: &str,
+        ws: Option<&WorkspaceConfig>,
+        store: CredentialStore,
+        (credential, source): (Credential, CredentialSource),
+    ) -> Result<(Credential, CredentialSource)> {
+        let now = Utc::now();
+        if !credential.needs_refresh(now) {
+            return Ok((credential, source));
+        }
+        let Credential::Oauth {
+            refresh_token: Some(_),
+            ..
+        } = &credential
+        else {
+            return Err(oauth::expired(name, "there is no refresh token"));
+        };
+        let client_id = ws
+            .and_then(|w| store::client_id(name, w))
+            .ok_or_else(|| store::missing_client_id(name))?;
+        match oauth::refresh(&client_id, &credential) {
+            Ok(new) => {
+                // The new refresh token replaces the old one, so losing it would end the login.
+                if let Err(e) = store::save_credential_to(
+                    &self.dirs,
+                    self.keyring.as_ref(),
+                    name,
+                    &new,
+                    &source,
+                ) {
+                    self.out.status(&format!(
+                        "warning: refreshed the OAuth token but could not store it: {}",
+                        e.message
+                    ));
+                }
+                Ok((new, source))
+            }
+            Err(e) if e.code == ErrorCode::Auth => {
+                // Another run may have refreshed it first, and the refresh token was used up.
+                let other = store::load_credential(&self.dirs, self.keyring.as_ref(), name, store)?;
+                match other {
+                    Some((c, s)) if c != credential && !c.needs_refresh(now) => Ok((c, s)),
+                    _ => Err(oauth::expired(name, &e.message)),
+                }
+            }
+            // Could not ask (offline, a 5xx): the token still in date is used as it is.
+            Err(_) if !credential.is_expired(now) => Ok((credential, source)),
+            Err(e) => Err(e),
+        }
     }
 }
 

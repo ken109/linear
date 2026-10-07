@@ -177,10 +177,14 @@ pub struct AddArgs {
     /// How to authenticate (`client-credentials` is for CI: an app's client id and secret)
     #[arg(long, value_enum, default_value_t = AuthArg::ApiKey)]
     pub auth: AuthArg,
-    /// The app's client id, with --auth client-credentials (or set LINEAR_CLIENT_ID). The
-    /// client secret is never stored: it comes from LINEAR_CLIENT_SECRET
+    /// The OAuth app's client id, with --auth oauth or client-credentials (or set
+    /// LINEAR_CLIENT_ID). An app's client secret is never stored: it comes from LINEAR_CLIENT_SECRET
     #[arg(long, value_name = "ID")]
     pub client_id: Option<String>,
+    /// With --auth oauth: the local port of the login callback, http://localhost:<PORT>/callback
+    /// (default 4601). The OAuth app has to list that redirect URI
+    #[arg(long, value_name = "PORT")]
+    pub oauth_port: Option<u16>,
     /// Make this the default workspace
     #[arg(long)]
     pub default: bool,
@@ -193,6 +197,21 @@ pub struct LoginArgs {
     /// Read the API key from standard input instead of prompting
     #[arg(long)]
     pub with_token: bool,
+    /// Log in with OAuth (PKCE) in a browser instead of with an API key, and set the workspace to
+    /// `auth = "oauth"`. Needs the OAuth app's client id (--client-id, LINEAR_CLIENT_ID, or
+    /// `client_id` in workspaces.toml) and its redirect URI http://localhost:<port>/callback
+    #[arg(long, conflicts_with = "with_token")]
+    pub oauth: bool,
+    /// With OAuth: the OAuth app's client id (saved to workspaces.toml)
+    #[arg(long, value_name = "ID")]
+    pub client_id: Option<String>,
+    /// With OAuth: the local port of the callback (default: LINEAR_OAUTH_PORT, `oauth_port` of
+    /// the workspace, else 4601)
+    #[arg(long, value_name = "PORT")]
+    pub port: Option<u16>,
+    /// With OAuth: only print the URL, do not open a browser
+    #[arg(long)]
+    pub no_browser: bool,
     /// Keep the credential in the OS keyring instead of a file, and make that the
     /// workspace's `credential_store`. Where there is no keyring (WSL, CI) the file is used
     #[arg(long)]

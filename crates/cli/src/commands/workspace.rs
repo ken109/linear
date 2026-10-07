@@ -4,6 +4,7 @@ use super::{verify, Ctx};
 use crate::cli::{AddArgs, AuthArg, LoginArgs, MigrateArgs, StoreArg, WorkspaceCommand};
 use crate::error::{CliError, Result};
 use crate::http::Client;
+use crate::oauth;
 use crate::output::table;
 use crate::store;
 use linear_core::auth::{api_key_env_var, AuthMethod, Credential, Secret};
@@ -120,14 +121,17 @@ fn add(ctx: &Ctx, args: &AddArgs) -> Result<()> {
         return Err(CliError::usage("--url-key must not be empty"));
     }
     if let Some(id) = &args.client_id {
-        if !matches!(args.auth, AuthArg::ClientCredentials) {
+        if matches!(args.auth, AuthArg::ApiKey) {
             return Err(CliError::usage(
-                "--client-id is the app's client_id and needs --auth client-credentials",
+                "--client-id is the OAuth app's client_id and needs --auth oauth or client-credentials",
             ));
         }
         if id.trim().is_empty() {
             return Err(CliError::usage("--client-id must not be empty"));
         }
+    }
+    if args.oauth_port.is_some() && !matches!(args.auth, AuthArg::Oauth) {
+        return Err(CliError::usage("--oauth-port needs --auth oauth"));
     }
 
     let path = ctx.dirs.workspaces_file();
@@ -180,6 +184,9 @@ fn add(ctx: &Ctx, args: &AddArgs) -> Result<()> {
     if let Some(id) = &args.client_id {
         ws["client_id"] = toml_edit::value(id.trim());
     }
+    if let Some(port) = args.oauth_port {
+        ws["oauth_port"] = toml_edit::value(i64::from(port));
+    }
     workspaces.insert(&args.name, toml_edit::Item::Table(ws));
 
     let text = doc.to_string();
@@ -213,10 +220,21 @@ fn login(ctx: &Ctx, args: &LoginArgs) -> Result<()> {
         }
     };
 
-    if ws.auth == AuthMethod::Oauth {
-        return Err(CliError::general(
-            "OAuth login is not implemented yet; configure the workspace with --auth api-key",
+    let oauth = args.oauth || ws.auth == AuthMethod::Oauth;
+    if args.oauth && ws.auth == AuthMethod::ClientCredentials {
+        return Err(CliError::usage(format!(
+            "workspace {name:?} authenticates as an app (client_credentials); --oauth logs a person in"
+        )));
+    }
+    if !oauth && (args.client_id.is_some() || args.port.is_some() || args.no_browser) {
+        return Err(CliError::usage(
+            "--client-id, --port and --no-browser are for the OAuth login: add --oauth",
         ));
+    }
+    if let Some(id) = &args.client_id {
+        if id.trim().is_empty() {
+            return Err(CliError::usage("--client-id must not be empty"));
+        }
     }
 
     // An app has nothing to log in to: its id and secret are read from the
@@ -245,9 +263,22 @@ fn login(ctx: &Ctx, args: &LoginArgs) -> Result<()> {
         return Ok(());
     }
 
-    let key = read_api_key(args.with_token, &name)?;
-    let credential = Credential::ApiKey {
-        api_key: Secret::new(key),
+    let mut used_client_id = None;
+    let credential = if oauth {
+        let client_id = args
+            .client_id
+            .as_deref()
+            .map(|id| id.trim().to_owned())
+            .or_else(|| store::client_id(&name, &ws))
+            .ok_or_else(|| store::missing_client_id(&name))?;
+        let port = oauth::port(args.port, ws.oauth_port)?;
+        let credential = oauth::login(&client_id, port, !args.no_browser)?;
+        used_client_id = Some(client_id);
+        credential
+    } else {
+        Credential::ApiKey {
+            api_key: Secret::new(read_api_key(args.with_token, &name)?),
+        }
     };
 
     // Verify before saving, so a wrong key never lands on disk.
@@ -262,8 +293,28 @@ fn login(ctx: &Ctx, args: &LoginArgs) -> Result<()> {
         ctx.out.status(&format!(
             "note: the OS keyring is not available ({why}); stored the credentials in a file instead"
         ));
-    } else if args.keyring && ws.credential_store != CredentialStore::Keyring {
-        set_credential_store(ctx, &name, CredentialStore::Keyring)?;
+    }
+    // What this login chose is remembered, so the next run (and the refresh) finds it.
+    let to_keyring = args.keyring && saved.fallback.is_none();
+    // The client id is public, and refreshing needs it on every run.
+    let new_client_id = used_client_id
+        .as_deref()
+        .filter(|id| ws.client_id.as_deref() != Some(*id));
+    if (args.oauth && ws.auth != AuthMethod::Oauth)
+        || new_client_id.is_some()
+        || (to_keyring && ws.credential_store != CredentialStore::Keyring)
+    {
+        update_workspace(ctx, &name, |table| {
+            if args.oauth {
+                table["auth"] = toml_edit::value("oauth");
+            }
+            if let Some(id) = new_client_id {
+                table["client_id"] = toml_edit::value(id);
+            }
+            if to_keyring {
+                table["credential_store"] = toml_edit::value("keyring");
+            }
+        })?;
     }
 
     let var = api_key_env_var(&name);
@@ -294,9 +345,12 @@ fn login(ctx: &Ctx, args: &LoginArgs) -> Result<()> {
     Ok(())
 }
 
-/// Write `credential_store` of a workspace into `workspaces.toml`, keeping its comments
-/// and ordering. The default (`file`) is removed rather than written.
-fn set_credential_store(ctx: &Ctx, name: &str, store: CredentialStore) -> Result<()> {
+/// Change a workspace's table in `workspaces.toml`, keeping its comments and ordering.
+fn update_workspace(
+    ctx: &Ctx,
+    name: &str,
+    change: impl FnOnce(&mut toml_edit::Table),
+) -> Result<()> {
     let path = ctx.dirs.workspaces_file();
     let text = std::fs::read_to_string(&path)
         .map_err(|e| CliError::general(format!("cannot read {}: {e}", path.display())))?;
@@ -306,14 +360,22 @@ fn set_credential_store(ctx: &Ctx, name: &str, store: CredentialStore) -> Result
     let table = doc["workspaces"][name]
         .as_table_mut()
         .ok_or_else(|| CliError::general(format!("workspace {name:?} is not a table")))?;
-    if store.is_file() {
-        table.remove("credential_store");
-    } else {
-        table["credential_store"] = toml_edit::value(store.to_string());
-    }
+    change(table);
     let text = doc.to_string();
     Config::parse(&text)?; // never write a file we could not read back
     store::write_atomic(&path, text.as_bytes(), 0o644)
+}
+
+/// Write `credential_store` of a workspace into `workspaces.toml`. The default (`file`) is
+/// removed rather than written.
+fn set_credential_store(ctx: &Ctx, name: &str, store: CredentialStore) -> Result<()> {
+    update_workspace(ctx, name, |table| {
+        if store.is_file() {
+            table.remove("credential_store");
+        } else {
+            table["credential_store"] = toml_edit::value(store.to_string());
+        }
+    })
 }
 
 // ------------------------------------------------------------------ migrate

@@ -23,6 +23,8 @@ clap_complete = "4"
 ureq = "3"
 toml_edit = "0.22"
 rpassword = "7"
+# Random bytes for the OAuth state and PKCE verifier. Already in the tree through ring (rustls).
+getrandom = "0.2"
 
 # The OS keyring (`credential_store = "keyring"`). Optional: build with
 # `--no-default-features` for a binary that only knows the credentials file. macOS uses

@@ -8,6 +8,7 @@ mod commands;
 mod error;
 mod http;
 mod keystore;
+mod oauth;
 mod output;
 mod store;
 

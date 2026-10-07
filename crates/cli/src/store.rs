@@ -233,10 +233,32 @@ fn first_env(names: &[String]) -> Option<(String, String)> {
     })
 }
 
+/// The OAuth app's client id of a workspace: `LINEAR_CLIENT_ID_<NAME>`,
+/// `LINEAR_CLIENT_ID`, else `client_id` in the workspace's config.
+pub fn client_id(workspace: &str, config: &WorkspaceConfig) -> Option<String> {
+    first_env(&[client_id_env_var(workspace), CLIENT_ID_ENV.to_owned()])
+        .map(|(_, v)| v)
+        .or_else(|| {
+            config
+                .client_id
+                .as_deref()
+                .map(str::trim)
+                .filter(|v| !v.is_empty())
+                .map(str::to_owned)
+        })
+}
+
+/// The error for an OAuth app whose client id is not set anywhere.
+pub fn missing_client_id(workspace: &str) -> CliError {
+    CliError::auth(format!(
+        "no client id for workspace {workspace:?}: set `client_id` under \
+         [workspaces.{workspace}] in workspaces.toml, or {CLIENT_ID_ENV}"
+    ))
+}
+
 /// The client credentials of a workspace with `auth = "client_credentials"`:
 /// the secret from `LINEAR_CLIENT_SECRET_<NAME>` or `LINEAR_CLIENT_SECRET`, the
-/// id from `LINEAR_CLIENT_ID_<NAME>`, `LINEAR_CLIENT_ID` or `client_id` in the
-/// workspace's config. Nothing is read from or written to a file. `None` when
+/// id from [`client_id`]. Nothing is read from or written to a file. `None` when
 /// there is no secret; an error when there is a secret but no id.
 pub fn load_client_credentials(
     workspace: &str,
@@ -248,22 +270,7 @@ pub fn load_client_credentials(
     ]) else {
         return Ok(None);
     };
-    let id = first_env(&[client_id_env_var(workspace), CLIENT_ID_ENV.to_owned()])
-        .map(|(_, v)| v)
-        .or_else(|| {
-            config
-                .client_id
-                .as_deref()
-                .map(str::trim)
-                .filter(|v| !v.is_empty())
-                .map(str::to_owned)
-        })
-        .ok_or_else(|| {
-            CliError::auth(format!(
-                "no client id for workspace {workspace:?}: set `client_id` under \
-                 [workspaces.{workspace}] in workspaces.toml, or {CLIENT_ID_ENV}"
-            ))
-        })?;
+    let id = client_id(workspace, config).ok_or_else(|| missing_client_id(workspace))?;
     Ok(Some((
         Credential::ClientCredentials {
             client_id: id,
@@ -371,6 +378,27 @@ pub fn save_credential(
         source: CredentialSource::File(path),
         fallback,
     })
+}
+
+/// Write a credential back to where it was loaded from (a refreshed token).
+/// An environment variable is never written to.
+pub fn save_credential_to(
+    dirs: &Dirs,
+    keyring: &dyn Keyring,
+    workspace: &str,
+    cred: &Credential,
+    source: &CredentialSource,
+) -> Result<()> {
+    match source {
+        CredentialSource::File(_) => {
+            save_file(dirs, workspace, cred)?;
+        }
+        CredentialSource::Keyring(_) => keyring
+            .set(workspace, &credential_json(cred))
+            .map_err(|e| CliError::general(format!("cannot write to the OS keyring: {e}")))?,
+        CredentialSource::Env(_) => {}
+    }
+    Ok(())
 }
 
 /// What `migrate_credential` did.

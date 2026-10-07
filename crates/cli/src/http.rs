@@ -13,6 +13,7 @@ use linear_core::auth::{
     client_credentials_form, parse_token_response, AccessToken, Credential, Secret, APP_SCOPE,
 };
 use linear_core::document::{operation_kinds, OperationKind};
+use linear_core::oauth::{self, OauthTokens};
 use linear_core::retry::{Failure, RetryPolicy};
 use linear_core::wire::{build_request, parse_response, Request, ResponseMeta};
 use linear_core::Error;
@@ -110,6 +111,47 @@ pub struct Client {
     token: Mutex<Option<AccessToken>>,
 }
 
+fn build_agent(timeout: Duration) -> ureq::Agent {
+    ureq::Agent::config_builder()
+        // Status handling belongs to core, which understands Linear's error bodies.
+        .http_status_as_error(false)
+        .timeout_global(Some(timeout))
+        .user_agent(concat!("linear-cli/", env!("CARGO_PKG_VERSION")))
+        .build()
+        .into()
+}
+
+fn token_url() -> String {
+    std::env::var(TOKEN_URL_ENV)
+        .ok()
+        .filter(|u| !u.is_empty())
+        .unwrap_or_else(|| linear_core::auth::TOKEN_URL.to_owned())
+}
+
+/// Send a code or refresh token request of the OAuth login to the token endpoint, once.
+/// It is never retried: an authorization code is good for one use, and a refresh token
+/// may be replaced by the answer, so a request whose answer was lost cannot be repeated.
+/// `secrets` are masked in an error.
+pub fn oauth_token(form: &Secret, secrets: &[&Secret]) -> Result<OauthTokens> {
+    let settings = SETTINGS.get().copied().unwrap_or_default();
+    let mut response = build_agent(settings.timeout)
+        .post(&token_url())
+        .header("content-type", "application/x-www-form-urlencoded")
+        .send(form.expose())
+        .map_err(|e| match transport(e) {
+            Attempt::Transport(e) | Attempt::Failed(e) => e,
+            Attempt::Linear(e) => e.into(),
+        })?;
+    let status = response.status().as_u16();
+    let body = response.body_mut().read_to_string().map_err(|e| {
+        CliError::general(format!(
+            "could not read Linear's answer to the token request: {}",
+            short(&e)
+        ))
+    })?;
+    oauth::parse_token_response(status, &body, Utc::now(), secrets).map_err(CliError::from)
+}
+
 /// One try at a request.
 enum Attempt {
     /// No response: a timeout, or the connection failed or broke off.
@@ -127,21 +169,10 @@ impl Client {
             .ok()
             .filter(|u| !u.is_empty())
             .unwrap_or_else(|| linear_core::API_URL.to_owned());
-        let agent: ureq::Agent = ureq::Agent::config_builder()
-            // Status handling belongs to core, which understands Linear's error bodies.
-            .http_status_as_error(false)
-            .timeout_global(Some(settings.timeout))
-            .user_agent(concat!("linear-cli/", env!("CARGO_PKG_VERSION")))
-            .build()
-            .into();
-        let token_url = std::env::var(TOKEN_URL_ENV)
-            .ok()
-            .filter(|u| !u.is_empty())
-            .unwrap_or_else(|| linear_core::auth::TOKEN_URL.to_owned());
         Self {
-            agent,
+            agent: build_agent(settings.timeout),
             url,
-            token_url,
+            token_url: token_url(),
             credential,
             retry: settings.retry,
             token: Mutex::new(None),
