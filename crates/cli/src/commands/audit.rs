@@ -44,6 +44,10 @@ pub struct AuditArgs {
     /// With --cached: how old an entry may be
     #[arg(long, value_name = "SECONDS", default_value_t = DEFAULT_TTL_SECS, requires = "cached")]
     pub ttl: u64,
+    /// Audit as of this time instead of the system clock (RFC 3339). For tests: the golden
+    /// audit cases (crates/wasm/tests/golden) are pinned to a fixed `now`
+    #[arg(long, value_name = "TIME", hide = true, value_parser = parse_time)]
+    pub now: Option<DateTime<Utc>>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
@@ -87,7 +91,7 @@ struct AuditOut {
 pub fn run(ctx: &Ctx, args: &AuditArgs) -> Result<()> {
     let config = store::read_config(&ctx.dirs)?;
     let targets = selected(ctx, &config)?;
-    let now = Utc::now();
+    let now = args.now.unwrap_or_else(Utc::now);
 
     let out = if args.cached {
         from_cache(&targets, args.ttl, now)?

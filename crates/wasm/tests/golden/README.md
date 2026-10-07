@@ -28,9 +28,11 @@ agree).
   module in Node and requires the identical answer. It also checks that the generated zod schemas
   accept every input the core accepts and every answer, and reject the inputs the core refuses
   (a snapshot without its fields, an unknown config key, an unknown event, ...).
-
-The CLI binary itself is not run here: `linear audit` reads the system clock, and the golden
-answers are pinned to a fixed `now`.
+- `crates/cli/tests/golden_audit.rs` (in `cargo test --workspace`) runs the `audit` cases through
+  the real `linear` binary: a mock Linear serves the case's snapshot, the case's config becomes a
+  `workspaces.toml`, and `linear audit --now <now>` must print the golden findings. The hidden
+  `--now` option pins the clock that `linear audit` otherwise reads. The cases that expect an
+  error are about the JSON boundary and have no CLI counterpart, so they are skipped.
 
 ## Changing them
 
