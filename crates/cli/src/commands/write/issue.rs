@@ -1,4 +1,4 @@
-//! `linear issue create|update|comment|link-pr|unlink|delete|archive|unarchive|reorder`.
+//! `linear issue create|update|comment|link-pr|unlink|relate|unrelate|delete|archive|unarchive|reorder`.
 //!
 //! `update` is the write that can touch the most: fields of the issue, its
 //! description, its labels and its source attachment. It sends only what
@@ -17,14 +17,16 @@ use linear_core::config::Rule;
 use linear_core::guard::{Placement, Write};
 use linear_core::inputs::{
     self, AttachmentCreate, AttachmentCreateInput, CommentCreate, CommentCreateInput, IssueCreate,
-    IssueCreateInput, IssueDelete, IssueUpdate, IssueUpdateInput, Patch,
+    IssueCreateInput, IssueDelete, IssueRelationCreate, IssueRelationCreateInput,
+    IssueRelationDelete, IssueRelationType, IssueUpdate, IssueUpdateInput, Patch,
 };
 use linear_core::markdown::same_description;
 use linear_core::matching::match_state;
 use linear_core::metadata::AttachmentMetadata;
 use linear_core::pull_request::{parse_pull_request_url, PullRequest};
 use linear_core::queries;
-use linear_core::read::{self, IssueWriteView};
+use linear_core::read::{self, IssueRelationsQuery, IssueWriteView};
+use linear_core::relation;
 use linear_core::reorder::{self, OrderRow};
 use linear_core::rules::source_attachment::{self, metadata_needs_update};
 use linear_core::rules::{Draft, Operation, Outcome};
@@ -1240,6 +1242,253 @@ fn change_archive(
         &value,
         || format!("{}  {}  ({action})", issue.identifier, issue.title),
         || issue.identifier.clone(),
+    );
+    Ok(())
+}
+
+// ---------------------------------------------------------------- relate, unrelate
+
+/// The kind of relation, given as the flag that names the other issue. Exactly one.
+#[derive(Debug, Args)]
+#[group(required = true, multiple = false)]
+pub struct RelationFlag {
+    /// ISSUE blocks OTHER
+    #[arg(long, value_name = "OTHER")]
+    pub blocks: Option<String>,
+    /// ISSUE is related to OTHER (no direction)
+    #[arg(long, value_name = "OTHER")]
+    pub related: Option<String>,
+    /// ISSUE is a duplicate of OTHER (the one that stays)
+    #[arg(long, value_name = "OTHER")]
+    pub duplicate: Option<String>,
+}
+
+impl RelationFlag {
+    /// The kind and the other issue, as typed.
+    fn parts(&self) -> (IssueRelationType, &str) {
+        match (&self.blocks, &self.related, &self.duplicate) {
+            (Some(o), _, _) => (IssueRelationType::Blocks, o),
+            (_, Some(o), _) => (IssueRelationType::Related, o),
+            (_, _, Some(o)) => (IssueRelationType::Duplicate, o),
+            // clap's group demands one.
+            _ => unreachable!("a relation flag is required"),
+        }
+    }
+}
+
+#[derive(Debug, Args)]
+pub struct RelateCmd {
+    /// Issue identifier (such as KK-12) or id: the issue the relation is written on
+    pub issue: String,
+    #[command(flatten)]
+    pub relation: RelationFlag,
+}
+
+#[derive(Debug, Args)]
+pub struct UnrelateCmd {
+    /// Issue identifier (such as KK-12) or id
+    pub issue: String,
+    #[command(flatten)]
+    pub relation: RelationFlag,
+}
+
+/// What `relate` prints.
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct Related<'a> {
+    workspace: &'a str,
+    /// The relation's id.
+    id: &'a str,
+    issue: &'a str,
+    /// `blocks`, `related` or `duplicate`.
+    #[serde(rename = "type")]
+    type_: &'static str,
+    related_issue: &'a str,
+    /// `true` when the relation already existed, so nothing was sent.
+    already_related: bool,
+}
+
+/// What `unrelate` prints.
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct Unrelated<'a> {
+    workspace: &'a str,
+    issue: &'a str,
+    #[serde(rename = "type")]
+    type_: &'static str,
+    related_issue: &'a str,
+    /// The ids of the relations that were removed; empty when there was none.
+    removed: Vec<&'a str>,
+}
+
+/// "KK-1 blocks KK-2", "KK-1 is a duplicate of KK-2", "KK-1 is related to KK-2".
+fn sentence(issue: &str, kind: IssueRelationType, other: &str) -> String {
+    match kind {
+        IssueRelationType::Blocks => format!("{issue} blocks {other}"),
+        IssueRelationType::Duplicate => format!("{issue} is a duplicate of {other}"),
+        IssueRelationType::Related | IssueRelationType::Similar => {
+            format!("{issue} is related to {other}")
+        }
+    }
+}
+
+/// What `relate` and `unrelate` both settle before they send anything: the issue the
+/// relation is written on (ownership already checked), the other one, and the relations
+/// between them of the asked kind.
+struct Pair {
+    issue: IssueRelationsQuery,
+    other: IssueRelationsQuery,
+}
+
+/// `closes` is for a write that makes Linear close the issue (a new duplicate relation).
+fn pair(ws: &WriteSession, issue: &str, closes: bool, other: &str) -> Result<Pair> {
+    let view = fetch_issue(ws, issue)?;
+    // A relation is a write to the issue it starts from: the same ownership as changing it.
+    ws.guard(
+        &Write::update_issue(&view.issue, placement_of(&view)),
+        false,
+    )?;
+    // Linear moves a duplicate to its Duplicate state: ask what canceling asks, which a lenient
+    // workspace does not relax. (Removing the relation puts the issue back, which is not a cancel.)
+    if closes {
+        ws.guard(
+            &Write::IssueCancel {
+                assignee: view.issue.assignee.as_ref().map(|u| u.id.inner()),
+                placement: placement_of(&view),
+            },
+            false,
+        )?;
+    }
+    ws.validate(&Draft::new(Operation::IssueUpdate))?;
+
+    let issue: IssueRelationsQuery = ws
+        .client
+        .execute(&read::issue_relations(view.issue.id.inner()))?;
+    let other: IssueRelationsQuery = ws.client.execute(&read::issue_relations(other))?;
+    if issue.issue.id.inner() == other.issue.id.inner() {
+        return Err(CliError::usage("an issue cannot be related to itself"));
+    }
+    Ok(Pair { issue, other })
+}
+
+/// Both references named the same issue, judged from the text alone (nothing sent yet).
+fn same_reference(issue: &str, other: &str) -> bool {
+    issue.trim().eq_ignore_ascii_case(other.trim())
+}
+
+fn check_references(issue: &str, other: &str) -> Result<()> {
+    if other.trim().is_empty() {
+        return Err(CliError::usage("the other issue is empty"));
+    }
+    if same_reference(issue, other) {
+        return Err(CliError::usage("an issue cannot be related to itself"));
+    }
+    Ok(())
+}
+
+pub fn relate(ctx: &Ctx, cmd: &RelateCmd) -> Result<()> {
+    let (kind, other) = cmd.relation.parts();
+    check_references(&cmd.issue, other)?;
+
+    let ws = ctx.write_session()?;
+    let Pair { issue, other } = pair(&ws, &cmd.issue, kind == IssueRelationType::Duplicate, other)?;
+    let (a, b) = (
+        issue.issue.identifier.as_str(),
+        other.issue.identifier.as_str(),
+    );
+
+    let existing = relation::matching(&issue.issue, other.issue.id.inner(), kind);
+    let (id, already) = match existing.first() {
+        Some(found) => (found.id.inner().to_owned(), true),
+        None => {
+            let input = IssueRelationCreateInput {
+                issue_id: issue.issue.id.inner().to_owned(),
+                related_issue_id: other.issue.id.inner().to_owned(),
+                type_: kind,
+            };
+            let data: IssueRelationCreate =
+                ws.client.execute(&inputs::issue_relation_create(input))?;
+            if !data.issue_relation_create.success {
+                return Err(CliError::general(format!(
+                    "Linear could not relate {a} to {b}"
+                )));
+            }
+            (
+                data.issue_relation_create
+                    .issue_relation
+                    .id
+                    .inner()
+                    .to_owned(),
+                false,
+            )
+        }
+    };
+
+    let value = Related {
+        workspace: &ws.workspace,
+        id: &id,
+        issue: a,
+        type_: kind.as_str(),
+        related_issue: b,
+        already_related: already,
+    };
+    ctx.out.emit(
+        &value,
+        || {
+            let note = if already {
+                "  (already there, nothing sent)"
+            } else {
+                ""
+            };
+            format!("{}{note}", sentence(a, kind, b))
+        },
+        || id.clone(),
+    );
+    Ok(())
+}
+
+pub fn unrelate(ctx: &Ctx, cmd: &UnrelateCmd) -> Result<()> {
+    let (kind, other) = cmd.relation.parts();
+    check_references(&cmd.issue, other)?;
+
+    let ws = ctx.write_session()?;
+    let Pair { issue, other } = pair(&ws, &cmd.issue, false, other)?;
+    let (a, b) = (
+        issue.issue.identifier.as_str(),
+        other.issue.identifier.as_str(),
+    );
+
+    let found = relation::matching(&issue.issue, other.issue.id.inner(), kind);
+    for relation in &found {
+        let data: IssueRelationDelete = ws
+            .client
+            .execute(&inputs::issue_relation_delete(relation.id.inner()))?;
+        if !data.issue_relation_delete.success {
+            return Err(CliError::general(format!(
+                "Linear could not remove the relation of {a} and {b}"
+            )));
+        }
+    }
+
+    let removed: Vec<&str> = found.iter().map(|r| r.id.inner()).collect();
+    let value = Unrelated {
+        workspace: &ws.workspace,
+        issue: a,
+        type_: kind.as_str(),
+        related_issue: b,
+        removed: removed.clone(),
+    };
+    ctx.out.emit(
+        &value,
+        || {
+            let note = if removed.is_empty() {
+                "no such relation, nothing sent"
+            } else {
+                "removed"
+            };
+            format!("{}  ({note})", sentence(a, kind, b))
+        },
+        || removed.join("\n"),
     );
     Ok(())
 }

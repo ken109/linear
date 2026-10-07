@@ -1,4 +1,4 @@
-//! `linear issue list|view|create|update|comment|link-pr|unlink|delete|archive|unarchive|reorder` (the writes live in `write::issue`).
+//! `linear issue list|view|create|update|comment|link-pr|unlink|relate|unrelate|delete|archive|unarchive|reorder` (the writes live in `write::issue`).
 
 use super::cached::{self, CachedArgs};
 use super::format::{date_time, fields, indent, opt_date, opt_text, person};
@@ -12,7 +12,7 @@ use linear_core::filters::{closed_since, IssueQuery};
 use linear_core::matching::label_path;
 use linear_core::pull_request::PullRequest;
 use linear_core::read::{
-    self, IssueDetail, IssueList, IssueListVars, IssueView, ISSUE_LIST_PAGE_SIZE,
+    self, IssueDetail, IssueList, IssueListVars, IssueView, RelationEnd, ISSUE_LIST_PAGE_SIZE,
 };
 use linear_core::types::Issue;
 use serde::Serialize;
@@ -72,6 +72,25 @@ pub enum IssueCommand {
     ///
     /// Follows the ownership rules of changing the issue.
     Unarchive(super::write::issue::IssueTargetCmd),
+    /// Relate an issue to another: it blocks it, is related to it, or duplicates it
+    ///
+    /// `issue relate KK-1 --blocks KK-2` says KK-1 blocks KK-2; `--duplicate KK-2` says KK-1 is
+    /// a duplicate of KK-2 (the issue you keep); `--related KK-2` links them without a
+    /// direction. The issue named first is the one written: it follows the ownership rules of
+    /// changing an issue, and the other issue only has to exist. Linear moves an issue to its
+    /// Duplicate state when it is made a duplicate, so `--duplicate` also asks what canceling
+    /// the issue asks: a lenient workspace still refuses it on somebody else's issue. A
+    /// relation that is already there sends nothing (`alreadyRelated` with --json).
+    Relate(super::write::issue::RelateCmd),
+    /// Remove a relation made by `relate`
+    ///
+    /// Takes the same arguments as `relate` and removes that relation: `issue unrelate KK-1
+    /// --blocks KK-2` removes "KK-1 blocks KK-2" (not "KK-2 blocks KK-1", which is
+    /// `unrelate KK-2 --blocks KK-1`); `--related` matches from either end. Needs no --yes: the
+    /// relation holds nothing but the two issues and its kind, so `relate` makes it again. A
+    /// relation that is not there sends nothing (`removed` is empty with --json). Linear puts
+    /// an issue back out of its Duplicate state when its `--duplicate` relation is removed.
+    Unrelate(super::write::issue::UnrelateCmd),
     /// Put issues of one project in a given order
     Reorder(super::write::issue::ReorderCmd),
 }
@@ -161,6 +180,8 @@ pub fn run(ctx: &Ctx, cmd: &IssueCommand) -> Result<()> {
         IssueCommand::Delete(args) => write::issue::delete(ctx, args),
         IssueCommand::Archive(args) => write::issue::archive(ctx, args),
         IssueCommand::Unarchive(args) => write::issue::unarchive(ctx, args),
+        IssueCommand::Relate(args) => write::issue::relate(ctx, args),
+        IssueCommand::Unrelate(args) => write::issue::unrelate(ctx, args),
         IssueCommand::Reorder(args) => write::issue::reorder(ctx, args),
     }
 }
@@ -368,6 +389,39 @@ fn view(ctx: &Ctx, args: &ViewCmd) -> Result<()> {
     show(ctx, &session.workspace, &data.issue, Some(&data.detail))
 }
 
+/// The relations of an issue, one line each, from this issue's point of view:
+/// `blocks KK-2`, `blocked by KK-3`, `duplicate of KK-4`, `duplicated by KK-5`,
+/// `related to KK-6`.
+fn relation_lines(d: &IssueDetail) -> Vec<String> {
+    let line = |label: &str, other: &RelationEnd| {
+        format!(
+            "{label}  {}  {}  ({})",
+            other.identifier, other.title, other.state.name
+        )
+    };
+    let from_here = d.relations.iter().map(|r| {
+        let label = match r.type_.as_str() {
+            "blocks" => "blocks",
+            "duplicate" => "duplicate of",
+            "related" => "related to",
+            "similar" => "similar to",
+            other => other,
+        };
+        line(label, &r.related_issue)
+    });
+    let to_here = d.inverse_relations.iter().map(|r| {
+        let label = match r.type_.as_str() {
+            "blocks" => "blocked by",
+            "duplicate" => "duplicated by",
+            "related" => "related to",
+            "similar" => "similar to",
+            other => other,
+        };
+        line(label, &r.issue)
+    });
+    from_here.chain(to_here).collect()
+}
+
 fn show(ctx: &Ctx, workspace: &str, i: &Issue, d: Option<&IssueDetail>) -> Result<()> {
     let value = IssueViewOut {
         base: out(workspace, i),
@@ -443,6 +497,13 @@ fn show(ctx: &Ctx, workspace: &str, i: &Issue, d: Option<&IssueDetail>) -> Resul
                         p.title,
                         p.url
                     ));
+                }
+            }
+            let relations = d.map(relation_lines).unwrap_or_default();
+            if !relations.is_empty() {
+                text.push_str("\n\nRelations");
+                for line in relations {
+                    text.push_str(&format!("\n  {line}"));
                 }
             }
             if let Some(desc) = i.description.as_deref().filter(|s| !s.trim().is_empty()) {

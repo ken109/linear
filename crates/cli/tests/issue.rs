@@ -221,6 +221,7 @@ fn view_shows_the_description_and_comments() {
         "High",
         "https://example.com/source/1",
         "Body of the fixture issue.",
+        "Relations\n  blocks  EX-24  Ship the fixture  (Backlog)\n  related to  EX-22  Prepare the fixture  (In Progress)",
         "Comments (1)",
         "Alice Example, 2026-10-06:",
         "    A fixture comment.",
@@ -244,6 +245,15 @@ fn view_json_merges_the_detail_into_the_issue() {
     assert_eq!(v["description"], "Body of the fixture issue.");
     assert_eq!(v["priorityLabel"], "High");
     assert_eq!(v["comments"]["nodes"][0]["body"], "A fixture comment.");
+    // Linear's own shape: the relations that start here, and the ones that point here.
+    let blocks = &v["relations"]["nodes"][0];
+    assert_eq!(blocks["type"], "blocks");
+    assert_eq!(blocks["issue"]["identifier"], "EX-23");
+    assert_eq!(blocks["relatedIssue"]["identifier"], "EX-24");
+    assert_eq!(blocks["relatedIssue"]["state"]["name"], "Backlog");
+    let related = &v["inverseRelations"]["nodes"][0];
+    assert_eq!(related["type"], "related");
+    assert_eq!(related["issue"]["identifier"], "EX-22");
     assert_eq!(v["sourceUrl"], "https://example.com/source/1");
 }
 
