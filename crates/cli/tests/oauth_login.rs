@@ -106,6 +106,9 @@ impl Login {
             .stdin(Stdio::null())
             .stdout(Stdio::piped())
             .stderr(Stdio::piped());
+        if let Some(root) = std::env::var_os("SystemRoot") {
+            cmd.env("SystemRoot", root); // Windows
+        }
         for (k, v) in extra {
             cmd.env(k, v);
         }
