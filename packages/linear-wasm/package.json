@@ -1,6 +1,6 @@
 {
   "name": "@ken109/linear-wasm",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "description": "The pure core of the linear CLI (requests, responses, audit, refresh decisions, webhook checks) compiled to WebAssembly, with generated TypeScript types and zod schemas.",
   "license": "MIT",
   "type": "module",
