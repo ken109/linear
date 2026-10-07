@@ -7,6 +7,7 @@
 
 use super::format::{date_time, fields, opt_text};
 use super::listing::{paginate, warn_truncated, ListArgs};
+use super::write::dry_run::{Plan, Target};
 use super::write::{read_text, resolve};
 use super::Ctx;
 use crate::error::{CliError, Result};
@@ -209,15 +210,18 @@ fn create(ctx: &Ctx, cmd: &CreateCmd) -> Result<()> {
         Some(reference) => Some(resolve::team(&ws, Some(reference))?.id.into_inner()),
         None => None,
     };
-    let data: WebhookCreate = ws
-        .client
-        .execute(&inputs::webhook_create(WebhookCreateInput {
-            url: url.to_owned(),
-            resource_types,
-            label,
-            team_id,
-            all_public_teams: cmd.all_public_teams.then_some(true),
-        }))?;
+    let op = inputs::webhook_create(WebhookCreateInput {
+        url: url.to_owned(),
+        resource_types,
+        label,
+        team_id,
+        all_public_teams: cmd.all_public_teams.then_some(true),
+    });
+    if ws.dry_run {
+        ws.record(&op);
+        return ws.finish_dry_run(Plan::new("webhook create", Target::new("webhook", url)));
+    }
+    let data: WebhookCreate = ws.client.execute(&op)?;
     let payload = data.webhook_create;
     if !payload.success {
         return Err(CliError::general("Linear could not create the webhook"));
@@ -273,9 +277,15 @@ fn delete(ctx: &Ctx, cmd: &DeleteCmd) -> Result<()> {
     .items;
     let found = match_webhook(&all, &cmd.webhook)?;
 
-    let data: WebhookDelete = ws
-        .client
-        .execute(&inputs::webhook_delete(found.id.inner()))?;
+    let op = inputs::webhook_delete(found.id.inner());
+    if ws.dry_run {
+        ws.record(&op);
+        return ws.finish_dry_run(Plan::new(
+            "webhook delete",
+            Target::existing("webhook", name_of(found), found.id.inner()),
+        ));
+    }
+    let data: WebhookDelete = ws.client.execute(&op)?;
     if !data.webhook_delete.success {
         return Err(CliError::general("Linear could not delete the webhook"));
     }

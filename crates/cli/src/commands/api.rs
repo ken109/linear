@@ -15,6 +15,7 @@
 //! and `--quiet`, like the other status lines, so a script that asked for
 //! machine output gets exactly the response. Subscriptions are never sent.
 
+use super::write::dry_run::Step;
 use super::{verify, Ctx};
 use crate::cli::ApiArgs;
 use crate::error::{CliError, Result};
@@ -58,6 +59,12 @@ pub fn run(ctx: &Ctx, args: &ApiArgs) -> Result<()> {
     // A document that defines a mutation anywhere counts, even when
     // `--operation-name` would pick the query in it.
     let is_mutation = kinds.contains(&OperationKind::Mutation);
+    if ctx.dry_run && !is_mutation {
+        return Err(CliError::usage(
+            "--dry-run has nothing to preview: the document defines no mutation (a query is \
+             a read and runs as it is without --dry-run)",
+        ));
+    }
     if is_mutation && !args.mutation {
         return Err(CliError::new(
             ErrorCode::WriteDenied,
@@ -86,15 +93,52 @@ pub fn run(ctx: &Ctx, args: &ApiArgs) -> Result<()> {
         )));
     }
 
-    let client = Client::new(credential);
+    let client = Client::new(credential).dry_run(ctx.dry_run);
     if is_mutation {
         // A key for the wrong workspace must never write, so check before sending.
         verify(&client, &resolved.name, &resolved.config.url_key)?;
-        ctx.out.status(&format!(
-            "warning: sending a raw mutation to workspace {:?}. The ownership rules and the \
+        if !ctx.dry_run {
+            ctx.out.status(&format!(
+                "warning: sending a raw mutation to workspace {:?}. The ownership rules and the \
              validators do not apply to it; nothing checks whose project or issue it changes.",
-            resolved.name
-        ));
+                resolved.name
+            ));
+        }
+    }
+    if ctx.dry_run {
+        // Only a mutation gets here (`--dry-run` is refused for a query). The ownership rules
+        // and the validators do not apply to a raw mutation, dry run or not; what is checked
+        // is the same as for the real run: `--mutation`, `allow_raw_mutation`, the workspace.
+        let step = Step::raw(args.operation_name.as_deref(), request.variables.clone());
+        let value = serde_json::json!({
+            "dryRun": true,
+            "workspace": resolved.name,
+            "command": "api --mutation",
+            "target": { "kind": "raw", "name": args.operation_name, "id": null, "new": false },
+            "changed": [],
+            "mutations": [{
+                "operation": step.operation,
+                "variables": step.variables,
+                "query": request.query,
+            }],
+            "rollback": [],
+            "notes": ["a raw mutation is not checked against the ownership rules or the validators"],
+            "reason": null,
+        });
+        ctx.out.emit(
+            &value,
+            || {
+                format!(
+                    "dry run, nothing was sent: api --mutation (workspace {})\n\
+                     would send {}\nvariables: {}",
+                    resolved.name,
+                    request.query.trim(),
+                    pretty(&request.variables)
+                )
+            },
+            || step.operation.clone(),
+        );
+        return Ok(());
     }
     let data: Value = client.execute_request(&request)?;
     ctx.out.emit(

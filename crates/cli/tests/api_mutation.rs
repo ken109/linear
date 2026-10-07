@@ -160,3 +160,52 @@ fn a_misspelled_setting_is_a_configuration_error_not_ignored() {
     assert!(stderr(&o).contains("allow_raw_mutations"), "{}", stderr(&o));
     assert!(mock.requests().is_empty());
 }
+
+#[test]
+fn a_dry_run_shows_the_document_and_the_variables_and_sends_no_mutation() {
+    let sb = sandbox(Some(true));
+    let mock = Mock::start(vec![ok(WHOAMI_OK)]);
+    let o = api(
+        &sb,
+        &mock,
+        &[
+            "mutation Drop($id: String!) { issueDelete(id: $id) { success } }",
+            "--mutation",
+            "--var",
+            "id=x",
+            "--dry-run",
+            "--json",
+        ],
+    );
+    assert_eq!(code(&o), 0, "{}", stderr(&o));
+    let v: Value = serde_json::from_str(&stdout(&o)).unwrap();
+    assert_eq!(v["dryRun"], true);
+    assert_eq!(v["command"], "api --mutation");
+    assert_eq!(v["mutations"][0]["variables"], json!({ "id": "x" }));
+    assert!(v["mutations"][0]["query"]
+        .as_str()
+        .unwrap()
+        .contains("issueDelete"));
+    // Only the workspace check was asked of Linear; the document was not sent.
+    let sent = bodies(&mock);
+    assert_eq!(sent.len(), 1);
+    assert!(sent[0]["query"].as_str().unwrap().contains("viewer"));
+
+    // The same gates as the real run: the setting (exit 4) and the flag.
+    let off = sandbox(None);
+    let mock = Mock::start(vec![]);
+    let o = api(&off, &mock, &[MUTATION, "--mutation", "--dry-run"]);
+    assert_eq!(code(&o), 4, "{}", stderr(&o));
+    assert!(mock.requests().is_empty());
+    let o = api(&sb, &mock, &[MUTATION, "--dry-run"]);
+    assert_eq!(code(&o), 2, "{}", stderr(&o));
+
+    // A query has nothing to preview.
+    let o = api(
+        &sb,
+        &mock,
+        &["{ viewer { id } }", "--mutation", "--dry-run"],
+    );
+    assert_eq!(code(&o), 2, "{}", stderr(&o));
+    assert!(mock.requests().is_empty());
+}

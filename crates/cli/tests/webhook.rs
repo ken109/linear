@@ -486,3 +486,93 @@ fn a_missing_body_file_is_a_usage_error() {
     );
     assert_eq!(code(&o), 2, "{}", stderr(&o));
 }
+
+// ------------------------------------------------------------------ --dry-run
+
+#[test]
+fn a_dry_run_of_create_and_delete_plans_the_mutation() {
+    let sb = workspace();
+    let mock = Routed::start(vec![
+        ("Whoami", vec![whoami()]),
+        ("Teams", vec![teams()]),
+        ("Webhooks", vec![webhooks()]),
+    ]);
+    let v = plan(
+        &run(
+            &sb,
+            &mock,
+            &[
+                "webhook",
+                "create",
+                "--url",
+                "https://ci.example.com/hook",
+                "--resource-types",
+                "Issue,Comment",
+                "--team",
+                "ex",
+                "--dry-run",
+                "--json",
+            ],
+        ),
+        &mock,
+    );
+    assert_eq!(v["command"], "webhook create");
+    assert_eq!(planned(&v), ["WebhookCreate"]);
+    assert_eq!(
+        v["mutations"][0]["variables"]["input"],
+        json!({
+            "url": "https://ci.example.com/hook",
+            "resourceTypes": ["Issue", "Comment"],
+            "teamId": TEAM_EX,
+        })
+    );
+    // No secret exists, so none is printed.
+    assert!(!stdout(&run(
+        &sb,
+        &mock,
+        &[
+            "webhook",
+            "create",
+            "--url",
+            "https://x.test/h",
+            "--resource-types",
+            "Issue",
+            "--all-public-teams",
+            "--dry-run"
+        ]
+    ))
+    .contains("secret"));
+
+    // The same usage errors as the real run: an unknown team (2), both a team and all teams (2).
+    let o = run(
+        &sb,
+        &mock,
+        &[
+            "webhook",
+            "create",
+            "--url",
+            "https://x.test/h",
+            "--resource-types",
+            "Issue",
+            "--team",
+            "nope",
+            "--dry-run",
+        ],
+    );
+    assert_eq!(code(&o), 2, "{}", stderr(&o));
+
+    let v = plan(
+        &run(
+            &sb,
+            &mock,
+            &["webhook", "delete", "Deploy hook", "--dry-run", "--json"],
+        ),
+        &mock,
+    );
+    assert_eq!(v["command"], "webhook delete");
+    assert_eq!(planned(&v), ["WebhookDelete"]);
+    assert_eq!(v["mutations"][0]["variables"], json!({ "id": HOOK }));
+    let o = run(&sb, &mock, &["webhook", "delete", "nope", "--dry-run"]);
+    assert_eq!(code(&o), 2, "{}", stderr(&o));
+    mock.assert_read_only();
+}
