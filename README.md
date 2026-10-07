@@ -657,8 +657,8 @@ linear issue unrelate KK-12 --blocks KK-13
 - **A duplicate relation closes the issue.** Linear moves the issue to its `Duplicate` state when the
   relation is made (measured on the sandbox), which is canceling it, so `issue relate --duplicate`
   also asks the cancel rule: it stays refused on somebody else's issue in a `lenient` workspace.
-  Removing the relation moves the issue back out of `Duplicate` (measured: it was `Backlog` again),
-  which is not a cancel, so `unrelate` asks only for the ordinary change.
+  Removing the relation moves the issue back out of `Duplicate` (observed; Linear may take a few
+  seconds), which is not a cancel, so `unrelate` asks only for the ordinary change.
 - **`issue unrelate` takes the same arguments as `relate` and needs no `--yes`.** A relation holds
   only the two issues and its kind, so `relate` makes it again exactly (only its id changes). One
   that is not there sends nothing (`removed: []`, exit 0), so running it twice is safe.
