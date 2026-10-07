@@ -378,6 +378,39 @@ pub struct StatusUpdate {
     pub project: ProjectRef,
 }
 
+/// The health of an initiative status update (Linear's `InitiativeUpdateHealthType`).
+#[derive(cynic::Enum, Debug, Clone, PartialEq, Eq)]
+#[cynic(rename_all = "camelCase")]
+pub enum InitiativeUpdateHealthType {
+    OnTrack,
+    AtRisk,
+    OffTrack,
+    #[cynic(fallback)]
+    Other(String),
+}
+
+open_enum_schema!(
+    InitiativeUpdateHealthType,
+    "InitiativeUpdateHealthType",
+    ["onTrack", "atRisk", "offTrack"]
+);
+
+/// An initiative status update (Linear's `InitiativeUpdate`).
+#[derive(cynic::QueryFragment, Debug, Clone, PartialEq, Serialize, JsonSchema)]
+#[cynic(graphql_type = "InitiativeUpdate")]
+#[serde(rename_all = "camelCase")]
+pub struct InitiativeStatusUpdate {
+    #[schemars(with = "String")]
+    pub id: cynic::Id,
+    pub url: String,
+    pub body: String,
+    pub health: InitiativeUpdateHealthType,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+    pub user: User,
+    pub initiative: InitiativeRef,
+}
+
 // ---------------------------------------------------------------- issue
 
 #[derive(cynic::QueryFragment, Debug, Clone, PartialEq, Serialize, JsonSchema)]
