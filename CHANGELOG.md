@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.6.1](https://github.com/ken109/linear/compare/v0.6.0...v0.6.1) (2026-10-15)
+
+
+### Bug Fixes
+
+* **cache:** take over a refresh lock whose process is gone, without waiting for the age limit ([#11](https://github.com/ken109/linear/issues/11)) ([ca3130f](https://github.com/ken109/linear/commit/ca3130f41cafe4be11808ba5066d3e308de05d6f))
+
 ## [0.6.0](https://github.com/ken109/linear/compare/v0.5.0...v0.6.0) (2026-10-07)
 
 
