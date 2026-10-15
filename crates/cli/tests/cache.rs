@@ -310,6 +310,45 @@ fn a_refresh_that_is_already_running_is_not_started_twice() {
 }
 
 #[test]
+fn a_lock_whose_process_is_alive_is_not_taken_over() {
+    let sb = workspace();
+    std::fs::create_dir_all(cache_dir(&sb)).unwrap();
+    std::fs::write(
+        cache_dir(&sb).join("example.lock"),
+        std::process::id().to_string(),
+    )
+    .unwrap();
+
+    let mock = Mock::start(replies());
+    let o = linear(&sb, &mock, &["cache", "refresh", "--json"]);
+    assert_eq!(code(&o), 0, "{}", stderr(&o));
+    assert!(mock.requests().is_empty());
+    assert_eq!(stdout_json(&o)["workspaces"][0]["status"], "busy");
+}
+
+#[cfg(unix)]
+#[test]
+fn a_lock_left_by_a_killed_refresh_is_taken_over_at_once() {
+    let sb = workspace();
+    std::fs::create_dir_all(cache_dir(&sb)).unwrap();
+    let mut gone = std::process::Command::new("true").spawn().unwrap();
+    let pid = gone.id();
+    gone.wait().unwrap();
+    std::fs::write(cache_dir(&sb).join("example.lock"), pid.to_string()).unwrap();
+
+    let mock = Mock::start(replies());
+    let o = linear(&sb, &mock, &["cache", "refresh", "--json"]);
+    assert_eq!(code(&o), 0, "{}", stderr(&o));
+    assert!(!mock.requests().is_empty());
+    assert_ne!(stdout_json(&o)["workspaces"][0]["status"], "busy");
+    assert!(entry_file(&sb).exists());
+    assert!(
+        !cache_dir(&sb).join("example.lock").exists(),
+        "the lock is released when the refresh is done"
+    );
+}
+
+#[test]
 fn an_entry_of_another_schema_version_is_unusable_and_a_refresh_replaces_it() {
     let sb = workspace();
     std::fs::create_dir_all(cache_dir(&sb)).unwrap();

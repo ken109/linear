@@ -10,10 +10,12 @@ use crate::store::{create_private_dir, write_atomic};
 use linear_core::cache::{WorkspaceCache, SCHEMA_VERSION};
 use linear_core::config::validate_workspace_name;
 use std::fs;
+use std::io::Write;
 use std::path::PathBuf;
 use std::time::{Duration, SystemTime};
 
-/// A refresh that has run longer than this is taken to have died.
+/// A refresh that has run longer than this is taken to have died, whatever its
+/// process says. A refresh whose process is gone is taken to have died at once.
 const LOCK_STALE: Duration = Duration::from_secs(120);
 
 #[derive(Debug, Clone)]
@@ -189,7 +191,9 @@ impl CacheDir {
 
     /// Take the right to refresh a workspace, so that a statusline that starts
     /// a refresh at every render does not start a dozen at once. `None` when
-    /// another refresh holds it. A lock left by a refresh that died expires.
+    /// another refresh holds it. A lock left by a refresh that died (killed,
+    /// so it could not remove it) is taken over: at once when the process it
+    /// names is gone, else when it is older than `LOCK_STALE`.
     pub fn lock_refresh(&self, workspace: &str) -> Result<Option<RefreshLock>> {
         validate_workspace_name(workspace)?;
         create_private_dir(&self.root)?;
@@ -200,13 +204,21 @@ impl CacheDir {
                 .create_new(true)
                 .open(&path)
             {
-                Ok(_) => return Ok(Some(RefreshLock { path })),
+                Ok(mut file) => {
+                    // An empty lock (written between create and this) falls back to its age.
+                    let _ = write!(file, "{}", std::process::id());
+                    return Ok(Some(RefreshLock { path }));
+                }
                 Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => {
                     let age = fs::metadata(&path)
                         .and_then(|m| m.modified())
                         .ok()
                         .and_then(|t| SystemTime::now().duration_since(t).ok());
-                    if age.is_some_and(|a| a > LOCK_STALE) {
+                    let owner_gone = fs::read_to_string(&path)
+                        .ok()
+                        .and_then(|text| text.trim().parse::<u32>().ok())
+                        .is_some_and(|pid| !process_exists(pid));
+                    if owner_gone || age.is_some_and(|a| a > LOCK_STALE) {
                         let _ = fs::remove_file(&path);
                         continue;
                     }
@@ -222,6 +234,25 @@ impl CacheDir {
         }
         Ok(None)
     }
+}
+
+/// Whether a process with this id exists. `ps -p` answers for any owner, where
+/// `kill -0` would say "gone" for another user's process. Where it cannot be
+/// asked, the process is taken to exist and only the lock's age decides.
+#[cfg(unix)]
+fn process_exists(pid: u32) -> bool {
+    std::process::Command::new("ps")
+        .args(["-p", &pid.to_string()])
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
+        .status()
+        .map(|s| s.success())
+        .unwrap_or(true)
+}
+
+#[cfg(not(unix))]
+fn process_exists(_pid: u32) -> bool {
+    true
 }
 
 /// Held while a workspace is being refreshed; released on drop.
