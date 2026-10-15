@@ -5,6 +5,66 @@
       "findings": [
         {
           "actionable": true,
+          "fix": "linear issue update KK-20 --project <project> -w ken109",
+          "message": "KK-20 is not in a project",
+          "rule": "issue-without-project",
+          "severity": "warn",
+          "target": {
+            "id": "i-KK-20",
+            "identifier": "KK-20",
+            "kind": "issue",
+            "title": "Title of KK-20",
+            "url": "https://linear.app/x/issue/KK-20"
+          },
+          "workspace": "ken109"
+        },
+        {
+          "actionable": true,
+          "fix": "linear issue update KK-21 --project <project> -w ken109",
+          "message": "KK-21 is not in a project",
+          "rule": "issue-without-project",
+          "severity": "warn",
+          "target": {
+            "id": "i-KK-21",
+            "identifier": "KK-21",
+            "kind": "issue",
+            "title": "Title of KK-21",
+            "url": "https://linear.app/x/issue/KK-21"
+          },
+          "workspace": "ken109"
+        },
+        {
+          "actionable": true,
+          "fix": "linear issue update KK-22 --project <project> -w ken109",
+          "message": "KK-22 is not in a project",
+          "rule": "issue-without-project",
+          "severity": "warn",
+          "target": {
+            "id": "i-KK-22",
+            "identifier": "KK-22",
+            "kind": "issue",
+            "title": "Title of KK-22",
+            "url": "https://linear.app/x/issue/KK-22"
+          },
+          "workspace": "ken109"
+        },
+        {
+          "actionable": true,
+          "fix": "linear issue update KK-23 --project <project> -w ken109",
+          "message": "KK-23 is not in a project",
+          "rule": "issue-without-project",
+          "severity": "warn",
+          "target": {
+            "id": "i-KK-23",
+            "identifier": "KK-23",
+            "kind": "issue",
+            "title": "Title of KK-23",
+            "url": "https://linear.app/x/issue/KK-23"
+          },
+          "workspace": "ken109"
+        },
+        {
+          "actionable": true,
           "fix": "linear issue update KK-21 --source <url> --meta kind=<kind> -w ken109",
           "message": "KK-21 has no source attachment with a metadata.kind of: slack, life-decision",
           "rule": "source-attachment",

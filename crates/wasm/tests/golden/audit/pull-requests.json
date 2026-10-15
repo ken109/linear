@@ -5,6 +5,111 @@
       "findings": [
         {
           "actionable": true,
+          "fix": "linear issue update KK-30 --project <project> -w ken109",
+          "message": "KK-30 is not in a project",
+          "rule": "issue-without-project",
+          "severity": "warn",
+          "target": {
+            "id": "i-KK-30",
+            "identifier": "KK-30",
+            "kind": "issue",
+            "title": "Title of KK-30",
+            "url": "https://linear.app/x/issue/KK-30"
+          },
+          "workspace": "ken109"
+        },
+        {
+          "actionable": true,
+          "fix": "linear issue update KK-31 --project <project> -w ken109",
+          "message": "KK-31 is not in a project",
+          "rule": "issue-without-project",
+          "severity": "warn",
+          "target": {
+            "id": "i-KK-31",
+            "identifier": "KK-31",
+            "kind": "issue",
+            "title": "Title of KK-31",
+            "url": "https://linear.app/x/issue/KK-31"
+          },
+          "workspace": "ken109"
+        },
+        {
+          "actionable": false,
+          "fix": "linear issue update KK-32 --project <project> -w ken109",
+          "message": "KK-32 is not in a project",
+          "rule": "issue-without-project",
+          "severity": "warn",
+          "target": {
+            "id": "i-KK-32",
+            "identifier": "KK-32",
+            "kind": "issue",
+            "title": "Title of KK-32",
+            "url": "https://linear.app/x/issue/KK-32"
+          },
+          "workspace": "ken109"
+        },
+        {
+          "actionable": true,
+          "fix": "linear issue update KK-33 --project <project> -w ken109",
+          "message": "KK-33 is not in a project",
+          "rule": "issue-without-project",
+          "severity": "warn",
+          "target": {
+            "id": "i-KK-33",
+            "identifier": "KK-33",
+            "kind": "issue",
+            "title": "Title of KK-33",
+            "url": "https://linear.app/x/issue/KK-33"
+          },
+          "workspace": "ken109"
+        },
+        {
+          "actionable": true,
+          "fix": "linear issue update KK-35 --project <project> -w ken109",
+          "message": "KK-35 is not in a project",
+          "rule": "issue-without-project",
+          "severity": "warn",
+          "target": {
+            "id": "i-KK-35",
+            "identifier": "KK-35",
+            "kind": "issue",
+            "title": "Title of KK-35",
+            "url": "https://linear.app/x/issue/KK-35"
+          },
+          "workspace": "ken109"
+        },
+        {
+          "actionable": true,
+          "fix": "linear issue update KK-36 --project <project> -w ken109",
+          "message": "KK-36 is not in a project",
+          "rule": "issue-without-project",
+          "severity": "warn",
+          "target": {
+            "id": "i-KK-36",
+            "identifier": "KK-36",
+            "kind": "issue",
+            "title": "Title of KK-36",
+            "url": "https://linear.app/x/issue/KK-36"
+          },
+          "workspace": "ken109"
+        },
+        {
+          "actionable": false,
+          "fix": "linear issue update KK-37 --project <project> -w ken109",
+          "message": "KK-37 is not in a project",
+          "rule": "issue-without-project",
+          "severity": "warn",
+          "target": {
+            "id": "i-KK-37",
+            "identifier": "KK-37",
+            "kind": "issue",
+            "title": "Title of KK-37",
+            "url": "https://linear.app/x/issue/KK-37"
+          },
+          "workspace": "ken109"
+        },
+        {
+          "actionable": true,
           "fix": "linear issue update KK-30 --state <state> -w ken109",
           "message": "KK-30 is still State started but its pull request #43 is merged (https://github.com/example/app/pull/43)",
           "rule": "pr-merged-issue-open",

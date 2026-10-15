@@ -248,6 +248,7 @@ fn the_audit_goldens_exercise_every_rule() {
     for rule in [
         "project-state-vs-issues",
         "overdue",
+        "issue-without-project",
         "issue-without-milestone",
         "project-without-lead",
         "stale-in-progress",

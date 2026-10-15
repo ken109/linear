@@ -5,6 +5,21 @@
       "findings": [
         {
           "actionable": true,
+          "fix": "linear issue update KK-1 --project <project> -w ken109",
+          "message": "KK-1 is not in a project",
+          "rule": "issue-without-project",
+          "severity": "warn",
+          "target": {
+            "id": "i-KK-1",
+            "identifier": "KK-1",
+            "kind": "issue",
+            "title": "Title of KK-1",
+            "url": "https://linear.app/x/issue/KK-1"
+          },
+          "workspace": "ken109"
+        },
+        {
+          "actionable": true,
           "fix": "linear issue update KK-1 --state <state> -w ken109",
           "message": "KK-1 has been State started with no update for 19 days (limit 7)",
           "rule": "stale-in-progress",

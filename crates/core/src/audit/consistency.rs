@@ -21,6 +21,7 @@ pub(super) fn run(ctx: &Ctx, out: &mut Vec<Finding>) {
     }
     for i in ctx.snapshot.issues.iter().filter(|i| ctx.issue_in_scope(i)) {
         issue_overdue(ctx, i, out);
+        issue_without_project(ctx, i, out);
         issue_without_milestone(ctx, i, out);
     }
 }
@@ -175,6 +176,23 @@ fn issue_overdue(ctx: &Ctx, i: &Issue, out: &mut Vec<Finding>) {
             i.state.name
         ),
         format!("linear issue update {} --due <date>", i.identifier),
+    ));
+}
+
+/// An open issue that belongs to no project. `issue create` refuses to make
+/// one, so it came from somewhere else (the Linear app, an integration) or has
+/// been moved out of its project.
+fn issue_without_project(ctx: &Ctx, i: &Issue, out: &mut Vec<Finding>) {
+    if !issue_is_open(i) || i.project.is_some() {
+        return;
+    }
+    out.push(ctx.finding(
+        RuleId::IssueWithoutProject,
+        Severity::Warn,
+        issue_target(i),
+        owns_issue(i),
+        format!("{} is not in a project", i.identifier),
+        format!("linear issue update {} --project <project>", i.identifier),
     ));
 }
 

@@ -1900,6 +1900,11 @@
           "type": "string"
         },
         {
+          "const": "issue-without-project",
+          "description": "An open issue belongs to no project.",
+          "type": "string"
+        },
+        {
           "const": "issue-without-milestone",
           "description": "An open issue sits in a project that has milestones, but in none of them.",
           "type": "string"

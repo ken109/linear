@@ -121,6 +121,7 @@ fn the_golden_cases_reach_the_fix_of_every_rule() {
     for rule in [
         "project-state-vs-issues",
         "overdue",
+        "issue-without-project",
         "issue-without-milestone",
         "project-without-lead",
         "stale-in-progress",

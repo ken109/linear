@@ -258,6 +258,53 @@ fn an_overdue_milestone_belongs_to_the_project_lead() {
     );
 }
 
+// ---------------------------------------------------- issue-without-project
+
+#[test]
+fn open_issue_in_no_project_is_flagged_and_actionable_when_it_is_mine() {
+    let p = project("p").build();
+    let issues = vec![
+        issue("KK-1").mine().no_project().build(),
+        issue("KK-2").no_project().build(),
+        issue("KK-3").mine().state("triage").no_project().build(),
+        issue("KK-4").mine().in_project("p").build(),
+    ];
+    let report = audit(&snapshot(issues, vec![p]), now());
+    let got = of_rule(&report.findings, RuleId::IssueWithoutProject);
+    assert_eq!(
+        got,
+        [
+            ("KK-1".to_owned(), true),
+            ("KK-2".to_owned(), false),
+            ("KK-3".to_owned(), true)
+        ]
+    );
+    let f = &report.findings[0];
+    assert_eq!(f.severity, Severity::Warn);
+    assert_eq!(f.target.kind, TargetKind::Issue);
+    assert_eq!(f.message, "KK-1 is not in a project");
+    assert_eq!(
+        f.fix,
+        "linear issue update KK-1 --project <project> -w ken109"
+    );
+}
+
+#[test]
+fn a_closed_issue_needs_no_project() {
+    let issues = ["completed", "canceled", "duplicate"]
+        .iter()
+        .enumerate()
+        .map(|(n, kind)| issue(&format!("KK-{n}")).state(kind).no_project().build())
+        .collect();
+    assert!(rule(&snapshot(issues, vec![]), RuleId::IssueWithoutProject).is_empty());
+}
+
+#[test]
+fn an_issue_in_a_project_the_snapshot_lacks_still_has_a_project() {
+    let i = issue("KK-1").in_project("elsewhere").build();
+    assert!(rule(&snapshot(vec![i], vec![]), RuleId::IssueWithoutProject).is_empty());
+}
+
 // -------------------------------------------------- issue-without-milestone
 
 #[test]
@@ -285,7 +332,7 @@ fn issues_without_a_milestone_are_fine_when_nothing_asks_for_one() {
         .build();
     let issues = vec![
         issue("KK-1").in_project("bare").build(),
-        issue("KK-2").build(),
+        issue("KK-2").no_project().build(),
         issue("KK-3").in_project("elsewhere").build(),
         issue("KK-4").in_project("done").build(),
         issue("KK-5").in_project("done").state("completed").build(),
@@ -343,8 +390,8 @@ fn findings_carry_workspace_target_and_a_fix_for_that_workspace() {
 fn findings_are_ordered_by_rule_then_kind_then_identifier() {
     let p = project("p").target("2026-10-01").build();
     let issues = vec![
-        issue("KK-2").due("2026-10-01").build(),
-        issue("KK-1").due("2026-10-01").build(),
+        issue("KK-2").in_project("p").due("2026-10-01").build(),
+        issue("KK-1").in_project("p").due("2026-10-01").build(),
     ];
     let report = audit(&snapshot(issues, vec![p]), now());
     let order: Vec<_> = report

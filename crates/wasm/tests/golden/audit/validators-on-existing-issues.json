@@ -5,6 +5,81 @@
       "findings": [
         {
           "actionable": true,
+          "fix": "linear issue update KK-10 --project <project> -w ken109",
+          "message": "KK-10 is not in a project",
+          "rule": "issue-without-project",
+          "severity": "warn",
+          "target": {
+            "id": "i-KK-10",
+            "identifier": "KK-10",
+            "kind": "issue",
+            "title": "Title of KK-10",
+            "url": "https://linear.app/x/issue/KK-10"
+          },
+          "workspace": "ken109"
+        },
+        {
+          "actionable": true,
+          "fix": "linear issue update KK-11 --project <project> -w ken109",
+          "message": "KK-11 is not in a project",
+          "rule": "issue-without-project",
+          "severity": "warn",
+          "target": {
+            "id": "i-KK-11",
+            "identifier": "KK-11",
+            "kind": "issue",
+            "title": "Title of KK-11",
+            "url": "https://linear.app/x/issue/KK-11"
+          },
+          "workspace": "ken109"
+        },
+        {
+          "actionable": true,
+          "fix": "linear issue update KK-12 --project <project> -w ken109",
+          "message": "KK-12 is not in a project",
+          "rule": "issue-without-project",
+          "severity": "warn",
+          "target": {
+            "id": "i-KK-12",
+            "identifier": "KK-12",
+            "kind": "issue",
+            "title": "Title of KK-12",
+            "url": "https://linear.app/x/issue/KK-12"
+          },
+          "workspace": "ken109"
+        },
+        {
+          "actionable": true,
+          "fix": "linear issue update KK-13 --project <project> -w ken109",
+          "message": "KK-13 is not in a project",
+          "rule": "issue-without-project",
+          "severity": "warn",
+          "target": {
+            "id": "i-KK-13",
+            "identifier": "KK-13",
+            "kind": "issue",
+            "title": "Title of KK-13",
+            "url": "https://linear.app/x/issue/KK-13"
+          },
+          "workspace": "ken109"
+        },
+        {
+          "actionable": false,
+          "fix": "linear issue update KK-14 --project <project> -w ken109",
+          "message": "KK-14 is not in a project",
+          "rule": "issue-without-project",
+          "severity": "warn",
+          "target": {
+            "id": "i-KK-14",
+            "identifier": "KK-14",
+            "kind": "issue",
+            "title": "Title of KK-14",
+            "url": "https://linear.app/x/issue/KK-14"
+          },
+          "workspace": "ken109"
+        },
+        {
+          "actionable": true,
           "fix": "linear issue update KK-12 --body-file <file> --template <template> -w ken109",
           "message": "KK-12 does not fill the template \"Task\": section \"Goal\" is empty; section \"Done when\" is missing",
           "rule": "template-sections",

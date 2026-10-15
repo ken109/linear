@@ -80,6 +80,51 @@
         },
         {
           "actionable": true,
+          "fix": "linear issue update KK-1 --project <project> -w ken109",
+          "message": "KK-1 is not in a project",
+          "rule": "issue-without-project",
+          "severity": "warn",
+          "target": {
+            "id": "i-KK-1",
+            "identifier": "KK-1",
+            "kind": "issue",
+            "title": "Title of KK-1",
+            "url": "https://linear.app/x/issue/KK-1"
+          },
+          "workspace": "ken109"
+        },
+        {
+          "actionable": false,
+          "fix": "linear issue update KK-2 --project <project> -w ken109",
+          "message": "KK-2 is not in a project",
+          "rule": "issue-without-project",
+          "severity": "warn",
+          "target": {
+            "id": "i-KK-2",
+            "identifier": "KK-2",
+            "kind": "issue",
+            "title": "Title of KK-2",
+            "url": "https://linear.app/x/issue/KK-2"
+          },
+          "workspace": "ken109"
+        },
+        {
+          "actionable": true,
+          "fix": "linear issue update KK-3 --project <project> -w ken109",
+          "message": "KK-3 is not in a project",
+          "rule": "issue-without-project",
+          "severity": "warn",
+          "target": {
+            "id": "i-KK-3",
+            "identifier": "KK-3",
+            "kind": "issue",
+            "title": "Title of KK-3",
+            "url": "https://linear.app/x/issue/KK-3"
+          },
+          "workspace": "ken109"
+        },
+        {
+          "actionable": true,
           "fix": "linear issue update KK-4 --milestone <milestone> -w ken109",
           "message": "KK-4 is in project Project ms, which has milestones, but in none of them",
           "rule": "issue-without-milestone",

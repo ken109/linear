@@ -14,6 +14,8 @@ pub enum RuleId {
     ProjectStateVsIssues,
     /// A project, milestone or issue is past its target date and still open.
     Overdue,
+    /// An open issue belongs to no project.
+    IssueWithoutProject,
     /// An open issue sits in a project that has milestones, but in none of them.
     IssueWithoutMilestone,
     /// A project that is not closed has no lead.
@@ -42,6 +44,7 @@ impl RuleId {
         match self {
             Self::ProjectStateVsIssues => "project-state-vs-issues",
             Self::Overdue => "overdue",
+            Self::IssueWithoutProject => "issue-without-project",
             Self::IssueWithoutMilestone => "issue-without-milestone",
             Self::ProjectWithoutLead => "project-without-lead",
             Self::StaleInProgress => "stale-in-progress",

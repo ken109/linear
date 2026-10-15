@@ -59,7 +59,9 @@ pub fn issue(identifier: &str) -> IssueB {
         "team": { "id": "t-1", "key": "KK", "name": "Team" },
         "state": state("unstarted"),
         "assignee": null,
-        "project": null,
+        // In a project the snapshot does not list, so that only the tests that
+        // are about a missing project (`no_project`) meet `issue-without-project`.
+        "project": project_ref("unlisted"),
         "projectMilestone": null,
         "labels": { "nodes": [] },
         "dueDate": null,
@@ -108,6 +110,10 @@ impl IssueB {
     }
     pub fn description(self, text: &str) -> Self {
         self.set("description", json!(text))
+    }
+    /// Not in any project.
+    pub fn no_project(self) -> Self {
+        self.set("project", Value::Null)
     }
     pub fn in_project(self, slug: &str) -> Self {
         self.set("project", project_ref(slug))
