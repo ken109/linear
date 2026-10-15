@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.7.0](https://github.com/ken109/linear/compare/v0.6.1...v0.7.0) (2026-10-15)
+
+
+### Features
+
+* **core:** audit rule for an open issue that belongs to no project ([c7eefed](https://github.com/ken109/linear/commit/c7eefed9fecaf46d01e35a00a2b0aff484f5ca97))
+
+
+### Documentation
+
+* **readme:** list the issue-without-project audit rule ([7ef4a76](https://github.com/ken109/linear/commit/7ef4a76ea58e6d7870b05c221137c268a6298984))
+
 ## [0.6.1](https://github.com/ken109/linear/compare/v0.6.0...v0.6.1) (2026-10-15)
 
 
