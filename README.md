@@ -519,6 +519,7 @@ linear audit --cached                           # the last `linear cache refresh
 | ------------------------- | ---------------------------------------------------------------------------------------------- |
 | `project-state-vs-issues` | a project's status that its issues contradict (completed with open issues, ...)                |
 | `overdue`                 | a project, milestone or issue past its target date and still open                              |
+| `issue-without-project`   | an open issue that belongs to no project (`issue create` and `issue update` cannot make or leave one; the Linear app and integrations can) |
 | `issue-without-milestone` | an open issue in a project that has milestones, but in none of them                            |
 | `project-without-lead`    | an open project nobody leads                                                                   |
 | `stale-in-progress`       | an In Progress issue with no update for `stale_days` (7)                                       |
