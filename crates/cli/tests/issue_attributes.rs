@@ -403,6 +403,9 @@ fn update_cycle_looks_the_number_up_in_the_issues_team() {
     let o = run(&sb, &mock, &update(&["--cycle", "41", "--json"]));
     assert_eq!(code(&o), 0, "{}", stderr(&o));
     assert_eq!(stdout_json(&o)["changed"], json!(["cycle"]));
+    // The issue the update answers with carries its cycle, like `view` and `list` (null here:
+    // the mock's answer is the fixture issue, which is in none).
+    assert!(stdout_json(&o).as_object().unwrap().contains_key("cycle"));
     assert_eq!(
         mock.of("IssueUpdate")[0]["input"],
         json!({ "cycleId": CYCLE_41 })

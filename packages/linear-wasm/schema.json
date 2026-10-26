@@ -257,6 +257,41 @@
       ],
       "type": "object"
     },
+    "Cycle": {
+      "description": "A team's cycle (a time-boxed iteration).",
+      "properties": {
+        "endsAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "number": {
+          "description": "Linear numbers cycles per team; the schema types it as a float, but it is\nalways whole, so it is written as an integer (`7`, not `7.0`).",
+          "format": "double",
+          "type": "number"
+        },
+        "startsAt": {
+          "format": "date-time",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "number",
+        "name",
+        "startsAt",
+        "endsAt"
+      ],
+      "type": "object"
+    },
     "ErrorBody": {
       "description": "What a failed call reports.",
       "properties": {
@@ -648,6 +683,17 @@
           "format": "date-time",
           "type": "string"
         },
+        "cycle": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Cycle"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The cycle the issue is in, if any."
+        },
         "description": {
           "type": [
             "string",
@@ -770,6 +816,7 @@
         "completedAt",
         "canceledAt",
         "parent",
+        "cycle",
         "attachments"
       ],
       "type": "object"
@@ -2609,6 +2656,6 @@
       }
     }
   },
-  "schemaVersion": 5,
+  "schemaVersion": 6,
   "title": "linear-wasm"
 }

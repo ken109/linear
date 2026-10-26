@@ -347,6 +347,100 @@ fn cycle_none_is_the_issues_in_no_cycle_and_needs_no_team() {
 }
 
 #[test]
+fn list_json_and_view_json_carry_the_cycle_key() {
+    let sb = workspace();
+    // The fixture issue is in no cycle: the key is there, null.
+    let mock = Mock::start(vec![ok(&fixture("issue_list"))]);
+    let o = linear(&sb, &mock, &["issue", "list", "--json"]);
+    assert_eq!(code(&o), 0, "{}", stderr(&o));
+    let listed = stdout_json(&o);
+    assert!(listed[0].as_object().unwrap().contains_key("cycle"));
+    assert_eq!(listed[0]["cycle"], Value::Null);
+
+    let mock = Mock::start(vec![ok(&fixture("issue_view"))]);
+    let o = linear(&sb, &mock, &["issue", "view", "EX-23", "--json"]);
+    assert_eq!(code(&o), 0, "{}", stderr(&o));
+    let viewed = stdout_json(&o);
+    assert!(viewed.as_object().unwrap().contains_key("cycle"));
+    assert_eq!(viewed["cycle"], Value::Null);
+}
+
+/// A reply for `body` with the fixture cycle #41 put on its issue (the one at `path` in `data`).
+fn in_cycle_41(body: &str, path: &[&str]) -> String {
+    let mut v: Value = serde_json::from_str(body).unwrap();
+    let cycles: Value = serde_json::from_str(&fixture("cycles")).unwrap();
+    let mut at = &mut v["data"];
+    for key in path {
+        at = &mut at[*key];
+    }
+    at["cycle"] = cycles["data"]["cycles"]["nodes"][0].clone();
+    v.to_string()
+}
+
+#[test]
+fn an_issue_in_a_cycle_shows_it_in_view_list_and_json() {
+    let sb = workspace();
+    let view = in_cycle_41(&fixture("issue_view"), &["issue"]);
+    let mock = Mock::start(vec![ok(&view), ok(&view)]);
+
+    let o = linear(&sb, &mock, &["issue", "view", "EX-23", "--json"]);
+    assert_eq!(code(&o), 0, "{}", stderr(&o));
+    let v = stdout_json(&o);
+    assert_eq!(v["cycle"]["number"], 41);
+    assert_eq!(v["cycle"]["id"], "00000000-0000-4000-8000-000000000201");
+    assert_eq!(v["cycle"]["startsAt"], "2026-10-05T15:00:00Z");
+
+    let o = linear(&sb, &mock, &["issue", "view", "EX-23"]);
+    assert_eq!(code(&o), 0, "{}", stderr(&o));
+    assert!(
+        stdout(&o)
+            .lines()
+            .any(|l| l.starts_with("Cycle:") && l.ends_with("#41")),
+        "{}",
+        stdout(&o)
+    );
+
+    let mut list: Value = serde_json::from_str(&fixture("issue_list")).unwrap();
+    let cycles: Value = serde_json::from_str(&fixture("cycles")).unwrap();
+    list["data"]["issues"]["nodes"][0]["cycle"] = cycles["data"]["cycles"]["nodes"][0].clone();
+    let mock = Mock::start(vec![ok(&list.to_string())]);
+    let o = linear(&sb, &mock, &["issue", "list", "--json"]);
+    assert_eq!(code(&o), 0, "{}", stderr(&o));
+    assert_eq!(stdout_json(&o)[0]["cycle"]["number"], 41);
+}
+
+#[test]
+fn view_without_a_cycle_prints_a_dash() {
+    let sb = workspace();
+    let mock = Mock::start(vec![ok(&fixture("issue_view"))]);
+    let o = linear(&sb, &mock, &["issue", "view", "EX-23"]);
+    assert_eq!(code(&o), 0, "{}", stderr(&o));
+    assert!(
+        stdout(&o)
+            .lines()
+            .any(|l| l.starts_with("Cycle:") && l.ends_with('-')),
+        "{}",
+        stdout(&o)
+    );
+}
+
+#[test]
+fn fields_can_select_the_cycle() {
+    let sb = workspace();
+    let mock = Mock::start(vec![ok(&fixture("issue_list"))]);
+    let o = linear(
+        &sb,
+        &mock,
+        &["issue", "list", "--json", "--fields", "identifier,cycle"],
+    );
+    assert_eq!(code(&o), 0, "{}", stderr(&o));
+    assert_eq!(
+        stdout_json(&o),
+        json!([{"identifier": "EX-23", "cycle": null}])
+    );
+}
+
+#[test]
 fn a_cycle_number_without_any_team_is_a_usage_error() {
     let sb = Sandbox::new();
     let o = sb.run(

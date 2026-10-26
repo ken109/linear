@@ -29,6 +29,7 @@
           "canceledAt": null,
           "completedAt": null,
           "createdAt": "2026-09-01T00:00:00Z",
+          "cycle": null,
           "description": null,
           "dueDate": null,
           "estimate": null,

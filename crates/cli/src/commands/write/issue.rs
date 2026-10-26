@@ -404,7 +404,7 @@ fn put_in_cycle(
     wanted: &Cycle,
 ) -> Result<(Option<Cycle>, Vec<&'static str>)> {
     let view = fetch_issue(ws, issue_id)?;
-    if let Some(current) = view.write.cycle.clone() {
+    if let Some(current) = view.issue.cycle.clone() {
         if current.id != wanted.id {
             ws.note(&format!(
                 "{} is already in cycle {}; it was not moved to {}",
@@ -955,7 +955,7 @@ pub fn update_in(ws: &WriteSession, cmd: &UpdateCmd, inputs: UpdateInputs) -> Re
         }
         _ => {}
     }
-    let old_cycle = view.write.cycle.as_ref().map(|c| c.id.inner().to_owned());
+    let old_cycle = view.issue.cycle.as_ref().map(|c| c.id.inner().to_owned());
     match &cycle {
         Patch::Set(c) if old_cycle.as_deref() != Some(c.id.inner()) => {
             input.cycle_id = Patch::Set(c.id.inner().to_owned());

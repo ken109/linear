@@ -342,7 +342,7 @@ pub fn cycles() -> Reply {
 impl View {
     /// In the cycle with this id (one of the fixture's), or in none.
     pub fn in_cycle(mut self, id: Option<&str>) -> View {
-        self.0["write"]["cycle"] = match id {
+        self.0["issue"]["cycle"] = match id {
             Some(id) => {
                 let all = fixture_data("cycles");
                 all["cycles"]["nodes"]

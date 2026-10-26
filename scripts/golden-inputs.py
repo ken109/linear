@@ -62,7 +62,7 @@ def issue(identifier, **kw):
         'assignee': None, 'project': None, 'projectMilestone': None, 'labels': {'nodes': []},
         'dueDate': None, 'estimate': None, 'priority': 0.0, 'sortOrder': 0.0, 'prioritySortOrder': 0.0,
         'createdAt': '2026-09-01T00:00:00Z', 'updatedAt': '2026-10-19T00:00:00Z',
-        'startedAt': None, 'completedAt': None, 'canceledAt': None, 'parent': None,
+        'startedAt': None, 'completedAt': None, 'canceledAt': None, 'parent': None, 'cycle': None,
         'attachments': {'nodes': []},
     }
     for k, v in kw.items():

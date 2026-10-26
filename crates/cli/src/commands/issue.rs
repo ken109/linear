@@ -625,6 +625,12 @@ fn show(ctx: &Ctx, workspace: &str, i: &Issue, d: Option<&IssueDetail>) -> Resul
                             .map_or("-".to_owned(), |p| p.name.clone())
                     ),
                     ("Milestone", milestone),
+                    (
+                        "Cycle",
+                        i.cycle
+                            .as_ref()
+                            .map_or("-".to_owned(), linear_core::cycle::label)
+                    ),
                     ("Labels", labels),
                     (
                         "Priority",

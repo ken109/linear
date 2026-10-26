@@ -75,6 +75,7 @@ pub fn issue(identifier: &str) -> IssueB {
         "completedAt": null,
         "canceledAt": null,
         "parent": null,
+        "cycle": null,
         "attachments": { "nodes": [] },
     }))
 }

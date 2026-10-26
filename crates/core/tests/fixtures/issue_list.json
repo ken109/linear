@@ -81,6 +81,7 @@
           "completedAt": null,
           "canceledAt": null,
           "parent": null,
+          "cycle": null,
           "attachments": {
             "nodes": [
               {

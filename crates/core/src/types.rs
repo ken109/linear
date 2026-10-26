@@ -448,6 +448,8 @@ pub struct Issue {
     pub completed_at: Option<DateTime<Utc>>,
     pub canceled_at: Option<DateTime<Utc>>,
     pub parent: Option<IssueRef>,
+    /// The cycle the issue is in, if any.
+    pub cycle: Option<Cycle>,
     #[arguments(first: 10)]
     pub attachments: AttachmentNodes,
 }
@@ -490,6 +492,8 @@ pub struct IssueSearchResult {
     pub completed_at: Option<DateTime<Utc>>,
     pub canceled_at: Option<DateTime<Utc>>,
     pub parent: Option<IssueRef>,
+    /// The cycle the issue is in, if any.
+    pub cycle: Option<Cycle>,
     #[arguments(first: 10)]
     pub attachments: AttachmentNodes,
 }
@@ -522,6 +526,7 @@ impl From<IssueSearchResult> for Issue {
             completed_at: hit.completed_at,
             canceled_at: hit.canceled_at,
             parent: hit.parent,
+            cycle: hit.cycle,
             attachments: hit.attachments,
         }
     }
@@ -541,8 +546,7 @@ paged_container!(IssueConnection, "IssueConnection", Issue);
 
 // ---------------------------------------------------------------- cycle
 
-/// A team's cycle (a time-boxed iteration). Not part of [`Issue`]'s fixed
-/// fragment: the commands that need a cycle select it themselves.
+/// A team's cycle (a time-boxed iteration).
 #[derive(cynic::QueryFragment, Debug, Clone, PartialEq, Serialize, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct Cycle {

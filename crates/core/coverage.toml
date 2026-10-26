@@ -613,7 +613,7 @@ type = "Issue"
 status = "implemented"
 via = ["types::Issue"]
 fields = [
-  "assignee", "attachments", "branchName", "canceledAt", "completedAt", "createdAt",
+  "assignee", "attachments", "branchName", "canceledAt", "completedAt", "createdAt", "cycle",
   "description", "dueDate", "estimate", "id", "identifier", "labels", "parent", "priority", "prioritySortOrder", "project",
   "projectMilestone", "sortOrder", "startedAt", "state", "team", "title", "updatedAt", "url",
 ]
@@ -640,7 +640,7 @@ status = "unsupported"
 reason = "A related entity or connection that is not embedded in this output; use the related entity's own command or `linear api`."
 fields = [
   "agentSessions", "asksExternalUserRequester", "asksRequester", "botActor", "children",
-  "comments", "creator", "cycle", "delegate", "documents", "externalUserCreator", "favorite",
+  "comments", "creator", "delegate", "documents", "externalUserCreator", "favorite",
   "formerAttachments", "formerNeeds", "inverseRelations", "lastAppliedTemplate", "needs",
   "reactions", "recurringIssueTemplate", "relations", "releases", "sharedAccess", "snoozedBy",
   "sourceComment", "subscribers", "syncedWith",
