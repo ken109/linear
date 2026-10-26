@@ -336,7 +336,10 @@ comma-separated; any of them; `none` is the issues without a priority). `--paren
 sub-issues of one issue (looked up first; `none` keeps the issues that have no parent).
 `--cycle N` keeps the issues of cycle number `N` (`42` or `#42`) of `--team`, or of the workspace's
 `default_team` when there is no `--team`, because cycle numbers belong to a team; `--cycle none`
-keeps the issues that are in no cycle and needs no team. `--updated-after <Nd|YYYY-MM-DD>` keeps the
+keeps the issues that are in no cycle and needs no team. A number the team has no cycle for is a
+usage error (exit 2) that lists the cycles it has, as for `issue create` and `issue update`, not an
+empty list; a cycle that exists but holds none of the issues still prints `No issues found.`.
+`--updated-after <Nd|YYYY-MM-DD>` keeps the
 issues updated at or after that time (read like `--completed-since`). All of them narrow the other
 filters, and none can be combined with `--cached`.
 `--order manual` sorts by `sortOrder`, the order `issue reorder` writes and a project's screen shows

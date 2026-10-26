@@ -346,6 +346,97 @@ fn cycle_none_is_the_issues_in_no_cycle_and_needs_no_team() {
     );
 }
 
+/// The `issue_list` fixture with no issues in it: what Linear answers for a cycle nobody is in.
+fn empty_list() -> String {
+    let mut v: Value = serde_json::from_str(&fixture("issue_list")).unwrap();
+    v["data"]["issues"]["nodes"] = json!([]);
+    v.to_string()
+}
+
+#[test]
+fn a_cycle_number_the_team_does_not_have_is_a_usage_error() {
+    let sb = workspace();
+    // The listing finds nothing; the team's cycles (#41 and #42) say why.
+    let mock = Mock::start(vec![ok(&empty_list()), ok(&fixture("cycles"))]);
+    let o = linear(&sb, &mock, &["issue", "list", "--cycle", "99"]);
+    assert_eq!(code(&o), 2, "{}", stderr(&o));
+    assert_eq!(stdout(&o), "");
+    let err = stderr(&o);
+    assert!(err.contains("team EX has no cycle #99"), "{err}");
+    assert!(err.contains("Cycles known: #41"), "{err}");
+    assert_eq!(request(&mock, 0)["operationName"], "IssueList");
+    assert_eq!(request(&mock, 1)["operationName"], "CycleList");
+    assert_eq!(
+        request(&mock, 1)["variables"]["filter"],
+        json!({"team": {"key": {"eqIgnoreCase": "EX"}}})
+    );
+}
+
+#[test]
+fn the_unknown_cycle_error_is_json_with_the_usage_code() {
+    let sb = workspace();
+    let mock = Mock::start(vec![ok(&empty_list()), ok(&fixture("cycles"))]);
+    let o = linear(&sb, &mock, &["issue", "list", "--cycle", "#99", "--json"]);
+    assert_eq!(code(&o), 2, "{}", stderr(&o));
+    assert_eq!(stdout(&o), "");
+    let e: Value = serde_json::from_str(stderr(&o).trim()).unwrap();
+    assert_eq!(e["error"]["code"], "usage");
+}
+
+#[test]
+fn the_cycle_is_looked_up_in_the_team_flags_team() {
+    let sb = workspace();
+    let mock = Mock::start(vec![ok(&empty_list()), ok(&fixture("cycles"))]);
+    let o = linear(
+        &sb,
+        &mock,
+        &["issue", "list", "--cycle", "99", "--team", "OPS"],
+    );
+    assert_eq!(code(&o), 2, "{}", stderr(&o));
+    assert!(
+        stderr(&o).contains("team OPS has no cycle #99"),
+        "{}",
+        stderr(&o)
+    );
+    assert_eq!(
+        request(&mock, 1)["variables"]["filter"],
+        json!({"team": {"key": {"eqIgnoreCase": "OPS"}}})
+    );
+}
+
+#[test]
+fn an_empty_cycle_that_exists_is_still_no_issues_found() {
+    let sb = workspace();
+    let mock = Mock::start(vec![ok(&empty_list()), ok(&fixture("cycles"))]);
+    let o = linear(&sb, &mock, &["issue", "list", "--cycle", "42"]);
+    assert_eq!(code(&o), 0, "{}", stderr(&o));
+    assert_eq!(stdout(&o).trim(), "No issues found.");
+    assert_eq!(mock.requests().len(), 2);
+}
+
+#[test]
+fn a_listing_that_finds_issues_does_not_look_the_cycles_up() {
+    let sb = workspace();
+    let mock = Mock::start(vec![ok(&fixture("issue_list"))]);
+    let o = linear(&sb, &mock, &["issue", "list", "--cycle", "42", "--quiet"]);
+    assert_eq!(code(&o), 0, "{}", stderr(&o));
+    assert_eq!(mock.requests().len(), 1);
+}
+
+#[test]
+fn no_cycle_filter_means_an_empty_listing_stays_a_success() {
+    let sb = workspace();
+    for args in [&["--cycle", "none"][..], &[]] {
+        let mock = Mock::start(vec![ok(&empty_list())]);
+        let mut full = vec!["issue", "list"];
+        full.extend_from_slice(args);
+        let o = linear(&sb, &mock, &full);
+        assert_eq!(code(&o), 0, "{args:?}: {}", stderr(&o));
+        assert_eq!(stdout(&o).trim(), "No issues found.", "{args:?}");
+        assert_eq!(mock.requests().len(), 1, "{args:?}");
+    }
+}
+
 #[test]
 fn list_json_and_view_json_carry_the_cycle_key() {
     let sb = workspace();

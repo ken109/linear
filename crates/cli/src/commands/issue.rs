@@ -181,7 +181,8 @@ pub struct ListCmd {
     #[arg(long, value_name = "ISSUE")]
     pub parent: Option<String>,
     /// Cycle number (`42` or `#42`) of --team, else of the workspace's `default_team`, or
-    /// `none` for the issues that are in no cycle
+    /// `none` for the issues that are in no cycle; a number the team has no cycle for is a
+    /// usage error
     #[arg(long, value_name = "N")]
     pub cycle: Option<String>,
     /// Only issues updated at or after this time: `14d` (14 days back from now) or a date
@@ -387,6 +388,11 @@ fn fetch_list(ctx: &Ctx, args: &ListCmd) -> Result<(String, Vec<Issue>)> {
             resolve_issue(&session.client, reference)?.id.into_inner(),
         )),
     };
+    let numbered_cycle = match &cycle {
+        Some(Pick::Is(number)) => Some(*number),
+        _ => None,
+    };
+    let cycle_team = team_key.clone();
     let filter = IssueQuery {
         assignee: args.assignee.clone(),
         state_types: args.state_type.clone(),
@@ -423,6 +429,13 @@ fn fetch_list(ctx: &Ctx, args: &ListCmd) -> Result<(String, Vec<Issue>)> {
     }
     if truncated {
         warn_truncated(items.len());
+    }
+    // An empty answer for a cycle number is told apart from a number the team does not have:
+    // `create` and `update` refuse such a number, and so does a listing, instead of saying
+    // "No issues found." as if the cycle were empty. Asked only when nothing was found, so a
+    // listing that found issues costs no extra request.
+    if let (Some(number), Some(team), true) = (numbered_cycle, &cycle_team, items.is_empty()) {
+        super::cycle::find_with_number(&session.client, team, number)?;
     }
     Ok((session.workspace, items))
 }

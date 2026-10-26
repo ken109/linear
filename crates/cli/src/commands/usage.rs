@@ -125,6 +125,7 @@ fn notes(group: &str) -> &'static [&'static str] {
         "issue" => &[
             "Name an issue by identifier (KK-12) or id. Changing one needs it to be assigned to you or in a project you lead (exit 4 otherwise).",
             "`create` with a --source URL that is already attached returns that issue instead of a new one, so it is safe to run again.",
+            "`list --cycle N` exits 2, listing the team's cycles, when the team has no cycle N (as `create` and `update` do); `view --json` and `list --json` show the issue's `cycle`.",
         ],
         "comment" => &[
             "Takes the id of a comment (the `id` of `issue view --json` under `comments`). `issue comment` writes a new one.",
