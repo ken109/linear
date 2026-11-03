@@ -1,5 +1,25 @@
 # Changelog
 
+## [0.7.0](https://github.com/ken109/linear/compare/v0.6.1...v0.7.0) (2026-11-03)
+
+
+### ⚠ BREAKING CHANGES
+
+* **core:** select cycle on every issue
+
+### Features
+
+* **cli:** make --target-date of milestone create optional ([e40c93d](https://github.com/ken109/linear/commit/e40c93d588d51475fa1fc416161c3d541dc6832b))
+* **cli:** refuse a cycle number the team does not have in issue list ([b0da187](https://github.com/ken109/linear/commit/b0da187cb5083b4b30a8d471d06cad8058f89241))
+* **core:** audit rule for an open issue that belongs to no project ([c7eefed](https://github.com/ken109/linear/commit/c7eefed9fecaf46d01e35a00a2b0aff484f5ca97))
+* **core:** select cycle on every issue ([14d07a4](https://github.com/ken109/linear/commit/14d07a4a50c524e147753022d6e7c2b49c5fe378))
+
+
+### Documentation
+
+* **readme:** list the issue-without-project audit rule ([7ef4a76](https://github.com/ken109/linear/commit/7ef4a76ea58e6d7870b05c221137c268a6298984))
+* **readme:** say that the target date of a milestone is optional ([e955e7f](https://github.com/ken109/linear/commit/e955e7fe1dce046473d758635aa2ac76f7494be0))
+
 ## [0.6.1](https://github.com/ken109/linear/compare/v0.6.0...v0.6.1) (2026-10-15)
 
 
