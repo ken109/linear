@@ -1073,7 +1073,7 @@ another workspace are always refused.
 ### Milestones, initiatives and templates
 
 ```sh
-linear milestone create --project "My Project" --name "Design review" --target-date 2026-11-01 \
+linear milestone create --project "My Project" --name "Design review" [--target-date 2026-11-01] \
   [--description-file desc.md]
 linear milestone update "Design review" --project "My Project" \
   [--new-name "Review"] [--target-date 2026-11-15] [--description-file desc.md]
@@ -1090,9 +1090,11 @@ linear template create --type project --name "Project" --body-file body.md [--de
 ```
 
 - A **milestone** belongs to a project, so the ownership rule for projects applies: only the
-  project's lead may create, change or delete one (exit 4). A target date is required (without
-  one a milestone does not show on the timeline). `create` with a name the project already has
-  returns that milestone (`"existing": true` with `--json`); `update` refuses a new name that
+  project's lead may create, change or delete one (exit 4). The target date is optional: `create`
+  without `--target-date` makes a milestone with no date (`-` under TARGET in `milestone list`,
+  `null` as `targetDate` with `--json`), which does not show on the timeline and is never
+  overdue; `issue create` and `issue update` still file issues in it by name. `create` with a
+  name the project already has returns that milestone (`"existing": true` with `--json`); `update` refuses a new name that
   another milestone of the project has (exit 2) and sends only what differs from now; `delete`
   refuses a milestone that still has issues in it (exit 1, naming them), because deleting it
   would silently unfile them.
