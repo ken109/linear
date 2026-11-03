@@ -174,7 +174,11 @@ fn nothing_found_is_said_so() {
     projects["data"]["projects"]["nodes"] = json!([]);
     let mock = Mock::start(vec![
         ok(&fixture("whoami")),
-        ok(&issues_with(|i| i["state"]["type"] = json!("backlog"))),
+        ok(&issues_with(|i| {
+            i["state"]["type"] = json!("backlog");
+            // The fixture's due date passes with the clock; push it out of reach so that no overdue finding appears.
+            i["dueDate"] = json!("2999-01-01");
+        })),
         ok(&projects.to_string()),
     ]);
     let o = linear(&sb, &mock, &["audit"]);
