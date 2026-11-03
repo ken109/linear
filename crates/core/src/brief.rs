@@ -307,6 +307,28 @@ mod tests {
     use super::*;
 
     #[test]
+    fn a_next_milestone_without_a_target_date_is_named_without_one() {
+        let summary = |target_date| MilestoneSummary {
+            total: 3,
+            done: 1,
+            next: Some(NextMilestone {
+                name: "M2".to_owned(),
+                target_date,
+                progress: 40.0,
+                overdue: false,
+            }),
+        };
+        assert_eq!(
+            milestone_line(&summary(None)),
+            "Milestones 1/3 done · next: M2 (40%)"
+        );
+        assert_eq!(
+            milestone_line(&summary(NaiveDate::from_ymd_opt(2026, 11, 1))),
+            "Milestones 1/3 done · next: M2 (2026-11-01, 40%)"
+        );
+    }
+
+    #[test]
     fn a_preview_drops_blank_lines_and_list_markers() {
         let body = "\n- Stage: build\n\n* Next: ship\n1. Waiting: review\n- fourth\n";
         assert_eq!(
