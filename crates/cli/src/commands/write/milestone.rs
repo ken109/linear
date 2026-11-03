@@ -4,8 +4,9 @@
 //! ownership rule: only the project's lead may add, change or remove one
 //! (exit code 4 otherwise). No validator rule applies to milestones; the
 //! checks that are always on are made here before anything is sent: a
-//! milestone needs a name and a target date (without one it does not show on
-//! the timeline), and a project never gets two milestones with the same name.
+//! milestone needs a name, and a project never gets two milestones with the
+//! same name. The target date is optional; a milestone without one is created
+//! as such and does not show on the timeline.
 
 use super::dry_run::{Plan, Target};
 use super::{read_text, resolve, ForceArg, WriteSession};
@@ -37,9 +38,10 @@ pub struct CreateCmd {
     /// instead of creating another
     #[arg(long, value_name = "NAME")]
     pub name: String,
-    /// When the milestone is due (YYYY-MM-DD); required, or it does not show on the timeline
+    /// When the milestone is due (YYYY-MM-DD); optional, but a milestone without one does not
+    /// show on the timeline
     #[arg(long, value_name = "DATE")]
-    pub target_date: NaiveDate,
+    pub target_date: Option<NaiveDate>,
     /// Read the description from a file (`-` for standard input)
     #[arg(long, value_name = "FILE")]
     pub description_file: Option<PathBuf>,

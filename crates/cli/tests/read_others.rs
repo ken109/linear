@@ -52,6 +52,42 @@ fn milestone_list_resolves_the_project_and_sorts_like_linear() {
 }
 
 #[test]
+fn a_milestone_without_a_target_date_is_listed_with_a_dash() {
+    let sb = workspace();
+    let mut body: Value = serde_json::from_str(&fixture("milestones")).unwrap();
+    body["data"]["project"]["projectMilestones"]["nodes"][1]["targetDate"] = Value::Null;
+    let mock = Mock::start(vec![ok(PROJECT_REFS), ok(&body.to_string())]);
+    let o = linear(
+        &sb,
+        &mock,
+        &["milestone", "list", "--project", "Fixture Project"],
+    );
+    assert_eq!(code(&o), 0, "{}", stderr(&o));
+    let row = stdout(&o)
+        .lines()
+        .find(|l| l.starts_with("Milestone 1"))
+        .unwrap()
+        .to_owned();
+    let cells: Vec<&str> = row.split_whitespace().collect();
+    assert_eq!(
+        &cells[cells.len() - 3..],
+        ["next", "-", "25%"],
+        "TARGET is a dash: {row}"
+    );
+
+    let mock = Mock::start(vec![ok(PROJECT_REFS), ok(&body.to_string())]);
+    let o = linear(
+        &sb,
+        &mock,
+        &["milestone", "list", "--project", "aaaaaaaaaaaa", "--json"],
+    );
+    let v = stdout_json(&o);
+    assert_eq!(v[0]["name"], "Milestone 1");
+    assert_eq!(v[0]["targetDate"], Value::Null);
+    assert_eq!(v[1]["targetDate"], "2026-12-15");
+}
+
+#[test]
 fn milestone_list_requires_a_project() {
     let sb = workspace();
     let o = sb.run(&["milestone", "list"], None, &[]);
@@ -433,7 +469,7 @@ fn user_list_marks_me_and_includes_disabled_only_when_asked() {
 #[test]
 fn skeleton_of_a_project_template_is_read_with_type_project() {
     let sb = workspace();
-    let mut v: serde_json::Value = serde_json::from_str(&fixture("templates_sections")).unwrap();
+    let mut v: Value = serde_json::from_str(&fixture("templates_sections")).unwrap();
     let doc = serde_json::json!({ "descriptionData": { "type": "doc", "content": [
         { "type": "heading", "attrs": { "level": 2 },
           "content": [{ "type": "text", "text": "Definition of done" }] },

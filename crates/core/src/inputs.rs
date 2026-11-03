@@ -503,8 +503,10 @@ pub fn issue_relation_delete(
 pub struct MilestoneCreateInput {
     pub project_id: String,
     pub name: String,
-    /// Always sent: a milestone without a target date does not show on the timeline.
-    pub target_date: NaiveDate,
+    /// Left out when there is none: Linear accepts a milestone without a target date, which
+    /// then does not show on the timeline.
+    #[cynic(skip_serializing_if = "Option::is_none")]
+    pub target_date: Option<NaiveDate>,
     #[cynic(skip_serializing_if = "Option::is_none")]
     pub description: Option<String>,
 }

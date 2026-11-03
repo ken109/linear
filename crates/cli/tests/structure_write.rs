@@ -135,9 +135,42 @@ fn a_milestone_is_created_in_a_project_the_viewer_leads() {
 }
 
 #[test]
-fn a_milestone_needs_a_target_date_before_anything_is_sent() {
+fn a_milestone_without_a_target_date_is_created_without_one() {
     let sb = workspace();
-    let mock = Routed::start(project_routes(Some(ALICE)));
+    let mut undated = milestone(NEW_MILESTONE_ID, "No date", "2026-12-01", None);
+    undated["targetDate"] = Value::Null;
+    let mock = Routed::start(with(
+        project_routes(Some(ALICE)),
+        vec![(
+            "MilestoneCreate",
+            vec![milestone_payload("projectMilestoneCreate", undated)],
+        )],
+    ));
+    let o = run(
+        &sb,
+        &mock,
+        &[
+            "milestone",
+            "create",
+            "--project",
+            "Fixture Project",
+            "--name",
+            "No date",
+            "--json",
+        ],
+    );
+    assert_eq!(code(&o), 0, "{}", stderr(&o));
+    let v = stdout_json(&o);
+    assert_eq!(v["existing"], false);
+    assert_eq!(v["name"], "No date");
+    assert_eq!(v["targetDate"], Value::Null);
+    assert_eq!(
+        mock.of("MilestoneCreate")[0]["input"],
+        json!({ "projectId": PROJECT, "name": "No date" }),
+        "the input has no targetDate, not even a null"
+    );
+
+    // The text form shows the missing date as `-`.
     let o = run(
         &sb,
         &mock,
@@ -150,8 +183,14 @@ fn a_milestone_needs_a_target_date_before_anything_is_sent() {
             "No date",
         ],
     );
-    assert_eq!(code(&o), 2, "{}", stderr(&o));
-    assert!(stderr(&o).contains("--target-date"), "{}", stderr(&o));
+    assert_eq!(code(&o), 0, "{}", stderr(&o));
+    assert!(stdout(&o).contains("target -"), "{}", stdout(&o));
+}
+
+#[test]
+fn a_milestone_is_checked_before_anything_is_sent() {
+    let sb = workspace();
+    let mock = Routed::start(project_routes(Some(ALICE)));
 
     let mut args = create_args();
     args[7] = "next friday";
@@ -920,6 +959,30 @@ fn a_dry_run_of_the_milestone_writes_plans_each_mutation() {
     assert_eq!(
         v["mutations"][0]["variables"]["input"],
         json!({ "projectId": PROJECT, "name": "Ship it", "targetDate": "2026-12-01" })
+    );
+
+    // Without a date, the planned mutation carries none.
+    let v = plan(
+        &run(
+            &sb,
+            &mock,
+            &[
+                "milestone",
+                "create",
+                "--project",
+                "Fixture Project",
+                "--name",
+                "No date",
+                "--dry-run",
+                "--json",
+            ],
+        ),
+        &mock,
+    );
+    assert_eq!(planned(&v), ["MilestoneCreate"]);
+    assert_eq!(
+        v["mutations"][0]["variables"]["input"],
+        json!({ "projectId": PROJECT, "name": "No date" })
     );
 
     let v = plan(

@@ -14,11 +14,11 @@ fn date(s: &str) -> NaiveDate {
 // ------------------------------------------------------------------ milestones
 
 #[test]
-fn a_milestone_create_input_always_carries_its_target_date() {
+fn a_milestone_create_input_carries_its_target_date_only_when_there_is_one() {
     let minimal = serde_json::to_value(MilestoneCreateInput {
         project_id: "p".into(),
         name: "M1".into(),
-        target_date: date("2026-11-01"),
+        target_date: Some(date("2026-11-01")),
         description: None,
     })
     .unwrap();
@@ -30,11 +30,24 @@ fn a_milestone_create_input_always_carries_its_target_date() {
     let full = serde_json::to_value(MilestoneCreateInput {
         project_id: "p".into(),
         name: "M1".into(),
-        target_date: date("2026-11-01"),
+        target_date: Some(date("2026-11-01")),
         description: Some("Why".into()),
     })
     .unwrap();
     assert_eq!(full["description"], "Why");
+
+    let undated = serde_json::to_value(MilestoneCreateInput {
+        project_id: "p".into(),
+        name: "M1".into(),
+        target_date: None,
+        description: None,
+    })
+    .unwrap();
+    assert_eq!(
+        undated,
+        json!({ "projectId": "p", "name": "M1" }),
+        "no date is omitted, never null"
+    );
 }
 
 #[test]
@@ -63,7 +76,7 @@ fn the_milestone_mutations_name_the_right_fields() {
     let create = build_request(&milestone_create(MilestoneCreateInput {
         project_id: "p".into(),
         name: "M1".into(),
-        target_date: date("2026-11-01"),
+        target_date: Some(date("2026-11-01")),
         description: None,
     }));
     assert!(

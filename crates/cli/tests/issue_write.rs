@@ -577,6 +577,36 @@ fn update_sends_only_what_was_asked() {
 }
 
 #[test]
+fn an_issue_is_filed_in_a_milestone_that_has_no_target_date_by_its_name() {
+    let sb = workspace_with_rules(&[]);
+    // The project the issue moves to has one milestone, and it has no date.
+    let mut project = serde_json::from_str::<Value>(&fixture("issue_write_view")).unwrap()["data"]
+        ["write"]["project"]
+        .clone();
+    project["id"] = json!(PROJECT);
+    project["projectMilestones"]["nodes"][0]["targetDate"] = Value::Null;
+    let mut unplanned = mine();
+    unplanned.0["issue"]["projectMilestone"] = Value::Null;
+    let mock = Routed::start(update_routes(
+        unplanned,
+        vec![(
+            "ProjectOwnershipQuery",
+            vec![data(json!({ "project": project }))],
+        )],
+    ));
+    let o = run(
+        &sb,
+        &mock,
+        &["issue", "update", "EX-23", "--milestone", "milestone 1"],
+    );
+    assert_eq!(code(&o), 0, "{}", stderr(&o));
+    assert_eq!(
+        mock.of("IssueUpdate")[0]["input"],
+        json!({ "projectMilestoneId": "00000000-0000-4000-8000-000000000007" })
+    );
+}
+
+#[test]
 fn an_update_that_is_already_true_sends_nothing() {
     let sb = workspace_with_rules(&[]);
     let mock = Routed::start(update_routes(
