@@ -110,6 +110,11 @@ fn the_document_alone_decides_these() {
     assert!(one(item(json!({ "addLabels": [] })))
         .iter()
         .any(|p| p.contains("nothing to change")));
+    // A title alone is a change; a blank one is refused.
+    assert!(one(item(json!({ "title": "New" }))).is_empty());
+    assert!(one(item(json!({ "title": " " })))
+        .iter()
+        .any(|p| p.contains("title is empty")));
 
     let create = |extra: Value| {
         let mut v = json!({ "op": "create", "title": "t", "project": "p" });

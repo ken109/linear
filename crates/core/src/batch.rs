@@ -104,6 +104,8 @@ pub struct Create {
 pub struct Update {
     /// The issue: identifier such as `KK-12`, or id. It must exist.
     pub issue: String,
+    /// The new title (`--title`).
+    pub title: Option<String>,
     /// Workflow state, by name (`--state`).
     pub state: Option<String>,
     /// Move to this project (`--project`).
@@ -342,7 +344,11 @@ fn item_problems(item: &Item) -> Vec<String> {
             if let Err(e) = metadata(&u.meta) {
                 problems.push(e.to_string());
             }
-            let changes = u.state.is_some()
+            if u.title.as_deref().is_some_and(blank) {
+                problems.push("title is empty".to_owned());
+            }
+            let changes = u.title.is_some()
+                || u.state.is_some()
                 || u.project.is_some()
                 || u.milestone.is_some()
                 || u.due.is_some()

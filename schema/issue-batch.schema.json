@@ -298,6 +298,13 @@
                 "string",
                 "null"
               ]
+            },
+            "title": {
+              "description": "The new title (`--title`).",
+              "type": [
+                "string",
+                "null"
+              ]
             }
           },
           "required": [
