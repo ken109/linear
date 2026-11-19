@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.8.0](https://github.com/ken109/linear/compare/v0.7.0...v0.8.0) (2026-11-19)
+
+
+### Features
+
+* **cli:** let issue update change the title ([eaa77f6](https://github.com/ken109/linear/commit/eaa77f6f715851471acca8ae139abd414d5404ca))
+* **core:** take a title in an issue batch's update item ([d558d75](https://github.com/ken109/linear/commit/d558d75c52bd4fee016e6472938e9f92497c6548))
+
 ## [0.7.0](https://github.com/ken109/linear/compare/v0.6.1...v0.7.0) (2026-11-03)
 
 
