@@ -561,6 +561,7 @@ linear issue create --title "Fix the thing" --project "My Project" \
   [--source-title "Where it came from"] [--meta kind=slack --meta ticket=42] \
   [--milestone M1] [--assignee me] [--label bug] [--team ENG] [--held-on 2026-10-05] \
   [--priority high] [--estimate 3] [--parent KK-10] [--cycle 42]
+linear issue update KK-12 --title "A better title"                     # rename it
 linear issue update KK-12 --state "In Progress" --due 2026-11-01 [--milestone M2] [--assignee me]
 linear issue update KK-12 --project "Other Project" [--milestone M1]   # the old milestone is cleared
 linear issue update KK-12 --body-file body.md [--template "Bug report"]   # replace the description
@@ -661,10 +662,12 @@ cycle only when it has none.
 
 `issue update` sends only the fields that differ from what the issue has now, and never `null`
 for a field it was not asked to clear. A second identical run sends nothing and says so
-(`"changed": []` with `--json`; otherwise `changed` lists what was written: `description`,
+(`"changed": []` with `--json`; otherwise `changed` lists what was written: `title`, `description`,
 `state`, `project`, `milestone`, `dueDate`, `assignee`, `labels`, `priority`, `estimate`,
 `parent`, `cycle`, `source`).
 
+- `--title TITLE` renames the issue (surrounding whitespace is dropped; a blank title is a usage
+  error before any request, and a title the issue already has sends nothing).
 - `--body-file FILE|-` replaces the description (an empty file is a usage error). Trailing
   whitespace does not count as a difference, nor does the bullet Linear rewrites (`- item` is
   stored as `* item`); another rewrite the CLI does not know about costs one redundant write. `--template NAME` (only with `--body-file`) holds the

@@ -1,4 +1,4 @@
-//! `linear issue update --body-file|--source|--meta|--labels|--add-labels|--remove-labels`
+//! `linear issue update --title|--body-file|--source|--meta|--labels|--add-labels|--remove-labels`
 //! against a mock Linear that answers by operation name: the same path every
 //! write takes (guard, validators, mutation, rollback), and the rule that only
 //! what differs from now is sent.
@@ -66,6 +66,75 @@ fn update<'a>(extra: &[&'a str]) -> Vec<&'a str> {
     let mut args = vec!["issue", "update", "EX-23"];
     args.extend_from_slice(extra);
     args
+}
+
+// ------------------------------------------------------------------ title
+
+#[test]
+fn title_renames_the_issue() {
+    let sb = workspace_with_rules(&[]);
+    let mock = Routed::start(routes(mine(), vec![]));
+
+    // Surrounding whitespace is not part of the title.
+    let o = run(
+        &sb,
+        &mock,
+        &update(&["--title", "  A better title  ", "--json"]),
+    );
+    assert_eq!(code(&o), 0, "{}", stderr(&o));
+    assert_eq!(stdout_json(&o)["changed"], json!(["title"]));
+    assert_eq!(
+        mock.of("IssueUpdate"),
+        vec![json!({
+            "id": "id-EX-23",
+            "input": { "title": "A better title" },
+        })]
+    );
+    assert!(mock.of("AttachmentCreate").is_empty());
+}
+
+#[test]
+fn a_title_the_issue_already_has_sends_nothing() {
+    let sb = workspace_with_rules(&[]);
+    let mock = Routed::start(routes(mine(), vec![]));
+
+    let o = run(
+        &sb,
+        &mock,
+        &update(&["--title", "Write the fixture issue", "--json"]),
+    );
+    assert_eq!(code(&o), 0, "{}", stderr(&o));
+    mock.assert_read_only();
+    assert_eq!(stdout_json(&o)["changed"], json!([]));
+}
+
+#[test]
+fn a_blank_title_is_a_usage_error_before_any_request() {
+    let sb = workspace_with_rules(&[]);
+    let mock = Routed::start(routes(mine(), vec![]));
+    let o = run(&sb, &mock, &update(&["--title", "  "]));
+    assert_eq!(code(&o), 2, "{}", stderr(&o));
+    assert!(mock.ops().is_empty(), "{:?}", mock.ops());
+}
+
+#[test]
+fn a_dry_run_of_a_title_plans_the_rename_and_sends_nothing() {
+    let sb = workspace_with_rules(&[]);
+    let mock = Routed::start(routes(mine(), vec![]));
+
+    let o = run(
+        &sb,
+        &mock,
+        &update(&["--title", "A better title", "--dry-run", "--json"]),
+    );
+    let v = plan(&o, &mock);
+    assert_eq!(v["command"], "issue update");
+    assert_eq!(v["changed"], json!(["title"]));
+    assert_eq!(planned(&v), ["IssueUpdate"]);
+    assert_eq!(
+        v["mutations"][0]["variables"]["input"],
+        json!({ "title": "A better title" })
+    );
 }
 
 // ------------------------------------------------------------------ body

@@ -550,6 +550,9 @@ fn emit_created(ws: &WriteSession, made: Made<'_>, source: Option<&str>) {
 pub struct UpdateCmd {
     /// Issue identifier (such as KK-12) or id
     pub issue: String,
+    /// Rename it
+    #[arg(long, value_name = "TITLE")]
+    pub title: Option<String>,
     /// Workflow state, by name (ignoring case)
     #[arg(long, value_name = "NAME")]
     pub state: Option<String>,
@@ -676,7 +679,8 @@ pub struct UpdateInputs {
 pub fn update(ctx: &Ctx, cmd: &UpdateCmd) -> Result<()> {
     let relabel =
         !cmd.labels.is_empty() || !cmd.add_labels.is_empty() || !cmd.remove_labels.is_empty();
-    if cmd.state.is_none()
+    if cmd.title.is_none()
+        && cmd.state.is_none()
         && cmd.project.is_none()
         && cmd.milestone.is_none()
         && cmd.due.is_none()
@@ -690,12 +694,15 @@ pub fn update(ctx: &Ctx, cmd: &UpdateCmd) -> Result<()> {
         && cmd.cycle.is_none()
     {
         return Err(CliError::usage(
-            "nothing to change: pass --state, --project, --milestone, --due, --assignee, \
+            "nothing to change: pass --title, --state, --project, --milestone, --due, --assignee, \
              --body-file, --source, --labels, --add-labels, --remove-labels, --priority, \
              --estimate, --parent or --cycle",
         ));
     }
     // Everything that can be judged from the arguments alone comes first.
+    if cmd.title.as_deref().is_some_and(|t| t.trim().is_empty()) {
+        return Err(CliError::usage("--title must not be empty"));
+    }
     let body = cmd.body_file.as_deref().map(read_text).transpose()?;
     if body.as_deref().is_some_and(|b| b.trim().is_empty()) {
         return Err(CliError::usage("the body file is empty"));
@@ -854,6 +861,13 @@ pub fn update_in(ws: &WriteSession, cmd: &UpdateCmd, inputs: UpdateInputs) -> Re
     let mut input = IssueUpdateInput::default();
     let mut restore = IssueUpdateInput::default();
     let mut changed: Vec<&'static str> = Vec::new();
+    if let Some(t) = cmd.title.as_deref().map(str::trim) {
+        if t != issue.title {
+            input.title = Some(t.to_owned());
+            restore.title = Some(issue.title.clone());
+            changed.push("title");
+        }
+    }
     if let Some(b) = &body {
         let b = b.trim_end();
         if !same_description(issue.description.as_deref(), b) {

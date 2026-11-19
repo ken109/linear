@@ -188,6 +188,22 @@ fn the_batch_may_come_from_standard_input() {
     assert_eq!(stdout(&o).trim(), "EX-30");
 }
 
+#[test]
+fn an_update_item_may_change_the_title() {
+    let sb = workspace_with_rules(&[]);
+    let mock = Routed::start(routes(mine(), vec![]));
+    let path = file(
+        &sb,
+        &json!({ "issues": [{ "op": "update", "issue": "EX-23", "title": "A better title" }] }),
+    );
+    let o = run(&sb, &mock, &["issue", "batch", "--file", &path, "--quiet"]);
+    assert_eq!(code(&o), 0, "{}", stderr(&o));
+    assert_eq!(
+        mock.of("IssueUpdate"),
+        vec![json!({ "id": "id-EX-23", "input": { "title": "A better title" } })]
+    );
+}
+
 // ------------------------------------------------------------------ --dry-run
 
 #[test]

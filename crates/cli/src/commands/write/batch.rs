@@ -217,6 +217,7 @@ fn update_work(u: &Update) -> std::result::Result<Work, String> {
     };
     let cmd = UpdateCmd {
         issue: u.issue.clone(),
+        title: u.title.clone(),
         state: u.state.clone(),
         project: u.project.clone(),
         milestone: u.milestone.clone(),
